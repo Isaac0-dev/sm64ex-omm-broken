@@ -10,6 +10,12 @@ static OmmArray sKeyboardMapping = omm_array_zero;
 static u32 sKeyboardDownMask = 0;
 static u32 sKeyboardLastKey = VK_INVALID;
 
+void tas_shutdown(void);
+void tas_record(OSContPad *pad);
+void tas_init(void);
+
+bool is_controller_active(void);
+
 //
 // Keyboard API
 //
@@ -50,6 +56,9 @@ static void keyboard_bindkeys(void) {
 
 static void keyboard_init(void) {
     keyboard_bindkeys();
+    if (gTas.controllerType == 1 && gTas.onStart == 1) {
+        tas_init();
+    }
 }
 
 static void keyboard_read(OSContPad *pad) {
@@ -63,6 +72,10 @@ static void keyboard_read(OSContPad *pad) {
         case STICK_DOWN:  pad->stick_y = -0x7F; break;
         case STICK_UP:    pad->stick_y = +0x7F; break;
     }
+
+    if (gTas.controllerType == 1) {
+        tas_record(pad);
+    }
 }
 
 static u32 keyboard_rawkey(void) {
@@ -72,6 +85,9 @@ static u32 keyboard_rawkey(void) {
 }
 
 static void keyboard_shutdown(void) {
+    if (gTas.controllerType == 1) {
+        tas_shutdown();
+    }
 }
 
 struct ControllerAPI controller_keyboard = {

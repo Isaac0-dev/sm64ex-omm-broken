@@ -12,6 +12,7 @@
 #include <string.h>
 
 struct PCCLIOptions gCLIOpts;
+struct Tas gTas;
 
 static void print_help(void) {
     printf("Super Mario 64 PC Port\n");
@@ -22,6 +23,7 @@ static void print_help(void) {
     printf("%-20s\tStarts the game in full screen mode.\n", "--fullscreen");
     printf("%-20s\tSkips the Peach and Castle intro when starting a new game.\n", "--skip-intro");
     printf("%-20s\tStarts the game in windowed mode.\n", "--windowed");
+    printf("%-20s\tStarts the game with tas recording enabled. Parameters should be 1 (sets the recorded controller type to a contoller) or 0 (sets the controller type to keyboard).\n", "--tas");
 }
 
 static inline int arg_string(const char *name, const char *value, char *target) {
@@ -70,8 +72,20 @@ void parse_cli_opts(int argc, char* argv[]) {
         else if (strcmp(argv[i], "--savepath") == 0 && (i + 1) < argc)
             arg_string("--savepath", argv[++i], gCLIOpts.SavePath);
 
+        else if (strcmp(argv[i], "--tas") == 0 && (((i + 1) < argc) || ((i + 2) < argc))) {
+            arg_uint("--tas <type>", argv[++i], &gTas.controllerType);
+            if (gTas.controllerType > 2 || gTas.controllerType < 0) {
+                printf("controller type can only be 1 or 2\n");
+                game_exit();
+                return;
+            }
+            if ((i + 2) == argc) {
+                arg_uint("--tas <onStart>", argv[++i], &gTas.onStart);
+            } else {
+                gTas.onStart = 1;
+            }
         // Print help
-        else if (strcmp(argv[i], "--help") == 0) {
+        } else if (strcmp(argv[i], "--help") == 0) {
             print_help();
             game_exit();
         }

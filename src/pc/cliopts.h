@@ -14,6 +14,15 @@ struct PCCLIOptions  {
 
 extern struct PCCLIOptions gCLIOpts;
 
+struct Tas {
+    unsigned int controllerType;
+    unsigned int stop;
+    unsigned int progress;
+    unsigned int onStart;
+};
+
+extern struct Tas gTas;
+
 void parse_cli_opts(int argc, char* argv[]);
 
 #endif // _CLIOPTS_H

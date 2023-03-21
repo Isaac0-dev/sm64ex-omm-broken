@@ -21,6 +21,17 @@ static SDL_GameController *sController;
 s32 gMouseHasFreeControl = FALSE;
 s32 gMouseHasCenterControl = FALSE;
 
+void tas_shutdown(void);
+void tas_record(OSContPad *pad);
+void tas_init(void);
+
+bool is_controller_active(void) {
+    if (OMM_LIKELY(sControllerInited) && sController) {
+        return true;
+    }
+    return false;
+}
+
 //
 // Joystick
 //
@@ -97,6 +108,9 @@ static void controller_sdl_init(void) {
     controller_sdl_bind();
     controller_sdl_get_mouse_state();
     sControllerInited = true;
+    if (gTas.controllerType == 2) {
+        tas_init();
+    }
 }
 
 static void controller_sdl_read(OSContPad *pad) {
@@ -187,6 +201,10 @@ static void controller_sdl_read(OSContPad *pad) {
             case STICK_DOWN:  pad->stick_y = -0x7F; break;
             case STICK_UP:    pad->stick_y = +0x7F; break;
         }
+
+        if (gTas.controllerType == 2) {
+            tas_record(pad);
+        }
     }
 }
 
@@ -213,6 +231,9 @@ static void controller_sdl_shutdown(void) {
             sController = NULL;
         }
         SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER);
+        if (gTas.controllerType == 2) {
+            tas_shutdown();
+        }
     }
     sControllerInited = false;
 }
