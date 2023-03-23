@@ -35,7 +35,7 @@ INC_DIRS := \
 # -------
 
 OMM_VERSION_NUMBER := 7.5.1
-OMM_VERSION_REVISION := 5
+OMM_VERSION_REVISION := 3
 OMM_DEVELOPER := PeachyPeach
 VERSION_CFLAGS += -DOMM_VERSION="$(OMM_VERSION_NUMBER)"
 VERSION_CFLAGS += -DOMM_REVISION="$(OMM_VERSION_REVISION)"
@@ -160,6 +160,20 @@ OMM_VERSION:
 	Odyssey Mario's Moveset v$(OMM_VERSION_NUMBER) by $(OMM_DEVELOPER) - $(OMM_VERSION_SUB) detected\n\
 	--------------------------------------------------------------------------------------------------------------------------------\n"
 
+ifeq ($(OMM_EXT_ASSETS),1)
+OMM_EXE_MAP: $(EXE) $(BUILD_DIR)/$(BASEDIR)/$(BASEPACK)
+	@objdump -t $(EXE) > $(BUILD_DIR)/$(BASEDIR)/omm.map
+	@python3 omm_map.py
+	@cp -f baserom.us.z64 $(BUILD_DIR)/baserom.us.z64
+	@cp -f assets.json $(BUILD_DIR)/$(BASEDIR)/assets.json
+	@python3 omm_assets.py $(EXE) $(OMM_BUILD_CUSTOM_ASSETS)
+	@rm -f $(BUILD_DIR)/$(BASEDIR)/$(BASEPACK)
+	@rm -rf $(BUILD_DIR)/$(BASEDIR)/gfx
+	@rm -rf $(BUILD_DIR)/$(BASEDIR)/sound
+	@rm -rf $(BUILD_DIR)/$(BASEDIR)/texts
+	@rm -rf $(BUILD_DIR)/$(BASEDIR)/db
+else
 OMM_EXE_MAP: $(EXE)
 	@objdump -t $(EXE) > $(BUILD_DIR)/$(BASEDIR)/omm.map
 	@python3 omm_map.py
+endif

@@ -696,6 +696,7 @@ void initiate_painting_warp(void) {
  * Return the time left until the delayed warp is initiated.
  */
 s16 level_trigger_warp(struct MarioState *m, s32 warpOp) {
+omm_patch__level_trigger_warp__check_death_warp
     s32 val04 = TRUE;
 
     if (sDelayedWarpOp == WARP_OP_NONE) {
@@ -1164,6 +1165,8 @@ s32 init_level(void) {
     s32 val4 = 0;
 
     set_play_mode(PLAY_MODE_NORMAL);
+    extern void time_trials_level_entry();
+    time_trials_level_entry();
 
     sDelayedWarpOp = WARP_OP_NONE;
     sTransitionTimer = 0;

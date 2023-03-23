@@ -8,6 +8,7 @@
 //
 
 u16 gRandomSeed = 0;
+bool gRandomSeedFree = false;
 Vec2f gVec2fZero = { 0, 0 };
 Vec2f gVec2fOne = { 1, 1 };
 Vec3f gVec3fZero = { 0, 0, 0 };
@@ -23,11 +24,17 @@ Vec4s gVec4sZero = { 0, 0, 0, 0 };
 Vec4s gVec4sOne = { 1, 1, 1, 1 };
 Mat4 gMat4Identity = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } };
 
+bool is_tas_writing(void);
+bool is_tas_reading(void);
+
 //
 // Random
 //
 
 u16 random_u16(void) {
+    if (!(is_tas_reading() || is_tas_writing()) && (gRandomSeedFree)) {
+        return 50;
+    }
     u16 gRandomNext;
     gRandomNext = ((gRandomSeed & 0x00FF) << 8) ^ gRandomSeed;
     gRandomSeed = ((gRandomNext & 0x00FF) << 8) + ((gRandomNext & 0xFF00) >> 8);

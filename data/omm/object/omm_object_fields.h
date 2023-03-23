@@ -105,12 +105,12 @@ struct OmmData {
             s16 stickYaw; // intended yaw
             u16 buttonPressed;
             u16 buttonDown;
-#if OMM_CODE_DEBUG
+// #if OMM_CODE_DEBUG
             f32 hitboxRadius;
             f32 hitboxHeight;
             f32 hitboxOffset;
             f32 hitboxWall;
-#endif
+// #endif
         } capture;
 
         // Sparkly stars data

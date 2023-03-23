@@ -1,7 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
-#if OMM_CODE_DEBUG
+// #if OMM_CODE_DEBUG
 
 #define SIN_0000 0.000f
 #define SIN_1000 0.383f
@@ -392,6 +392,7 @@ OMM_ROUTINE_UPDATE(omm_debug_update) {
 
     // Mario info
     if (gOmmDebugMario) {
+        omm_debug_text(-60, 76, "ACT TIMER %d", m->actionTimer);
         omm_debug_text(-60, 58, "POS %d %d %d", (s32) m->pos[0], (s32) m->pos[1], (s32) m->pos[2]);
         omm_debug_text(-60, 40, "PEAK %d YAW %04X", (s32) (OMM_MOVESET_CLASSIC ? m->peakHeight : gOmmMario->state.peakHeight), (u16) m->faceAngle[1]);
         omm_debug_text(-60, 22, "UEL %d %d %d FWD %d", (s32) m->vel[0], (s32) m->vel[1], (s32) m->vel[2], (s32) m->forwardVel);
@@ -414,4 +415,4 @@ OMM_ROUTINE_UPDATE(omm_debug_update) {
     }
 }
 
-#endif
+// #endif

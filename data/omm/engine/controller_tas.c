@@ -4,6 +4,13 @@
 
 static FILE *fp;
 
+bool is_tas_writing(void) {
+    if (fp != NULL) {
+        return true;
+    }
+    return false;
+}
+
 void tas_shutdown(void) {
     if (fp != NULL) {
         fclose(fp);

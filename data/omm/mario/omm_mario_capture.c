@@ -362,12 +362,12 @@ s32 omm_act_possession(struct MarioState *m) {
             }
         }
 
-#if OMM_CODE_DEBUG
+// #if OMM_CODE_DEBUG
         gOmmMario->capture.hitboxRadius = o->hitboxRadius;
         gOmmMario->capture.hitboxHeight = o->hitboxHeight;
         gOmmMario->capture.hitboxOffset = o->hitboxDownOffset;
         gOmmMario->capture.hitboxWall   = o->oWallHitboxRadius;
-#endif
+// #endif
 
         // Unset possessed object's hitbox to avoid undesirable interactions
         o->hitboxRadius      = 0;

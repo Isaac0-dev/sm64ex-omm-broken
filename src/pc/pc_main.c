@@ -83,7 +83,7 @@ void send_display_list(struct SPTask *spTask) {
 #define SAMPLES_LOW 528
 #endif
 
-bool holdingTab = false;
+u8 holdingTab = 0;
 bool holdingReturn = false;
 bool holdingBackspace = false;
 
@@ -120,15 +120,17 @@ void produce_one_frame(void) {
         holdingBackspace = false;
     }
 
-    if ((state[SDL_SCANCODE_TAB] || SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT)) && !holdingTab) {
+    if ((state[SDL_SCANCODE_TAB] || SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT)) && holdingTab > 4) {
         if (gTas.progress == 1) {
             gTas.progress = 0;
         } else {
             gTas.progress = 1;
         }
-        holdingTab = true;
+        holdingTab = 0;
     } else {
-        holdingTab = false;
+        if (holdingTab < 5) {
+            holdingTab++;
+        }
     }
 
     if ((!gTas.stop && gTas.progress) || (gTas.stop && gTas.progress)) {

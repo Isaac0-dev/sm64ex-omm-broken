@@ -99,7 +99,7 @@ DEFINE_TOGGLE(gOmmCheatBljAnywhere, 0);                                     // D
 #endif
 DEFINE_CHOICE(gOmmFrameRate, OMM_FPS_30, 4);                                // 30 FPS
 DEFINE_TOGGLE(gOmmShowFPS, 0);                                              // Disabled
-DEFINE_CHOICE(gOmmTextureCaching, 2, 3);                                    // Permanent
+DEFINE_CHOICE(gOmmPreloadTextures, 2, 3);                                   // From Disk
 DEFINE_CHOICE_SC(gOmmCharacter, 0, OMM_NUM_PLAYABLE_CHARACTERS);            // Mario
 DEFINE_CHOICE_SC(gOmmMovesetType, 1, 4);                                    // Odyssey (3-Health)
 DEFINE_CHOICE_SC(gOmmCapType, 2, 4);                                        // Cappy (Capture - Press)
@@ -127,17 +127,17 @@ DEFINE_TOGGLE_SC(gOmmExtrasRedCoinsRadar, 1);                               // E
 DEFINE_TOGGLE_SC(gOmmExtrasShowStarNumber, 1);                              // Enabled
 DEFINE_TOGGLE_SC(gOmmExtrasInvisibleMode, 0);                               // Disabled
 DEFINE_CHOICE_SC(gOmmExtrasSparklyStarsReward, 0, OMM_SPARKLY_MODE_COUNT);  // Disabled
-#if OMM_CODE_DEBUG
+// #if OMM_CODE_DEBUG
 DEFINE_TOGGLE_SC(gOmmDebugHitbox, 0);                                       // Disabled
 DEFINE_TOGGLE_SC(gOmmDebugHurtbox, 0);                                      // Disabled
 DEFINE_TOGGLE_SC(gOmmDebugWallbox, 0);                                      // Disabled
 DEFINE_TOGGLE_SC(gOmmDebugSurface, 0);                                      // Disabled
 DEFINE_TOGGLE_SC(gOmmDebugMario, 0);                                        // Disabled
 DEFINE_TOGGLE_SC(gOmmDebugCappy, 0);                                        // Disabled
-#endif
-#if OMM_CODE_DEV
-#include "data/omm/dev/omm_dev_opt_define.inl"
-#endif
+// #endif
+// #if OMM_CODE_DEV
+// #include "data/omm/dev/omm_dev_opt_define.inl"
+// #endif
 
 //
 // Shortcuts
@@ -179,14 +179,14 @@ DEFINE_SHORTCUT_TOGGLE(gOmmExtrasRevealSecrets, OMM_TEXT_OPT_REVEAL_SECRETS),
 DEFINE_SHORTCUT_TOGGLE(gOmmExtrasRedCoinsRadar, OMM_TEXT_OPT_RED_COINS_RADAR),
 DEFINE_SHORTCUT_TOGGLE(gOmmExtrasShowStarNumber, OMM_TEXT_OPT_SHOW_STAR_NUMBER),
 DEFINE_SHORTCUT_TOGGLE(gOmmExtrasInvisibleMode, OMM_TEXT_OPT_INVISIBLE_MODE),
-#if OMM_CODE_DEBUG
+// #if OMM_CODE_DEBUG
 DEFINE_SHORTCUT_TOGGLE(gOmmDebugHitbox, OMM_TEXT_OPT_DEBUG_HITBOX),
 DEFINE_SHORTCUT_TOGGLE(gOmmDebugHurtbox, OMM_TEXT_OPT_DEBUG_HURTBOX),
 DEFINE_SHORTCUT_TOGGLE(gOmmDebugWallbox, OMM_TEXT_OPT_DEBUG_WALLBOX),
 DEFINE_SHORTCUT_TOGGLE(gOmmDebugSurface, OMM_TEXT_OPT_DEBUG_SURFACE),
 DEFINE_SHORTCUT_TOGGLE(gOmmDebugMario, OMM_TEXT_OPT_DEBUG_MARIO),
 DEFINE_SHORTCUT_TOGGLE(gOmmDebugCappy, OMM_TEXT_OPT_DEBUG_CAPPY),
-#endif
+// #endif
 DEFINE_SHORTCUT_CHOICE(gOmmExtrasSparklyStarsReward, OMM_TEXT_OPT_SPARKLY_STARS_REWARD, OMM_TEXT_OPT_SPARKLY_STARS_REWARD_DISABLED, OMM_TEXT_OPT_SPARKLY_STARS_REWARD_NORMAL, OMM_TEXT_OPT_SPARKLY_STARS_REWARD_HARD, OMM_TEXT_OPT_SPARKLY_STARS_REWARD_LUNATIC), // Must be last
 };
 
@@ -637,7 +637,7 @@ static struct Option omm_opt_make_main_menu(s32 state) {
         array_length(sOmmOptShortcuts) - (state < OMM_OPT_STATE_PEACH_UNLOCKED)
     );
 
-#if OMM_CODE_DEBUG
+// #if OMM_CODE_DEBUG
     // Debug
     struct Option optDebug = omm_opt_make_submenu(OMM_TEXT_OPT_DEBUG_LABEL, OMM_TEXT_OPT_DEBUG_TITLE, options(
         omm_opt_make_toggle(OMM_TEXT_OPT_DEBUG_HITBOX, &gOmmDebugHitbox),
@@ -647,7 +647,7 @@ static struct Option omm_opt_make_main_menu(s32 state) {
         omm_opt_make_toggle(OMM_TEXT_OPT_DEBUG_MARIO, &gOmmDebugMario),
         omm_opt_make_toggle(OMM_TEXT_OPT_DEBUG_CAPPY, &gOmmDebugCappy),
     ), 6);
-#endif
+// #endif
 
 #if OMM_CODE_DEV
 #include "data/omm/dev/omm_dev_opt_make.inl"
@@ -667,13 +667,13 @@ static struct Option omm_opt_make_main_menu(s32 state) {
             optCheats,
             optExtras,
             optShortcuts,
-#if OMM_CODE_DEBUG
+// #if OMM_CODE_DEBUG
             optDebug,
-#endif
+// #endif
 #if OMM_CODE_DEV
             optDev,
 #endif
-        ), 10 + OMM_CODE_DEBUG + OMM_CODE_DEV);
+        ), 10 + 1 + OMM_CODE_DEV);
     } else {
         optOmmMenu = omm_opt_make_submenu(OMM_TEXT_OPT_MENU_LABEL, OMM_TEXT_OPT_MENU_TITLE, options(
             optCharacter,
@@ -685,13 +685,13 @@ static struct Option omm_opt_make_main_menu(s32 state) {
             optCheats,
             optExtras,
             optShortcuts,
-#if OMM_CODE_DEBUG
+// #if OMM_CODE_DEBUG
             optDebug,
-#endif
+// #endif
 #if OMM_CODE_DEV
             optDev,
 #endif
-        ), 9 + OMM_CODE_DEBUG + OMM_CODE_DEV);
+        ), 9 + 1 + OMM_CODE_DEV);
     }
     return optOmmMenu;
 }

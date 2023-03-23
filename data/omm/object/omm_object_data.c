@@ -89,12 +89,12 @@ static void omm_data_reset_mario_fields() {
     gOmmData->mario->capture.stickYaw = 0;
     gOmmData->mario->capture.buttonPressed = 0;
     gOmmData->mario->capture.buttonDown = 0;
-#if OMM_CODE_DEBUG
+// #if OMM_CODE_DEBUG
     gOmmData->mario->capture.hitboxRadius = 0.f;
     gOmmData->mario->capture.hitboxHeight = 0.f;
     gOmmData->mario->capture.hitboxOffset = 0.f;
     gOmmData->mario->capture.hitboxWall = 0.f;
-#endif
+// #endif
 }
 
 static void omm_data_reset_object_fields() {

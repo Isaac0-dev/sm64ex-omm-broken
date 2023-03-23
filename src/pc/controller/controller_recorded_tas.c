@@ -17,6 +17,13 @@ static void tas_init(void) {
     }
 }
 
+bool is_tas_reading(void) {
+    if (fp != NULL) {
+        return true;
+    }
+    return false;
+}
+
 FILE *tas_init_off_start(void) {
     fp = fopen("singleStar.m64", "rb");
     if (fp != NULL) {

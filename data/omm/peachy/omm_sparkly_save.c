@@ -28,6 +28,7 @@ static OmmSparklySaveData sOmmSparklySaveData[OMM_SPARKLY_MODE_COUNT];
 //
 
 extern u16 gRandomSeed;
+extern bool gRandomSeedFree;
 static char D[] = "zE8QsdnmBh7a2FXpojt05OCrDgbvqRKNP6kZLTSGcyU3x49HVIJieuMflW1YwA";
 static char R[] = "nwAGdbpWuTVNYSqEJxsU4cOQyMIv30ior9ZFD572zBlHPLmh8fagkeKX1RtCj6";
 static u64 N = sizeof(D) - 1;
@@ -41,6 +42,7 @@ static u64 N = sizeof(D) - 1;
 
 bool omm_sparkly_read(const char **tokens) {
     if (strcmp(tokens[0], "sparkly_stars") == 0) {
+        gRandomSeedFree = false;
         const char *data = tokens[1];
 
         // Retrieve seed
@@ -89,6 +91,8 @@ bool omm_sparkly_read(const char **tokens) {
             return true;
         }
 
+        gRandomSeedFree = true;
+
         // Fill save struct
         s32 sparklyMode = modes[0];
         mem_cpy(sOmmSparklySave, &saves[0], sizeof(OmmSparklySaveData));
@@ -98,6 +102,7 @@ bool omm_sparkly_read(const char **tokens) {
 }
 
 void omm_sparkly_write(char **buffer) {
+    gRandomSeedFree = false;
     gRandomSeed = (u16) SDL_GetPerformanceCounter();
     write("[sparkly_stars]\n");
     for (s32 sparklyMode = OMM_SPARKLY_MODE_NORMAL; sparklyMode != OMM_SPARKLY_MODE_COUNT; ++sparklyMode) {
