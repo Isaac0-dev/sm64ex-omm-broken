@@ -102,19 +102,19 @@ void omm_opt_init_main_menu() {
                 // Preload Textures
                 if (opt->type == OPT_CHOICE && opt->uval == &configFiltering) {
                     newOpts[k].type = OPT_CHOICE;
-                    newOpts[k].choices = mem_new(u8 *, gOmmPreloadTexturesCount);
+                    newOpts[k].choices = mem_new(u8 *, gOmmTextureCachingCount);
                     newOpts[k].numChoices = 3;
-                    newOpts[k].uval = &gOmmPreloadTextures;
+                    newOpts[k].uval = &gOmmTextureCaching;
 #if OMM_GAME_IS_R96X
-                    newOpts[k].label = (const u8 *) OMM_TEXT_OPT_PRELOAD_TEXTURES;
-                    newOpts[k].choices[0] = (const u8 *) OMM_TEXT_OPT_PRELOAD_TEXTURES_NEVER;
-                    newOpts[k].choices[1] = (const u8 *) OMM_TEXT_OPT_PRELOAD_TEXTURES_FROM_RAM;
-                    newOpts[k].choices[2] = (const u8 *) OMM_TEXT_OPT_PRELOAD_TEXTURES_FROM_DISK;
+                    newOpts[k].label = (const u8 *) OMM_TEXT_OPT_TEXTURE_CACHING;
+                    newOpts[k].choices[0] = (const u8 *) OMM_TEXT_OPT_TEXTURE_CACHING_DISABLED;
+                    newOpts[k].choices[1] = (const u8 *) OMM_TEXT_OPT_TEXTURE_CACHING_AT_START_UP;
+                    newOpts[k].choices[2] = (const u8 *) OMM_TEXT_OPT_TEXTURE_CACHING_PERMANENT;
 #else
-                    newOpts[k].label = omm_text_convert(OMM_TEXT_OPT_PRELOAD_TEXTURES, true);
-                    newOpts[k].choices[0] = omm_text_convert(OMM_TEXT_OPT_PRELOAD_TEXTURES_NEVER, true);
-                    newOpts[k].choices[1] = omm_text_convert(OMM_TEXT_OPT_PRELOAD_TEXTURES_FROM_RAM, true);
-                    newOpts[k].choices[2] = omm_text_convert(OMM_TEXT_OPT_PRELOAD_TEXTURES_FROM_DISK, true);
+                    newOpts[k].label = omm_text_convert(OMM_TEXT_OPT_TEXTURE_CACHING, true);
+                    newOpts[k].choices[0] = omm_text_convert(OMM_TEXT_OPT_TEXTURE_CACHING_DISABLED, true);
+                    newOpts[k].choices[1] = omm_text_convert(OMM_TEXT_OPT_TEXTURE_CACHING_AT_START_UP, true);
+                    newOpts[k].choices[2] = omm_text_convert(OMM_TEXT_OPT_TEXTURE_CACHING_PERMANENT, true);
 #endif
                     k++;
                 }

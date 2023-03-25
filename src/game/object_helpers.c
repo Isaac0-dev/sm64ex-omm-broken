@@ -2586,7 +2586,6 @@ static void cur_obj_end_dialog(s32 dialogFlags, s32 dialogResult) {
 }
 
 s32 cur_obj_update_dialog(s32 actionArg, s32 dialogFlags, s32 dialogID, UNUSED s32 unused) {
-omm_patch__cur_obj_update_dialog__skip_if_capture
     s32 dialogResponse = 0;
     UNUSED s32 doneTurning = TRUE;
 
@@ -2664,7 +2663,6 @@ omm_patch__cur_obj_update_dialog__skip_if_capture
 }
 
 s32 cur_obj_update_dialog_with_cutscene(s32 actionArg, s32 dialogFlags, s32 cutsceneTable, s32 dialogID) {
-omm_patch__cur_obj_update_dialog_with_cutscene__skip_if_capture
     s32 dialogResponse = 0;
     s32 doneTurning = TRUE;
 
@@ -2745,7 +2743,7 @@ omm_patch__cur_obj_update_dialog_with_cutscene__skip_if_capture
 s32 cur_obj_has_model(u16 modelID) {
     if (o->header.gfx.sharedChild == gLoadedGraphNodes[modelID]) {
         return TRUE;
-    } else  omm_patch__cur_obj_has_model__check_georef {
+    } else {
         return FALSE;
     }
 }

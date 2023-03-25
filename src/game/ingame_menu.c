@@ -2,7 +2,6 @@
 
 #include "actors/common1.h"
 #include "area.h"
-#include "time_trials.h"
 #include "audio/external.h"
 #include "camera.h"
 #include "course_table.h"
@@ -962,7 +961,6 @@ void reset_dialog_render_state(void) {
 #define Y_VAL2 5.0f
 #endif
 
-#if 0 // ingame_menu.c [0]
 void render_dialog_box_type(struct DialogEntry *dialog, s8 linesPerBox) {
     UNUSED s32 unused;
 
@@ -994,7 +992,6 @@ void render_dialog_box_type(struct DialogEntry *dialog, s8 linesPerBox) {
     gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
 }
 
-#endif // ingame_menu.c [0]
 void change_and_flash_dialog_text_color_lines(s8 colorMode, s8 lineNum) {
     u8 colorFade;
 
@@ -1773,7 +1770,6 @@ void render_dialog_entries(void) {
             break;
         case DIALOG_STATE_HORIZONTAL:
             gDialogScrollOffsetY += dialog->linesPerBox * 2;
-omm_patch__render_dialog_entries__fix_dialog_box_text_lower_bound
 
             if (gDialogScrollOffsetY >= dialog->linesPerBox * DIAG_VAL1) {
                 gDialogTextPos = gLastDialogPageStrPos;
@@ -2138,7 +2134,6 @@ void shade_screen(void) {
     gDPSetEnvColor(gDisplayListHead++, 0, 0, 0, 110);
     gSPDisplayList(gDisplayListHead++, dl_draw_text_bg_box);
     gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
-    gTimeTableDisplayListHead = gDisplayListHead;
 }
 
 void print_animated_red_coin(s16 x, s16 y) {
@@ -2527,7 +2522,6 @@ void render_pause_castle_main_strings(s16 x, s16 y) {
 
     void *courseName;
 
-    if (time_trials_render_time_table()) { return; }
     u8 strVal[8];
     s16 starNum = gDialogLineNum;
 
@@ -2644,7 +2638,7 @@ s16 render_pause_courses_and_castle(void) {
 /* Added support for the "Exit course at any time" cheat */
             if ((gMarioStates[0].action & ACT_FLAG_PAUSE_EXIT) || (Cheats.EnableCheats && Cheats.ExitAnywhere)) {
                 render_pause_course_options(99, 93, &gDialogLineNum, 15);
-            } else time_trials_render_time_table();
+            }
 
 #ifdef VERSION_EU
             if (gPlayer3Controller->buttonPressed & (A_BUTTON | Z_TRIG | START_BUTTON))
@@ -2874,7 +2868,7 @@ void render_course_complete_lvl_info_and_hud_str(void) {
         play_star_fanfare_and_flash_hud(1, 1 << (gLastCompletedStarNum - 1));
 
         if (gLastCompletedStarNum == 7) {
-            name = segmented_to_virtual(actNameTbl[COURSE_STAGES_MAX * 6]);
+            name = segmented_to_virtual(actNameTbl[COURSE_STAGES_MAX * 6 + 1]);
         } else {
             name = segmented_to_virtual(actNameTbl[(gLastCompletedCourseNum - 1) * 6 + gLastCompletedStarNum - 1]);
         }
@@ -3077,7 +3071,6 @@ s16 render_menus_and_dialogs() {
     s16 mode = 0;
 
     create_dl_ortho_matrix();
-    time_trials_update(gMarioState, gMenuMode != -1);
 
     if (gMenuMode != -1) {
         switch (gMenuMode) {

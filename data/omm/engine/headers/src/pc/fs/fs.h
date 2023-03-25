@@ -120,5 +120,6 @@ bool          fs_sys_file_exists (const char *name);
 bool          fs_sys_dir_exists  (const char *name);
 bool          fs_sys_mkdir       (const char *name);
 bool          fs_sys_copy_file   (const char *oldname, const char *newname);
+bool          fs_sys_delete_file (const char *name);
 
 #endif // _SM64_FS_H_

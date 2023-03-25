@@ -1,4 +1,3 @@
-#define const
 // == debug table ==
 
 #ifndef VERSION_EU

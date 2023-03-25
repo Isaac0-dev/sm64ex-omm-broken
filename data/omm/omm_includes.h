@@ -188,6 +188,7 @@ extern void cutscene_ending_reset_spline(struct Camera *);
 extern void cutscene_ending_stars_free_peach(struct Camera *);
 extern void cutscene_ending_stop(struct Camera *);
 extern void cutscene_ending_zoom_fov(struct Camera *);
+extern void cutscene_exit_painting_end(struct Camera *c);
 extern void debug_surface_list_info(f32 x, f32 z);
 extern void handle_power_meter_actions(s16);
 extern void handle_special_dialog_text(s16 dialogID);

@@ -7,10 +7,7 @@ RUN apt-get update && \
         build-essential \
         libaudiofile-dev \
         python3 \
-        wget \
-        git \
-        libglew-dev \
-        libsdl2-dev
+        wget
 
 RUN wget \
         https://github.com/n64decomp/qemu-irix/releases/download/v2.11-deb/qemu-irix-2.11.0-2169-g32ab296eef_amd64.deb \

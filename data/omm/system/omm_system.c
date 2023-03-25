@@ -18,17 +18,6 @@ static u32  sOmmReturnToMainMenu = 0;
 static s32  sOmmWarpToLastCourseNum = COURSE_NONE;
 
 //
-// Complete save cheat
-// Press C-Up, C-Up, C-Down, C-Down, C-Left, C-Right, C-Left, C-Right, Z, R and select a file with A
-// Collects all stars, sets all flags, opens all cannons and unlocks Peach
-//
-
-static const u16 sOmmCompleteSaveButtons[] = { U_CBUTTONS, U_CBUTTONS, D_CBUTTONS, D_CBUTTONS, L_CBUTTONS, R_CBUTTONS, L_CBUTTONS, R_CBUTTONS, Z_TRIG, R_TRIG, A_BUTTON, 0xFFFF };
-static s32 sOmmCompleteSaveSequenceIndex = 0;
-extern void omm_set_complete_save_file(s32 fileIndex, s32 modeIndex);
-extern void omm_stars_init_bits();
-
-//
 // Routines
 //
 
@@ -52,9 +41,6 @@ static void omm_execute_routines(s32 type) {
 //
 
 void omm_select_save_file(s32 fileIndex, s32 modeIndex, s32 courseNum, bool skipIntro) {
-    if (sOmmCompleteSaveSequenceIndex == array_length(sOmmCompleteSaveButtons) - 1) {
-        omm_set_complete_save_file(fileIndex, modeIndex);
-    }
     gMarioState->health = omm_health_get_max(0);
     gCurrSaveFileNum = fileIndex + 1;
     gCurrAreaIndex = modeIndex + 1;
@@ -63,7 +49,6 @@ void omm_select_save_file(s32 fileIndex, s32 modeIndex, s32 courseNum, bool skip
     sOmmIsMainMenu = false;
     sOmmIsLevelEntry = false;
     sOmmIsEndingCutscene = false;
-    sOmmCompleteSaveSequenceIndex = 0;
     sOmmSkipIntro = skipIntro;
 }
 
@@ -100,24 +85,6 @@ void omm_update() {
 
     // Update routines
     omm_execute_routines(OMM_ROUTINE_TYPE_UPDATE);
-
-    // Complete save cheat inputs
-    if (sOmmIsMainMenu && obj_get_first_with_behavior_and_field_s32(bhvStaticObject, 0x31, 1)) {
-        if (gPlayer1Controller->buttonPressed != 0) {
-            u16 buttonPressed = gPlayer1Controller->buttonPressed;
-            u16 buttonRequired = sOmmCompleteSaveButtons[sOmmCompleteSaveSequenceIndex];
-            if ((buttonPressed & buttonRequired) == buttonRequired) {
-                sOmmCompleteSaveSequenceIndex++;
-                if (sOmmCompleteSaveButtons[sOmmCompleteSaveSequenceIndex] == A_BUTTON) {
-                    play_sound(SOUND_GENERAL2_RIGHT_ANSWER | 0xFF00, gGlobalSoundArgs);
-                }
-            } else {
-                sOmmCompleteSaveSequenceIndex = 0;
-            }
-        }
-    } else {
-        sOmmCompleteSaveSequenceIndex = 0;
-    }
 
     // Inhibit inputs (except camera controls) during a transition
     if (omm_is_transition_active() || omm_is_warping()) {

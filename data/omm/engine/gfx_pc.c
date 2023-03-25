@@ -317,15 +317,17 @@ static void gfx_texture_load_level_palette(GfxTexture *tex) {
 static bool gfx_texture_preload_init() {
     mem_clr(sGfxTexturePreLoad, sizeof(GfxTexturePreLoad));
     omm_hmap_insert(sGfxTexturePreLoad->pngs, 1, mem_new(s32, 1));
-    if (gOmmPreloadTextures == 2) {
-        str_cat_paths_sa(gfxTextureRawFilename, SYS_MAX_PATH, sys_exe_path(), GFX_TEXTURE_RAW_FILEPATH);
+    str_cat_paths_sa(gfxTextureRawFilename, SYS_MAX_PATH, sys_exe_path(), GFX_TEXTURE_RAW_FILEPATH);
+    if (gOmmTextureCaching == OMM_TEXTURE_CACHING_PERMANENT) {
         sGfxTexturePreLoad->file = fopen(gfxTextureRawFilename, "rb");
+    } else if (fs_sys_file_exists(gfxTextureRawFilename)) {
+        fs_sys_delete_file(gfxTextureRawFilename);
     }
     return sGfxTexturePreLoad->file != NULL;
 }
 
 static void gfx_texture_preload_create_raw() {
-    if (gOmmPreloadTextures == 2) {
+    if (gOmmTextureCaching == OMM_TEXTURE_CACHING_PERMANENT) {
         str_cat_paths_sa(gfxTextureRawFilename, SYS_MAX_PATH, sys_exe_path(), GFX_TEXTURE_RAW_FILEPATH);
         sGfxTexturePreLoad->file = fopen(gfxTextureRawFilename, "wb");
     }
@@ -382,7 +384,7 @@ static void gfx_texture_preload_write_raw(const char *texname, const u8 *data, s
 }
 
 OMM_ROUTINE_UPDATE(gfx_texture_preload_opt_update) {
-    configPrecacheRes = (gOmmPreloadTextures != 0);
+    configPrecacheRes = (gOmmTextureCaching != OMM_TEXTURE_CACHING_DISABLED);
 }
 
 //
@@ -514,7 +516,7 @@ void gfx_precache_textures() {
         while ((texname = gfx_texture_preload_read_raw()) != NULL) {
             gfx_texture_create(texname, sGfxTexturePreLoad->data, sGfxTexturePreLoad->texw, sGfxTexturePreLoad->texh);
         }
-    } else if (gOmmPreloadTextures) {
+    } else if (gOmmTextureCaching != OMM_TEXTURE_CACHING_DISABLED) {
         gfx_texture_preload_create_raw();
         fs_walk(FS_TEXTUREDIR, gfx_texture_precache, NULL, true, FS_DIR_READ);
     }
@@ -1525,14 +1527,14 @@ static GfxCmdFunc sGfxCmdTable[] = {
 
 static void gfx_run_dl(Gfx *cmd) {
     for (sGfxCmd = cmd;; sGfxCmd++) {
-// #if OMM_CODE_DEBUG
+#if OMM_CODE_DEBUG
         u8 op = GFX_OP & GFX_CMD_BITS;
         omm_profiler_start_gfx_op(op);
         sGfxCmdTable[op]();
         omm_profiler_stop_gfx_op(op);
-// #else
-        // sGfxCmdTable[GFX_OP & GFX_CMD_BITS]();
-// #endif
+#else
+        sGfxCmdTable[GFX_OP & GFX_CMD_BITS]();
+#endif
         if (OMM_UNLIKELY(!sGfxCmd)) {
             return;
         }
@@ -1748,7 +1750,7 @@ void gfx_init(struct GfxWindowManagerAPI *wapi, struct GfxRenderingAPI *rapi, co
     for (s32 i = 0; i != (s32) array_length(sPrecompiledShaders); ++i) {
         gfx_lookup_or_create_shader_program(sPrecompiledShaders[i]);
     }
-    configPrecacheRes = (gOmmPreloadTextures != 0);
+    configPrecacheRes = (gOmmTextureCaching != OMM_TEXTURE_CACHING_DISABLED);
 }
 
 void gfx_start_frame() {

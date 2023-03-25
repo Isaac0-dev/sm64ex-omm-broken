@@ -91,7 +91,7 @@ static void omm_loading_state_update() {
         } break;
 
         case OMM_LOADING_TEXTURES: {
-            if (!gOmmPreloadTextures || (sOmmLoadingState->value = (s32) (gfx_texture_do_precache() * 100)) == 100) {
+            if (gOmmTextureCaching == OMM_TEXTURE_CACHING_DISABLED || (sOmmLoadingState->value = (s32) (gfx_texture_do_precache() * 100)) == 100) {
                 sOmmLoadingState->state = OMM_LOADING_DONE;
                 sOmmLoadingState->value = 0;
             }
@@ -126,7 +126,7 @@ static void omm_loading_state_text() {
         if (sOmmLoadingState->state > OMM_LOADING_AUDIO_ENGINE) omm_loading_screen_set_text(-1, 4, 0x00, 0xFF, 0x00, "%s", "Done");
     }
     if (sOmmLoadingState->state >= OMM_LOADING_TEXTURES) {
-        if (gOmmPreloadTextures) {
+        if (gOmmTextureCaching != OMM_TEXTURE_CACHING_DISABLED) {
             omm_loading_screen_set_text(0, 5, 0xFF, 0xFF, 0xFF, "%s", "> Pre-loading Textures... ");
             if (sOmmLoadingState->state > OMM_LOADING_TEXTURES) omm_loading_screen_set_text(-1, 5, 0x00, 0xFF, 0x00, "%s", "Done")
             else omm_loading_screen_set_text(-1, 5, 0xFF, 0xFF, 0x00, "%d%%", sOmmLoadingState->value);

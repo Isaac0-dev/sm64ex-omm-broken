@@ -44,9 +44,10 @@ extern bool **gOmmOptModelsEnabled;
 #endif
 
 enum OmmFps { OMM_FPS_30, OMM_FPS_60, OMM_FPS_AUTO, OMM_FPS_INF };
+enum OmmTextureCaching { OMM_TEXTURE_CACHING_DISABLED, OMM_TEXTURE_CACHING_AT_START_UP, OMM_TEXTURE_CACHING_PERMANENT };
 DECLARE_CHOICE(gOmmFrameRate);
 DECLARE_TOGGLE(gOmmShowFPS);
-DECLARE_CHOICE(gOmmPreloadTextures);
+DECLARE_CHOICE(gOmmTextureCaching);
 DECLARE_KBINDS(gOmmControlsButtonA);
 DECLARE_KBINDS(gOmmControlsButtonB);
 DECLARE_KBINDS(gOmmControlsButtonX);
@@ -112,14 +113,14 @@ DECLARE_TOGGLE_SC(gOmmExtrasRedCoinsRadar);
 DECLARE_TOGGLE_SC(gOmmExtrasShowStarNumber);
 DECLARE_TOGGLE_SC(gOmmExtrasInvisibleMode);
 DECLARE_CHOICE_SC(gOmmExtrasSparklyStarsReward);
-// #if OMM_CODE_DEBUG
+#if OMM_CODE_DEBUG
 DECLARE_TOGGLE_SC(gOmmDebugHitbox);
 DECLARE_TOGGLE_SC(gOmmDebugHurtbox);
 DECLARE_TOGGLE_SC(gOmmDebugWallbox);
 DECLARE_TOGGLE_SC(gOmmDebugSurface);
 DECLARE_TOGGLE_SC(gOmmDebugMario);
 DECLARE_TOGGLE_SC(gOmmDebugCappy);
-// #endif
+#endif
 #if OMM_CODE_DEV
 #include "data/omm/dev/omm_dev_opt_declare.inl"
 #endif

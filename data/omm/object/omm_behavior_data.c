@@ -537,7 +537,7 @@ static const s64 sOmmBehaviorDataRaw[][64] = {
     set_bhv_types(BHV_TYPE_WEAK | BHV_TYPE_KNOCKABLE_0 | BHV_TYPE_GOOMBA | BHV_TYPE_SPARKLY_ENEMY),
     set_perry_atk(3, -1),
     set_holdable(HOLD_ALL_ACTIONS, 0, 0, HOLD_HIT_ANY, HOLD_ACT_DESTROY),
-    set_capture(goomba, 14, 28, 28, 20, -40, -2.65f, 50, 65, 0, 30, smod_goomba, true), },
+    set_capture(goomba, 14, 28, 28, 20, -40, -2.65f, 50, 60, 0, 30, smod_goomba, true), },
 { bhvGoombaTripletSpawner,
     set_bhv_types(0), },
 { bhvGrandStar,
@@ -1320,7 +1320,7 @@ static const s64 sOmmBehaviorDataRaw[][64] = {
     set_bhv_types(BHV_TYPE_WEAK | BHV_TYPE_KNOCKABLE_0 | BHV_TYPE_GOOMBA),
     set_perry_atk(3, -1),
     set_holdable(HOLD_ALL_ACTIONS, 0, 0, HOLD_HIT_ANY, HOLD_ACT_DESTROY),
-    set_capture(goomba, 14, 28, 28, 20, -40, -2.65f, 50, 65, 0, 30, smod_goomba, true), },
+    set_capture(goomba, 14, 28, 28, 20, -40, -2.65f, 50, 60, 0, 30, smod_goomba, true), },
 #endif
 #if OMM_GAME_IS_R96X
 { bhvBetaBooKey,
@@ -1376,7 +1376,7 @@ static const s64 sOmmBehaviorDataRaw[][64] = {
     set_bhv_types(BHV_TYPE_WEAK | BHV_TYPE_KNOCKABLE_0 | BHV_TYPE_GOOMBA),
     set_perry_atk(3, -1),
     set_holdable(HOLD_ALL_ACTIONS, 0, 0, HOLD_HIT_ANY, HOLD_ACT_DESTROY),
-    set_capture(goomba, 14, 28, 28, 20, -40, -2.65f, 50, 65, 0, 30, smod_goomba, true), },
+    set_capture(goomba, 14, 28, 28, 20, -40, -2.65f, 50, 60, 0, 30, smod_goomba, true), },
 { bhvCustomSMSRBreakableWindow,
     set_bhv_types(BHV_TYPE_BREAKABLE | BHV_TYPE_DESTRUCTIBLE),
     set_perry_atk(4, -1), },

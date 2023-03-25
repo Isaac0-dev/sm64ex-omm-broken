@@ -453,7 +453,7 @@ struct Surface *get_surface_from_index(s32 index) {
     return NULL;
 }
 
-// #if OMM_CODE_DEBUG
+#if OMM_CODE_DEBUG
 
 //
 // Surface display
@@ -574,4 +574,4 @@ OMM_ROUTINE_PRE_RENDER(omm_debug_surfaces_update) {
     }
 }
 
-// #endif
+#endif

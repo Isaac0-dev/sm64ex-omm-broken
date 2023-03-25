@@ -133,11 +133,11 @@ s32 dynos_gfx_get_mario_model_pack_index() { \
 #endif
 
 // OMM_DEBUG | Enables some debug stuff
-#define OMM_CODE_DEBUG 1
-// #if defined(OMM_DEBUG)
-// #else
-// #define OMM_CODE_DEBUG 0
-// #endif
+#if defined(OMM_DEBUG)
+#define OMM_CODE_DEBUG OMM_DEBUG
+#else
+#define OMM_CODE_DEBUG 0
+#endif
 
 // OMM_DEV | If set, enables super secret features (dev branch only)
 #if defined(OMM_DEV)

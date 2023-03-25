@@ -43,10 +43,10 @@ static s32 sCurrObjectSlot;
 static bool sIsPreprocess;
 #define PREPROCESS if (OMM_UNLIKELY(sIsPreprocess))
 #define NOT_PREPROCESS if (OMM_LIKELY(!sIsPreprocess))
-// #if OMM_CODE_DEBUG
+#if OMM_CODE_DEBUG
 static bool sDisableRendering;
 #define SHOULD_DISABLE_RENDERING (gOmmDebugSurface && !omm_is_main_menu() && !omm_is_ending_cutscene() && !omm_is_ending_cake_screen())
-// #endif
+#endif
 
 //
 // Frame interpolation
@@ -450,9 +450,9 @@ static void geo_get_animation_translation(Vec3f dest, u8 type, u16 **attr, s16 *
 static struct DisplayListNode sDisplayListNodePools[DISPLAY_LISTS_NUM_LAYERS][0x2000];
 
 static void geo_append_display_list(Gfx *displayList, s16 layer) {
-// #if OMM_CODE_DEBUG
+#if OMM_CODE_DEBUG
     if (sDisableRendering) return;
-// #endif
+#endif
 PREPROCESS { geo_register_marios_right_hand_display_list(displayList); }
 NOT_PREPROCESS {
     if (displayList && gCurGraphNodeMasterList && !geo_apply_rotation_on_marios_right_hand(displayList, layer)) {
@@ -580,7 +580,7 @@ OMM_INLINE bool __geo_dec_mat_stack() {
 }
 
 static bool obj_is_in_view(struct Object *obj, Mat4 matrix) {
-// #if OMM_CODE_DEBUG
+#if OMM_CODE_DEBUG
     // Do not render the following while gOmmDebugSurface is enabled:
     // - Objects with collision data
     // - Surface objects
@@ -600,7 +600,7 @@ static bool obj_is_in_view(struct Object *obj, Mat4 matrix) {
             }
         }
     }
-// #endif
+#endif
     
     // Render the object regardless of its position if it's always rendered
     if (obj_is_always_rendered(obj)) {
@@ -890,9 +890,9 @@ NOT_PREPROCESS {
     // Process children
     geo_update_mat_stack(
         if (gChildren) {
-// #if OMM_CODE_DEBUG
+#if OMM_CODE_DEBUG
             sDisableRendering = SHOULD_DISABLE_RENDERING;
-// #endif
+#endif
             gCurGraphNodeCamera = node;
             node->lookAt0 = &gCurrMat0;
             node->lookAt1 = &gCurrMat1;
@@ -1422,9 +1422,9 @@ NOT_PREPROCESS {
 }
 
 static void geo_process_object_parent(struct GraphNodeObjectParent *node) {
-// #if OMM_CODE_DEBUG
+#if OMM_CODE_DEBUG
     sDisableRendering = false;
-// #endif
+#endif
     if (node->sharedChild) {
         node->sharedChild->parent = (struct GraphNode *) node;
         geo_process_node_and_siblings(node->sharedChild);
@@ -1909,9 +1909,9 @@ void geo_process_root(struct GraphNodeRoot *node, Vp *viewport1, Vp *viewport2, 
         sCurAnimState->type = ANIM_TYPE_NONE;
 
         // Process the node tree
-// #if OMM_CODE_DEBUG
+#if OMM_CODE_DEBUG
         sDisableRendering = false;
-// #endif
+#endif
         sIsPreprocess = false;
         sMarioRootFlag = MRF_NOT_ROOT;
         gCurGraphNodeRoot = node;

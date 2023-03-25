@@ -375,6 +375,27 @@ f32 vec3f_find_ceil(Vec3f pos, f32 height, struct Surface **ceil) {
 // Floors
 //
 
+static void check_floor_extension(struct Surface *surf) {
+#if OMM_GAME_IS_SM64
+
+    // Extended DDD area 2 underwater floor
+    // The purpose is to fix a 1-unit gap out of bounds
+    // lmao these fixes are getting out of hand
+    if (gCurrLevelNum == LEVEL_DDD && gCurrAreaIndex == 2 && surf->lowerY < -4080) {
+        s16 zmax = max_3_s(surf->vertex1[2], surf->vertex2[2], surf->vertex3[2]);
+        if (5550 < zmax && zmax < 5650) {
+            if (surf->vertex1[2] > 5550) surf->vertex1[2] = 5650;
+            if (surf->vertex2[2] > 5550) surf->vertex2[2] = 5650;
+            if (surf->vertex3[2] > 5550) surf->vertex3[2] = 5650;
+            recompute_surface_parameters(surf);
+        }
+        return;
+    }
+#else
+    OMM_UNUSED(surf);
+#endif
+}
+
 OMM_INLINE bool check_is_point_inside_floor_triangle(struct Surface *surf, f32 x, f32 z) {
     f32 x1 = surf->vertex1[0];
     f32 x2 = surf->vertex2[0];
@@ -405,6 +426,9 @@ static struct Surface *find_floor_from_list(OmmArray surfaces, s32 count, f32 x,
         if (surf->normal.y == 0) {
             continue;
         }
+
+        // Check floor extensions
+        check_floor_extension(surf);
 
         // Skip if too high or below the previous floor
         f32 height = get_surface_height_at_pos(x, z, surf);

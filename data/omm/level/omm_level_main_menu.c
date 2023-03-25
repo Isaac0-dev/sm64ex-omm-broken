@@ -105,6 +105,39 @@ static u32 omm_get_inputs() {
 }
 
 //
+// Complete save cheat
+// Press C-Up, C-Up, C-Down, C-Down, C-Left, C-Right, C-Left, C-Right, Z, R and select a file with A
+// Collects all stars, sets all flags, opens all cannons and unlocks Peach
+//
+
+static const u16 sOmmCompleteSaveButtons[] = { U_CBUTTONS, U_CBUTTONS, D_CBUTTONS, D_CBUTTONS, L_CBUTTONS, R_CBUTTONS, L_CBUTTONS, R_CBUTTONS, Z_TRIG, R_TRIG, A_BUTTON, 0xFFFF };
+static s32 sOmmCompleteSaveSequenceIndex = 0;
+extern void omm_set_complete_save_file(s32 fileIndex, s32 modeIndex);
+
+static s32 omm_update_complete_save_sequence_index() {
+    if (gPlayer1Controller->buttonPressed != 0) {
+        u16 buttonPressed = gPlayer1Controller->buttonPressed;
+        u16 buttonRequired = sOmmCompleteSaveButtons[sOmmCompleteSaveSequenceIndex];
+        if ((buttonPressed & buttonRequired) == buttonRequired) {
+            sOmmCompleteSaveSequenceIndex++;
+            if (sOmmCompleteSaveButtons[sOmmCompleteSaveSequenceIndex] == A_BUTTON) {
+                play_sound(SOUND_GENERAL2_RIGHT_ANSWER | 0xFF00, gGlobalSoundArgs);
+            }
+        } else {
+            sOmmCompleteSaveSequenceIndex = 0;
+        }
+    }
+    return sOmmCompleteSaveSequenceIndex;
+}
+
+static void omm_check_complete_save(s32 fileIndex, s32 modeIndex) {
+    if (sOmmCompleteSaveSequenceIndex == array_length(sOmmCompleteSaveButtons) - 1) {
+        omm_set_complete_save_file(fileIndex, modeIndex);
+    }
+    sOmmCompleteSaveSequenceIndex = 0;
+}
+
+//
 // Main Menu constants
 //
 
@@ -770,6 +803,7 @@ static s32 omm_file_select_update() {
             // Start a new save or resume
             case OMM_MM_PLAY: {
                 play_sound(OMM_FS_SOUND_PLAY, gGlobalSoundArgs);
+                omm_check_complete_save(sOmmFileSelect->index, sOmmFileSelect->mode);
                 omm_select_save_file(sOmmFileSelect->index, sOmmFileSelect->mode, COURSE_NONE, false);
                 return sOmmFileSelect->index + 1;
             } break;
@@ -845,6 +879,7 @@ static s32 omm_file_select_update() {
             // Start a new save but skip intro or resume to last course
             case OMM_MM_PLAY: {
                 play_sound(OMM_FS_SOUND_PLAY, gGlobalSoundArgs);
+                omm_check_complete_save(sOmmFileSelect->index, sOmmFileSelect->mode);
                 omm_select_save_file(sOmmFileSelect->index, sOmmFileSelect->mode, omm_save_file_get_last_course(sOmmFileSelect->index, sOmmFileSelect->mode), true);
                 return sOmmFileSelect->index + 1;
             } break;
@@ -1310,6 +1345,7 @@ static s32 omm_level_main_menu_init(UNUSED s32 arg, UNUSED s32 unused) {
     gMarioState->marioBodyState->capState = MARIO_HAS_DEFAULT_CAP_OFF;
     gMarioState->marioBodyState->handState = MARIO_HAND_FISTS;
     gMarioState->unkB0 = 0xBD;
+    sOmmCompleteSaveSequenceIndex = 0;
     gMarioAnimations = &gMarioAnimsData;
     omm_register_warp_functions();
     omm_disable_warp_functions();
@@ -1323,6 +1359,7 @@ static s32 omm_level_main_menu_update(UNUSED s32 arg, UNUSED s32 unused) {
 #else
         set_background_music(0, OMM_SEQ_FILE_SELECT, 0);
 #endif
+        sOmmCompleteSaveSequenceIndex = (sOmmMainMenu->index == OMM_MM_PLAY ? omm_update_complete_save_sequence_index() : 0);
         return omm_file_select_update();
     } else {
 #if OMM_GAME_IS_R96X
@@ -1330,6 +1367,7 @@ static s32 omm_level_main_menu_update(UNUSED s32 arg, UNUSED s32 unused) {
 #else
         set_background_music(0, OMM_SEQ_MAIN_MENU, 0);
 #endif
+        sOmmCompleteSaveSequenceIndex = 0;
         return omm_main_menu_update();
     }
     return 0;
@@ -1338,6 +1376,7 @@ static s32 omm_level_main_menu_update(UNUSED s32 arg, UNUSED s32 unused) {
 static s32 omm_level_main_menu_end(UNUSED s32 arg, UNUSED s32 unused) {
     omm_enable_warp_functions();
     omm_player_select(gOmmCharacter);
+    sOmmCompleteSaveSequenceIndex = 0;
     return 0;
 }
 

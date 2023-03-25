@@ -243,7 +243,7 @@ void omm_save_file_load_all() {
                         READ_KBINDS(gOmmControlsStickRight);
                         READ_CHOICE(gOmmFrameRate);
                         READ_TOGGLE(gOmmShowFPS);
-                        READ_CHOICE(gOmmPreloadTextures);
+                        READ_CHOICE(gOmmTextureCaching);
                         READ_CHOICE_SC(gOmmCharacter);
                         READ_CHOICE_SC(gOmmMovesetType);
                         READ_CHOICE_SC(gOmmCapType);
@@ -263,14 +263,14 @@ void omm_save_file_load_all() {
                         READ_TOGGLE_SC(gOmmExtrasShowStarNumber);
                         READ_TOGGLE_SC(gOmmExtrasInvisibleMode);
                         READ_CHOICE_SC(gOmmExtrasSparklyStarsReward);
-// #if OMM_CODE_DEBUG
+#if OMM_CODE_DEBUG
                         READ_TOGGLE_SC(gOmmDebugHitbox);
                         READ_TOGGLE_SC(gOmmDebugHurtbox);
                         READ_TOGGLE_SC(gOmmDebugWallbox);
                         READ_TOGGLE_SC(gOmmDebugSurface);
                         READ_TOGGLE_SC(gOmmDebugMario);
                         READ_TOGGLE_SC(gOmmDebugCappy);
-// #endif
+#endif
 #if OMM_CODE_DEV
 #include "data/omm/dev/omm_dev_opt_read.inl"
 #endif
@@ -541,7 +541,7 @@ static void omm_save_file_write() {
     WRITE_KBINDS(gOmmControlsStickRight);
     WRITE_CHOICE(gOmmFrameRate);
     WRITE_TOGGLE(gOmmShowFPS);
-    WRITE_CHOICE(gOmmPreloadTextures);
+    WRITE_CHOICE(gOmmTextureCaching);
     WRITE_CHOICE_SC(gOmmCharacter);
     WRITE_CHOICE_SC(gOmmMovesetType);
     WRITE_CHOICE_SC(gOmmCapType);
@@ -561,14 +561,14 @@ static void omm_save_file_write() {
     WRITE_TOGGLE_SC(gOmmExtrasShowStarNumber);
     WRITE_TOGGLE_SC(gOmmExtrasInvisibleMode);
     WRITE_CHOICE_SC(gOmmExtrasSparklyStarsReward);
-// #if OMM_CODE_DEBUG
+#if OMM_CODE_DEBUG
     WRITE_TOGGLE_SC(gOmmDebugHitbox);
     WRITE_TOGGLE_SC(gOmmDebugHurtbox);
     WRITE_TOGGLE_SC(gOmmDebugWallbox);
     WRITE_TOGGLE_SC(gOmmDebugSurface);
     WRITE_TOGGLE_SC(gOmmDebugMario);
     WRITE_TOGGLE_SC(gOmmDebugCappy);
-// #endif
+#endif
 #if OMM_CODE_DEV
 #include "data/omm/dev/omm_dev_opt_write.inl"
 #endif

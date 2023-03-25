@@ -988,7 +988,7 @@ void omm_mario_update_action(struct MarioState *m) {
     } else if (sWasExitCutscene && (
         m->action == ACT_IDLE ||
         m->action == ACT_WALKING)) {
-        gCamera->cutscene = 0;
+        cutscene_exit_painting_end(gCamera);
         sModeTransition.framesLeft = 0;
         sWasExitCutscene = false;
     }

@@ -527,3 +527,7 @@ bool fs_sys_copy_file(const char *oldname, const char *newname) {
     }
     return ret;
 }
+
+bool fs_sys_delete_file(const char *name) {
+    return remove(name) == 0;
+}

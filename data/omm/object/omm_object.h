@@ -260,6 +260,7 @@ bool omm_world_is_dark();
 // Stars
 //
 
+void omm_stars_init_bits();
 u8 omm_stars_get_bits();
 u8 omm_stars_get_bits_total(s32 levelNum, s32 modeIndex);
 u32 omm_stars_get_color(s32 levelNum, s32 modeIndex);
