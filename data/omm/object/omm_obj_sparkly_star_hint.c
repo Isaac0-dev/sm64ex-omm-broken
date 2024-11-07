@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -155,26 +156,26 @@ const GeoLayout omm_geo_sparkly_star_3_hint[] = {
 
 const BehaviorScript bhvOmmSparklyStarHint[] = {
     OBJ_TYPE_SURFACE,
-    0x11010001,
-    0x2A000000, (uintptr_t) wooden_signpost_seg3_collision_0302DD80,
-    0x2F000000, (u32) INTERACT_TEXT,
-    0x10421000,
-    0x23000000, 0x00960050,
-    0x101B0000,
-    0x08000000,
-    0x10050000,
-    0x0C000000, (uintptr_t) load_object_collision_model,
-    0x102B0000,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_LOAD_COLLISION_DATA(wooden_signpost_seg3_collision_0302DD80),
+    BHV_SET_INTERACT_TYPE(INTERACT_TEXT),
+    BHV_SET_INT(oInteractionSubtype, INT_SUBTYPE_SIGN),
+    BHV_SET_HITBOX(150, 80),
+    BHV_SET_INT(oWoodenPostTotalMarioAngle, 0),
+    BHV_BEGIN_LOOP(),
+        BHV_SET_INT(oIntangibleTimer, 0),
+        BHV_CALL_NATIVE(load_object_collision_model),
+        BHV_SET_INT(oInteractStatus, 0),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_sparkly_star_hint(struct Object *o, s32 sparklyMode, f32 x, f32 y, f32 z, s16 yaw, s32 dialogId) {
+struct Object *omm_obj_spawn_sparkly_star_hint(struct Object *o, s32 sparklyMode, f32 x, f32 y, f32 z, s16 yaw, s32 dialogId) {
     struct Object *sign = obj_spawn_from_geo(o, OMM_SPARKLY_HINT_GEO[sparklyMode], bhvOmmSparklyStarHint);
-    obj_set_pos(sign, x, y, z);
+    obj_set_xyz(sign, x, y, z);
     obj_set_angle(sign, 0, yaw, 0);
     obj_drop_to_floor(sign);
     sign->oBehParams = (dialogId << 16);

@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -132,7 +133,7 @@ static void bhv_omm_peach_vibe_joy_gust_update() {
     } else if (o->oAction == 1) {
         perform_object_step(o, OBJ_STEP_UPDATE_HOME | OBJ_STEP_STICKY_FEET);
     } else {
-        obj_set_pos(o, o->parentObj->oPosX, o->parentObj->oPosY, o->parentObj->oPosZ);
+        obj_set_xyz(o, o->parentObj->oPosX, o->parentObj->oPosY, o->parentObj->oPosZ);
         obj_set_home(o, o->parentObj->oPosX, o->parentObj->oPosY, o->parentObj->oPosZ);
         o->oAction = (o->oTimer >= 8);
     }
@@ -152,16 +153,16 @@ static void bhv_omm_peach_vibe_joy_gust_update() {
 
 const BehaviorScript bhvOmmPeachVibeJoyGust[] = {
     OBJ_TYPE_SPECIAL,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_peach_vibe_joy_gust_update,
-    0x09000000,
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_peach_vibe_joy_gust_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_peach_vibe_joy_gust(struct Object *o, f32 fvel, s16 angle) {
+struct Object *omm_obj_spawn_peach_vibe_joy_gust(struct Object *o, f32 fvel, s16 angle) {
     struct Object *gust = obj_spawn_from_geo(o, omm_geo_peach_vibe_joy_gust, bhvOmmPeachVibeJoyGust);
     obj_set_vel(gust, fvel * sins(angle), 0.f, fvel * coss(angle));
     obj_set_angle(gust, 0, 0, 0);

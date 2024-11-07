@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Geo layouts
@@ -46,9 +47,9 @@ static void bhv_omm_sparkly_star_update() {
 
         // Invisible
         case 0: {
-            if (o->oTimer == 15) {
+            if (o->oTimer == 5) {
                 audio_play_puzzle_jingle();
-            } else if (o->oTimer >= 90) {
+            } else if (o->oTimer >= 60) {
                 o->oHomeX = o->oSparklyStarPosX;
                 o->oHomeY = o->oSparklyStarPosY;
                 o->oHomeZ = o->oSparklyStarPosZ;
@@ -133,7 +134,7 @@ static void bhv_omm_sparkly_star_update() {
         // Visible
         case 2:
         case 3: {
-            obj_set_pos(o, o->oSparklyStarPosX, o->oSparklyStarPosY, o->oSparklyStarPosZ);
+            obj_set_xyz(o, o->oSparklyStarPosX, o->oSparklyStarPosY, o->oSparklyStarPosZ);
             obj_set_home(o, o->oSparklyStarPosX, o->oSparklyStarPosY, o->oSparklyStarPosZ);
         } break;
 
@@ -151,7 +152,7 @@ static void bhv_omm_sparkly_star_update() {
             o->oSparklyStarPosX = starPos[0];
             o->oSparklyStarPosY = starPos[1];
             o->oSparklyStarPosZ = starPos[2];
-            obj_set_pos(o, o->oSparklyStarPosX, o->oSparklyStarPosY, o->oSparklyStarPosZ);
+            obj_set_xyz(o, o->oSparklyStarPosX, o->oSparklyStarPosY, o->oSparklyStarPosZ);
             obj_set_home(o, o->oSparklyStarPosX, o->oSparklyStarPosY, o->oSparklyStarPosZ);
         } break;
     }
@@ -181,7 +182,7 @@ static void bhv_omm_sparkly_star_update() {
             o->oGraphNode = geo_layout_to_graph_node(NULL, OMM_SPARKLY_STAR_GEO_OPAQUE[o->oSparklyStarMode]);
             o->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
             if ((o->oTimer % (1 << o->oAction)) == 0) {
-                omm_spawn_sparkly_star_sparkle(o, o->oSparklyStarMode, 0, 8.f, 0.4f, 40.f);
+                omm_obj_spawn_sparkly_star_sparkle(o, o->oSparklyStarMode, 0, 8.f, 0.4f, 40.f);
             }
         } break;
 
@@ -195,17 +196,17 @@ static void bhv_omm_sparkly_star_update() {
 
 const BehaviorScript bhvOmmSparklyStar[] = {
     OBJ_TYPE_LEVEL,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_sparkly_star_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_sparkly_star_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_sparkly_star(struct Object *o, s32 sparklyMode, f32 x, f32 y, f32 z, bool isCondStar) {
+struct Object *omm_obj_spawn_sparkly_star(struct Object *o, s32 sparklyMode, f32 x, f32 y, f32 z, bool isCondStar) {
     struct Object *star = spawn_object(o, MODEL_NONE, bhvOmmSparklyStar);
     obj_set_angle(star, 0, 0, 0);
     star->oAction = 2 * !isCondStar;

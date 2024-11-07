@@ -25,7 +25,7 @@ static void omm_peach_tiara_gfx_set_tiara_tex_palette(GfxTexture *tex) {
         l1 = mem_new(Lights1, 1);
         l2 = mem_new(Lights1, 1);
         px = mem_new(PxMtx, 1);
-        px->px = mem_new(bool *, tex->w * tex->h);
+        px->px = mem_new(bool, tex->w * tex->h);
         u32 xmin = tex->w;
         u32 xmax = 0;
         u32 ymin = tex->h;
@@ -83,15 +83,22 @@ static void omm_peach_tiara_gfx_set_tiara_tex_palette(GfxTexture *tex) {
 
 static void omm_peach_tiara_gfx_sp_tri1() {
     gfx_sp_tri1();
-    if (!sGfxRdp->texChanged) { // Make sure the texture is loaded
-        omm_peach_tiara_gfx_set_tiara_tex_palette(sGfxCurrTexture);
+    if (!sGfxProc->texChanged[0]) { // Make sure the texture is loaded
+        omm_peach_tiara_gfx_set_tiara_tex_palette(sGfxProc->textures[0]);
     }
 }
 
 static void omm_peach_tiara_gfx_sp_tri2() {
     gfx_sp_tri2();
-    if (!sGfxRdp->texChanged) { // Make sure the texture is loaded
-        omm_peach_tiara_gfx_set_tiara_tex_palette(sGfxCurrTexture);
+    if (!sGfxProc->texChanged[0]) { // Make sure the texture is loaded
+        omm_peach_tiara_gfx_set_tiara_tex_palette(sGfxProc->textures[0]);
+    }
+}
+
+static void omm_peach_tiara_gfx_sp_tri_ext() {
+    gfx_sp_tri_ext();
+    if (!sGfxProc->texChanged[0]) { // Make sure the texture is loaded
+        omm_peach_tiara_gfx_set_tiara_tex_palette(sGfxProc->textures[0]);
     }
 }
 
@@ -102,12 +109,14 @@ static void omm_peach_tiara_gfx_sp_tri2() {
 const Gfx omm_peach_tiara_gfx_enable[] = {
     gsXPSwapCmd(G_TRI1, omm_peach_tiara_gfx_sp_tri1),
     gsXPSwapCmd(G_TRI2, omm_peach_tiara_gfx_sp_tri2),
+    gsXPSwapCmd(G_TRIEXT, omm_peach_tiara_gfx_sp_tri_ext),
     gsSPEndDisplayList(),
 };
 
 const Gfx omm_peach_tiara_gfx_disable[] = {
     gsXPSwapCmd(G_TRI1, NULL),
     gsXPSwapCmd(G_TRI2, NULL),
+    gsXPSwapCmd(G_TRIEXT, NULL),
     gsSPEndDisplayList(),
 };
 

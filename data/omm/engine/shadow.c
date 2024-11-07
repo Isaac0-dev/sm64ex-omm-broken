@@ -6,22 +6,22 @@
 // Constants
 //
 
-#define SHADOW_SHAPE_CIRCLE 10
-#define SHADOW_SHAPE_SQUARE 20
+#define SHADOW_SHAPE_CIRCLE (10)
+#define SHADOW_SHAPE_SQUARE (20)
 
-static const f32 sShadowRectangles[2][2] = {
+static const f32 SHADOW_RECTANGLES[2][2] = {
     { 360, 230 }, // Spindel
     { 200, 180 }, // Whomp
 };
 
-static const f32 sVtxCoords[4][2] = {
+static const f32 SHADOW_VTX_COORDS[4][2] = {
     { -1, -1 },
     { +1, -1 },
     { -1, +1 },
     { +1, +1 },
 };
 
-static const s32 sTexCoords[4][2] = {
+static const s32 SHADOW_TEX_COORDS[4][2] = {
     { -15, -15 },
     { +15, -15 },
     { -15, +15 },
@@ -63,8 +63,8 @@ OMM_INLINE f32 extrapolate_vertex_y_position(f32 x, f32 z) {
 }
 
 static void calculate_vertex_xyz(s32 index, Vec3f vtxPos) {
-    f32 halfS = (sVtxCoords[index][0] * sShadow->scale) / 2.f;
-    f32 halfT = (sVtxCoords[index][1] * sShadow->scale * coss(sShadow->floor.tilt)) / 2.f;
+    f32 halfS = (SHADOW_VTX_COORDS[index][0] * sShadow->scale) / 2.f;
+    f32 halfT = (SHADOW_VTX_COORDS[index][1] * sShadow->scale * coss(sShadow->floor.tilt)) / 2.f;
     f32 sinda = sins(sShadow->floor.downwardAngle);
     f32 cosda = coss(sShadow->floor.downwardAngle);
     vtxPos[0] = (halfT * sinda) + (halfS * cosda) + sShadow->parentPos[0];
@@ -77,7 +77,7 @@ static void make_shadow_vertex_at_xyz(Vtx *vtx, s32 index, Vec3f relPos) {
     s16 y = relPos[1] + 5 * (sShadow->isOnFlyingCarpet);
     s16 z = relPos[2];
     u8 alpha = (sShadow->isAboveWater ? 160 : sShadow->solidity);
-    make_vertex(vtx, index, x, y, z, sTexCoords[index][0] << 5, sTexCoords[index][1] << 5, 0xFF, 0xFF, 0xFF, alpha);
+    make_vertex(vtx, index, x, y, z, SHADOW_TEX_COORDS[index][0] << 5, SHADOW_TEX_COORDS[index][1] << 5, 0xFF, 0xFF, 0xFF, alpha);
 }
 
 static void make_shadow_vertices(Vtx *vertices) {
@@ -238,8 +238,8 @@ static Gfx *create_shadow_square(f32 scale, s32 type) {
 }
 
 static Gfx *create_shadow_hardcoded_rectangle(s32 type) {
-    f32 halfWidth  = scale_shadow_with_distance(sShadowRectangles[type - SHADOW_RECTANGLE_HARDCODED_OFFSET][0], sShadow->floor.dist);
-    f32 halfLength = scale_shadow_with_distance(sShadowRectangles[type - SHADOW_RECTANGLE_HARDCODED_OFFSET][1], sShadow->floor.dist);
+    f32 halfWidth  = scale_shadow_with_distance(SHADOW_RECTANGLES[type - SHADOW_RECTANGLE_HARDCODED_OFFSET][0], sShadow->floor.dist);
+    f32 halfLength = scale_shadow_with_distance(SHADOW_RECTANGLES[type - SHADOW_RECTANGLE_HARDCODED_OFFSET][1], sShadow->floor.dist);
     return create_shadow_rectangle(halfWidth, halfLength);
 }
 

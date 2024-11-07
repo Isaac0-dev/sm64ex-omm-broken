@@ -39,7 +39,7 @@ static s32 dirtree_walk_impl(fs_dirtree_entry_t *ent, walk_fn_t walkfn, void *us
 //
 
 bool fs_dirtree_init(fs_dirtree_t *tree, const u64 entry_len) {
-    mem_clr(tree, sizeof(fs_dirtree_t));
+    mem_zero(tree, sizeof(fs_dirtree_t));
     tree->root = (fs_dirtree_entry_t *) mem_new(u8, entry_len);
     if (OMM_LIKELY(tree->root)) {
         tree->root->name = "";
@@ -52,7 +52,7 @@ bool fs_dirtree_init(fs_dirtree_t *tree, const u64 entry_len) {
 
 void fs_dirtree_free(fs_dirtree_t *tree) {
     if (tree) {
-        if (tree->root) mem_del(tree->root);
+        mem_del(tree->root);
         for (s32 i = 0; i != FS_NUMBUCKETS; ++i) {
             for (fs_dirtree_entry_t *next, *ent = tree->buckets[i]; ent; ent = next) {
                 next = ent->next_hash;
@@ -62,7 +62,32 @@ void fs_dirtree_free(fs_dirtree_t *tree) {
     }
 }
 
+static char *strrstr(char *str, const char *substr) {
+    for (char *res = NULL;; str++) {
+        str = strstr(str, substr);
+        if (!str) {
+            return res;
+        }
+        res = str;
+    }
+}
+
+static char *get_shortened_name(char *name) {
+    for_each_until_null(const char *, dir, array_of(const char *) {
+        "/" FS_TEXTUREDIR "/",
+        "/" FS_SOUNDDIR "/",
+        NULL
+    }) {
+        char *res = strrstr(name, *dir);
+        if (res) {
+            return res + 1;
+        }
+    }
+    return name;
+}
+
 fs_dirtree_entry_t *fs_dirtree_add(fs_dirtree_t *tree, char *name, const bool is_dir) {
+    name = get_shortened_name(name);
     fs_dirtree_entry_t *ent = fs_dirtree_find(tree, name);
     if (!ent) {
         fs_dirtree_entry_t *parent = dirtree_add_ancestors(tree, name);

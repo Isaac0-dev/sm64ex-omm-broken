@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -50,13 +51,30 @@ const GeoLayout omm_geo_rising_lava[] = {
 };
 
 //
+// Collision
+//
+
+static const Collision omm_rising_lava_collision[] = {
+    COL_INIT(),
+    COL_VERTEX_INIT(4),
+    COL_VERTEX(-256, 0, -256),
+    COL_VERTEX(-256, 0, +256),
+    COL_VERTEX(+256, 0, +256),
+    COL_VERTEX(+256, 0, -256),
+    COL_TRI_INIT(SURFACE_BURNING, 2),
+    COL_TRI(0, 1, 2),
+    COL_TRI(0, 2, 3),
+    COL_TRI_STOP(),
+    COL_END(),
+};
+
+//
 // Behavior
 //
 
 static void bhv_omm_rising_lava_update() {
     struct Object *o = gCurrentObject;
     obj_scale(o, o->oRisingLavaRadius / 256.f);
-    o->oCollisionDistance = o->oRisingLavaRadius;
     o->oFaceAngleYaw += o->oRisingLavaRotVel;
     switch (o->oAction) {
 
@@ -97,39 +115,23 @@ static void bhv_omm_rising_lava_update() {
     }
 }
 
-static const Collision omm_rising_lava_collision[] = {
-    COL_INIT(),
-    COL_VERTEX_INIT(4),
-    COL_VERTEX(-256, 0, -256),
-    COL_VERTEX(-256, 0, +256),
-    COL_VERTEX(+256, 0, +256),
-    COL_VERTEX(+256, 0, -256),
-    COL_TRI_INIT(SURFACE_BURNING, 2),
-    COL_TRI(0, 1, 2),
-    COL_TRI(0, 2, 3),
-    COL_TRI_STOP(),
-    COL_END(),
-};
-
 const BehaviorScript bhvOmmRisingLava[] = {
     OBJ_TYPE_SURFACE,
-    0x11012041,
-    0x2A000000, (uintptr_t) omm_rising_lava_collision,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_rising_lava_update,
-    0x10050000,
-    0x0C000000, (uintptr_t) load_object_collision_model,
-    0x102B0000,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_LOAD_COLLISION_DATA(omm_rising_lava_collision),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_rising_lava_update),
+        BHV_CALL_NATIVE(load_object_collision_model),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_rising_lava(struct Object *o, f32 x, f32 y, f32 z, f32 yMin, f32 yMax, f32 yVel, f32 radius, f32 rotVel, s32 shakeEnv) {
+struct Object *omm_obj_spawn_rising_lava(struct Object *o, f32 x, f32 y, f32 z, f32 yMin, f32 yMax, f32 yVel, f32 radius, f32 rotVel, s32 shakeEnv) {
     struct Object *lava = obj_spawn_from_geo(o, omm_geo_rising_lava, bhvOmmRisingLava);
-    obj_set_pos(lava, x, y, z);
+    obj_set_xyz(lava, x, y, z);
     obj_set_angle(lava, 0, 0, 0);
     obj_set_always_rendered(lava, true);
     lava->oRisingLavaMinY   = yMin;

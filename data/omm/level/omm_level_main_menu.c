@@ -3,46 +3,6 @@
 #undef OMM_ALL_HEADERS
 #include "menu/intro_geo.h"
 #include "level_commands.h"
-#if OMM_CODE_DYNOS
-extern s32   dynos_gfx_get_mario_model_pack_index();
-extern void *dynos_opt_get_action(const char *funcName);
-extern void  dynos_opt_set_action(const char *funcName, void *funcPtr);
-static void *dynos_opt_warp_to_level = NULL;
-static void *dynos_opt_warp_to_castle = NULL;
-static void *dynos_opt_restart_level = NULL;
-static void *dynos_opt_exit_level = NULL;
-static void *dynos_opt_return_to_main_menu = NULL;
-
-static void omm_register_warp_functions() {
-    if (!dynos_opt_warp_to_level) {
-        dynos_opt_warp_to_level = dynos_opt_get_action("DynOS_Opt_WarpToLevel");
-        dynos_opt_warp_to_castle = dynos_opt_get_action("DynOS_Opt_WarpToCastle");
-        dynos_opt_restart_level = dynos_opt_get_action("DynOS_Opt_RestartLevel");
-        dynos_opt_exit_level = dynos_opt_get_action("DynOS_Opt_ExitLevel");
-        dynos_opt_return_to_main_menu = dynos_opt_get_action("DynOS_Opt_ReturnToMainMenu");
-    }
-}
-
-static void omm_disable_warp_functions() {
-    dynos_opt_set_action("DynOS_Opt_WarpToLevel", NULL);
-    dynos_opt_set_action("DynOS_Opt_WarpToCastle", NULL);
-    dynos_opt_set_action("DynOS_Opt_RestartLevel", NULL);
-    dynos_opt_set_action("DynOS_Opt_ExitLevel", NULL);
-    dynos_opt_set_action("DynOS_Opt_ReturnToMainMenu", NULL);
-}
-
-static void omm_enable_warp_functions() {
-    dynos_opt_set_action("DynOS_Opt_WarpToLevel", dynos_opt_warp_to_level);
-    dynos_opt_set_action("DynOS_Opt_WarpToCastle", dynos_opt_warp_to_castle);
-    dynos_opt_set_action("DynOS_Opt_RestartLevel", dynos_opt_restart_level);
-    dynos_opt_set_action("DynOS_Opt_ExitLevel", dynos_opt_exit_level);
-    dynos_opt_set_action("DynOS_Opt_ReturnToMainMenu", dynos_opt_return_to_main_menu);
-}
-#else
-static void omm_register_warp_functions() {}
-static void omm_disable_warp_functions() {}
-static void omm_enable_warp_functions() {}
-#endif
 void beh_yellow_background_menu_init(void) {}
 void beh_yellow_background_menu_loop(void) {}
 void bhv_menu_button_init(void) {}
@@ -79,6 +39,9 @@ static struct {
 //
 
 static u32 omm_get_inputs() {
+    if (omm_is_transition_active()) {
+        return 0;
+    }
     static bool inputHold = false;
     static s32 inputTimer = 0;
     u32  inputs = (gPlayer1Controller->buttonPressed);
@@ -106,11 +69,11 @@ static u32 omm_get_inputs() {
 
 //
 // Complete save cheat
-// Press C-Up, C-Up, C-Down, C-Down, C-Left, C-Right, C-Left, C-Right, Z, R and select a file with A
-// Collects all stars, sets all flags, opens all cannons and unlocks Peach
+// Press C-Up, C-Up, C-Down, C-Down, C-Left, C-Right, C-Left, C-Right, Z, R and select a file with A or Start
+// Collects all stars, sets all flags, opens all cannons, register all captures and unlocks Peach
 //
 
-static const u16 sOmmCompleteSaveButtons[] = { U_CBUTTONS, U_CBUTTONS, D_CBUTTONS, D_CBUTTONS, L_CBUTTONS, R_CBUTTONS, L_CBUTTONS, R_CBUTTONS, Z_TRIG, R_TRIG, A_BUTTON, 0xFFFF };
+static const u16 sOmmCompleteSaveButtons[] = { U_CBUTTONS, U_CBUTTONS, D_CBUTTONS, D_CBUTTONS, L_CBUTTONS, R_CBUTTONS, L_CBUTTONS, R_CBUTTONS, Z_TRIG, R_TRIG, A_BUTTON | START_BUTTON, 0xFFFF };
 static s32 sOmmCompleteSaveSequenceIndex = 0;
 extern void omm_set_complete_save_file(s32 fileIndex, s32 modeIndex);
 
@@ -118,9 +81,10 @@ static s32 omm_update_complete_save_sequence_index() {
     if (gPlayer1Controller->buttonPressed != 0) {
         u16 buttonPressed = gPlayer1Controller->buttonPressed;
         u16 buttonRequired = sOmmCompleteSaveButtons[sOmmCompleteSaveSequenceIndex];
-        if ((buttonPressed & buttonRequired) == buttonRequired) {
+        if ((buttonPressed & buttonRequired) != 0 && (buttonPressed & ~buttonRequired) == 0) {
             sOmmCompleteSaveSequenceIndex++;
-            if (sOmmCompleteSaveButtons[sOmmCompleteSaveSequenceIndex] == A_BUTTON) {
+            if (sOmmCompleteSaveButtons[sOmmCompleteSaveSequenceIndex] == (A_BUTTON | START_BUTTON)) {
+                sound_banks_enable(SEQ_PLAYER_SFX, 1 << 8);
                 play_sound(SOUND_GENERAL2_RIGHT_ANSWER | 0xFF00, gGlobalSoundArgs);
             }
         } else {
@@ -143,15 +107,19 @@ static void omm_check_complete_save(s32 fileIndex, s32 modeIndex) {
 
 #define GFX_DIMENSIONS_SCREEN_WIDTH     ((s32) (GFX_DIMENSIONS_FROM_RIGHT_EDGE(0) - GFX_DIMENSIONS_FROM_LEFT_EDGE(0) + 0.5f))
 
-#define OMM_MM_PLAY                     0
-#define OMM_MM_PLAY_NO_SAVE             1
-#define OMM_MM_COPY                     2
-#define OMM_MM_ERASE                    3
-#define OMM_MM_SCORE                    4
-#define OMM_MM_OPTIONS                  5
-#define OMM_MM_PALETTE_EDITOR           6
+#define OMM_MM_PLAY                     (0)
+#define OMM_MM_PLAY_NO_SAVE             (1)
+#define OMM_MM_COPY                     (2)
+#define OMM_MM_ERASE                    (3)
+#define OMM_MM_SCORE                    (4)
+#define OMM_MM_OPTIONS                  (5)
+#define OMM_MM_PALETTE_EDITOR           (6)
 
+#if OMM_GAME_IS_R96X
+#define OMM_MM_LOGO_TEXTURE             "menu/" OMM_GAME_MENU "/logo.r96x.rgba32"
+#else
 #define OMM_MM_LOGO_TEXTURE             "menu/" OMM_GAME_MENU "/logo.rgba32"
+#endif
 #define OMM_MM_LOGO_W                   (OMM_MM_LOGO_H * 1.6f)
 #define OMM_MM_LOGO_H                   (SCREEN_HEIGHT / 3)
 #define OMM_MM_LOGO_X                   GFX_DIMENSIONS_FROM_LEFT_EDGE(0)
@@ -160,33 +128,34 @@ static void omm_check_complete_save(s32 fileIndex, s32 modeIndex) {
 #define OMM_MM_STRINGS_COUNT            ((s32) array_length(sOmmMainMenuStrings))
 #define OMM_MM_STRINGS_X                GFX_DIMENSIONS_FROM_LEFT_EDGE(48)
 #define OMM_MM_STRINGS_Y                ((11 * SCREEN_HEIGHT) / 20)
-#define OMM_MM_STRINGS_H                16
+#define OMM_MM_STRINGS_H                (16)
 
 #define OMM_MM_BOX_X                    (OMM_MM_STRINGS_X - 20)
 #define OMM_MM_BOX_Y                    (OMM_MM_STRINGS_Y - 4 - OMM_MM_STRINGS_H * sOmmMainMenu->index)
 #define OMM_MM_BOX_W                    (135 * GFX_DIMENSIONS_ASPECT_RATIO)
-#define OMM_MM_BOX_H                    OMM_MM_STRINGS_H
+#define OMM_MM_BOX_H                    (OMM_MM_STRINGS_H)
 #define OMM_MM_BOX_A                    (0x60 + 0x40 * sins(sOmmMainMenu->timer * 0x800))
 
 #define OMM_MM_CURSOR_X                 (OMM_MM_STRINGS_X - 16)
 #define OMM_MM_CURSOR_Y                 (OMM_MM_STRINGS_Y - 2 - OMM_MM_STRINGS_H * sOmmMainMenu->index)
-#define OMM_MM_CURSOR_W                 12
+#define OMM_MM_CURSOR_W                 (12)
 #define OMM_MM_CURSOR_H                 (OMM_MM_CURSOR_W + (OMM_MM_CURSOR_W / 3) * sins(clamp_s(sOmmMainMenu->timer % 90, 0, 16) * 0x1000))
 
 #define OMM_MM_INFO_STRING_X            GFX_DIMENSIONS_FROM_LEFT_EDGE(4)
-#define OMM_MM_INFO_STRING_Y            4
-#define OMM_MM_INFO_STRING_W            5
-#define OMM_MM_INFO_STRING_H            5
-#define OMM_MM_INFO_STRING_C            0x80
+#define OMM_MM_INFO_STRING_Y            (4)
+#define OMM_MM_INFO_STRING_W            (5)
+#define OMM_MM_INFO_STRING_H            (5)
+#define OMM_MM_INFO_STRING_C            (0x80)
 
 #define OMM_MM_INFO_BOX_X               (OMM_MM_INFO_STRING_X - 2)
 #define OMM_MM_INFO_BOX_Y               (OMM_MM_INFO_STRING_Y - 2)
 #define OMM_MM_INFO_BOX_W               (170 * GFX_DIMENSIONS_ASPECT_RATIO)
 #define OMM_MM_INFO_BOX_H               (OMM_MM_INFO_STRING_H + 4)
-#define OMM_MM_INFO_BOX_A               0xC0
+#define OMM_MM_INFO_BOX_A               (0xC0)
 
 #define OMM_MM_SOUND_SCROLL             (SOUND_MENU_CHANGE_SELECT | 0xFE00)
 #define OMM_MM_SOUND_FILE_SELECT        (SOUND_MENU_STAR_SOUND | 0xFF00)
+#define OMM_MM_SOUND_RESUME_GAME        (SOUND_MENU_STAR_SOUND_OKEY_DOKEY | 0xFF00)
 #define OMM_MM_SOUND_PLAY_NO_SAVE       (SOUND_MENU_STAR_SOUND_OKEY_DOKEY | 0xFF00)
 
 static struct { const char *label; const char *info[2]; } sOmmMainMenuStrings[] = {
@@ -398,9 +367,9 @@ static const struct Animation *sOmmMainMenuMarioAnims[] = {
 // Main Menu update
 //
 
-static f32 omm_main_menu_get_mario_cappy_pos_y(f32 t, f32 value_at_0, f32 peak, f32 peak_t) {
-    f32 a = (value_at_0 - peak) / sqr_f(peak_t);
-    f32 b = -2 * (value_at_0 - peak) / peak_t;
+static f32 omm_main_menu_get_mario_cappy_pos_y(f32 t, f32 value_at_0, f32 peak, f32 t_peak) {
+    f32 a = (value_at_0 - peak) / sqr_f(t_peak);
+    f32 b = -2 * (value_at_0 - peak) / t_peak;
     f32 c = value_at_0;
     return a * t * t + b * t + c;
 }
@@ -416,16 +385,26 @@ static s32 omm_main_menu_update() {
         f32 t = relerp_0_1_f(mario->oTimer, 0, 20, 1, 0);
         f32 posX = 175 * GFX_DIMENSIONS_ASPECT_RATIO;
         f32 posY = omm_main_menu_get_mario_cappy_pos_y(t, -950, -850, 0.2f);
+        f32 headHeight;
+        if (geo_compute_marios_heights(mario, NULL, &headHeight, NULL)) {
+            posY -= (headHeight - 564.2f); // don't ask
+        }
         obj_scale(mario, 7);
-        obj_set_pos(mario, posX, posY, 0);
+        obj_set_xyz(mario, posX, posY, 0);
         obj_set_angle(mario, -0x800, -6 * posX, 0);
         obj_update_gfx(mario);
         obj_anim_play(mario, 0, 1.f);
         obj_anim_set_frame(mario, gMarioState->actionTimer);
         gMarioState->actionTimer = (gMarioState->actionTimer + 1) * !obj_anim_is_at_end(mario);
         mario->oGraphNode = gLoadedGraphNodes[MODEL_MARIO] = geo_layout_to_graph_node(NULL, mario_geo);
+        mario->oNodeFlags |= GRAPH_RENDER_ALWAYS;
         mario->oAction = 0;
         mario->oTimer++;
+        if (gOmmExtrasInvisibleMode) {
+            mario->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
+        } else {
+            mario->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
+        }
     }
 
     // Update Cappy
@@ -435,12 +414,18 @@ static s32 omm_main_menu_update() {
         f32 posX = 175 * GFX_DIMENSIONS_ASPECT_RATIO;
         f32 posY = omm_main_menu_get_mario_cappy_pos_y(t, 0, 100, 0.225f);
         obj_scale(cappy, 6);
-        obj_set_pos(cappy, posX, posY + relerp_0_1_f(sins(cappy->oTimer * 0x400), -1, 1, 20, 60), 0);
+        obj_set_xyz(cappy, posX, posY + relerp_0_1_f(sins(cappy->oTimer * 0x400), -1, 1, 20, 60), 0);
         obj_set_angle(cappy, -0x400, -6 * posX, relerp_0_1_f(coss(cappy->oTimer * 0x6B7), -1, 1, 0, -0x400));
         obj_update_gfx(cappy);
         cappy->oOpacity = 0xFF;
         cappy->oGraphNode = gLoadedGraphNodes[MODEL_MARIOS_CAP] = geo_layout_to_graph_node(NULL, marios_cap_geo);
+        cappy->oNodeFlags |= GRAPH_RENDER_ALWAYS;
         cappy->oTimer++;
+        if (gOmmExtrasInvisibleMode) {
+            cappy->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
+        } else {
+            cappy->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
+        }
     }
 
     // Update inputs
@@ -498,12 +483,7 @@ static s32 omm_main_menu_update() {
 
             // Open the options menu
             case OMM_MM_OPTIONS: {
-#if OMM_CODE_DYNOS
-                gPlayer1Controller->buttonPressed = R_TRIG;
-                optmenu_draw_prompt();
-#else
                 optmenu_toggle();
-#endif
                 gPlayer1Controller->buttonPressed = 0;
                 gPlayer1Controller->rawStickX = 0;
                 gPlayer1Controller->rawStickY = 0;
@@ -524,6 +504,21 @@ static s32 omm_main_menu_update() {
     // Next menu (Start)
     else if (inputs & START_BUTTON) {
         switch (sOmmMainMenu->index) {
+
+            // Resume the game from the last file, mode and course
+            case OMM_MM_PLAY: {
+                s32 fileIndex = omm_save_file_get_last_file_index();
+                s32 modeIndex = omm_save_file_get_last_mode_index();
+                if (omm_save_file_exists(fileIndex, modeIndex)) {
+                    s32 courseNum = omm_save_file_get_last_course_num(fileIndex, modeIndex);
+                    play_sound(OMM_MM_SOUND_RESUME_GAME, gGlobalSoundArgs);
+                    omm_select_save_file(fileIndex, modeIndex, courseNum, false);
+#if OMM_GAME_IS_R96X
+                    r96_jingle_fade(true, -1, 0, 2000);
+#endif
+                    return fileIndex + 1;
+                }
+            } break;
 
             // Start a new no-save game
             case OMM_MM_PLAY_NO_SAVE: {
@@ -565,10 +560,19 @@ static void omm_main_menu_render_box(s16 x, s16 y, s16 w, s16 h, u8 r, u8 g, u8 
 static void omm_main_menu_render() {
 
     // Update Mario eyes
-    gMarioState->marioBodyState->eyeState = ((OMM_MK_MARIO_COLORS && omm_models_get_mario_model_pack_index() == -1) ? MARIO_EYES_LOOK_UP : MARIO_EYES_OPEN);
+    gMarioState->marioBodyState->eyeState = ((OMM_MARIO_COLORS && omm_models_get_mario_model_pack_index() == -1) ? MARIO_EYES_LOOK_UP : MARIO_EYES_OPEN);
 
     // Game logo
     omm_render_texrect(OMM_MM_LOGO_X, OMM_MM_LOGO_Y, OMM_MM_LOGO_W, OMM_MM_LOGO_H, 1024, 640, 0xFF, 0xFF, 0xFF, 0xFF, OMM_MM_LOGO_TEXTURE, false);
+
+    // Options menu
+    if (optmenu_open) {
+        omm_render_create_dl_ortho_matrix();
+        omm_render_shade_screen(0x7F);
+        optmenu_draw();
+        optmenu_check_buttons();
+        return;
+    }
 
     // Main strings
     omm_main_menu_render_box(OMM_MM_BOX_X, OMM_MM_BOX_Y, OMM_MM_BOX_W, OMM_MM_BOX_H, 0x00, 0xFF, 0xFF, OMM_MM_BOX_A, 0x00);
@@ -580,7 +584,7 @@ static void omm_main_menu_render() {
 
     // Info string
     omm_main_menu_render_box(OMM_MM_INFO_BOX_X, OMM_MM_INFO_BOX_Y, OMM_MM_INFO_BOX_W, OMM_MM_INFO_BOX_H, 0x00, 0x00, 0x00, OMM_MM_INFO_BOX_A, 0x00);
-    const u8 *info = omm_text_convert(sOmmMainMenuStrings[sOmmMainMenu->index].info[OMM_SPARKLY_IS_PEACH_UNLOCKED], false);
+    const u8 *info = omm_text_convert(sOmmMainMenuStrings[sOmmMainMenu->index].info[OMM_REWARD_IS_PLAYABLE_PEACH_UNLOCKED], false);
     omm_render_string_sized(OMM_MM_INFO_STRING_X, OMM_MM_INFO_STRING_Y, OMM_MM_INFO_STRING_W, OMM_MM_INFO_STRING_H, OMM_MM_INFO_STRING_C, OMM_MM_INFO_STRING_C, OMM_MM_INFO_STRING_C, 0xFF, info, false);
 
     // Transition to file select
@@ -590,39 +594,33 @@ static void omm_main_menu_render() {
             32, 32, 0xFF, 0xFF, 0xFF, 0xFF * relerp_0_1_f(sOmmFileSelect->timer, 30, 15, 0, 1), OMM_TEXTURE_MISC_WHITE, false
         );
     }
-
-    // Options menu
-    else if (optmenu_open) {
-        omm_render_create_dl_ortho_matrix();
-        omm_render_shade_screen(0xF0);
-#if OMM_CODE_DYNOS
-        optmenu_draw_prompt();
-#endif
-        optmenu_check_buttons();
-        optmenu_draw();
-    }
 }
 
 //
 // File Select constants
 //
 
-#define OMM_FS_BACKGROUND_MARGIN                16
-#define OMM_FS_BACKGROUND_BORDER                12
+#define OMM_FS_BACKGROUND_MARGIN                (16)
+#define OMM_FS_BACKGROUND_BORDER                (12)
 
-#define OMM_FS_TITLE_H                          24
+#define OMM_FS_TITLE_H                          (24)
 #define OMM_FS_TITLE_Y                          (SCREEN_HEIGHT - (OMM_FS_BACKGROUND_MARGIN + OMM_FS_BACKGROUND_BORDER + OMM_FS_TITLE_H))
 
-#define OMM_FS_FILE_BUTTON_MARGIN_OUT           16
-#define OMM_FS_FILE_BUTTON_MARGIN_IN            8
-#define OMM_FS_FILE_BUTTON_WIDTH                48
-#define OMM_FS_FILE_BUTTON_HEIGHT               36
-#define OMM_FS_FILE_BUTTON_BORDER               4
+#define OMM_FS_FILE_BUTTON_MARGIN_OUT           (16)
+#define OMM_FS_FILE_BUTTON_MARGIN_IN            (8)
+#define OMM_FS_FILE_BUTTON_WIDTH                (48)
+#define OMM_FS_FILE_BUTTON_HEIGHT               (36)
+#define OMM_FS_FILE_BUTTON_BORDER               (4)
+
+#define OMM_FS_L_SIZE                           (8)
+#define OMM_FS_L_MARGIN                         (OMM_FS_BACKGROUND_MARGIN - OMM_FS_L_SIZE) / 2
+#define OMM_FS_L_X                              GFX_DIMENSIONS_FROM_LEFT_EDGE(OMM_FS_L_MARGIN)
+#define OMM_FS_L_Y                              (SCREEN_HEIGHT - (OMM_FS_L_MARGIN + OMM_FS_L_SIZE))
 
 #define OMM_FS_BOX_X                            (x - OMM_FS_FILE_BUTTON_WIDTH / 2 - 8)
-#define OMM_FS_BOX_Y                            (y - OMM_FS_FILE_BUTTON_HEIGHT / 2 - 8 - 8 * !OMM_FS_MODE_IS_SPARKLY_STARS)
+#define OMM_FS_BOX_Y                            (y - OMM_FS_FILE_BUTTON_HEIGHT / 2 - 8 - 8 * OMM_FS_MODE_IS_SAVE_MODE)
 #define OMM_FS_BOX_W                            (w - 8)
-#define OMM_FS_BOX_H                            (OMM_FS_FILE_BUTTON_HEIGHT + 16 + 8 * !OMM_FS_MODE_IS_SPARKLY_STARS)
+#define OMM_FS_BOX_H                            (OMM_FS_FILE_BUTTON_HEIGHT + 16 + 8 * OMM_FS_MODE_IS_SAVE_MODE)
 #define OMM_FS_BOX_A                            (0x60 + 0x40 * sins(sOmmFileSelect->timer * 0x800))
 
 #define OMM_FS_SOUND_SCROLL                     (SOUND_MENU_CHANGE_SELECT | 0xFE00)
@@ -636,19 +634,22 @@ static void omm_main_menu_render() {
 #define OMM_FS_SOUND_SCORE_COINS                (SOUND_MENU_CLICK_FILE_SELECT | 0xFE00)
 #define OMM_FS_SOUND_INVALID                    (SOUND_MENU_CAMERA_BUZZ | 0xFF00)
 
-#define OMM_FS_MODE_SPARKLY_STARS_AVAILABLE     (sOmmFileSelectStrings[sOmmMainMenu->index][OMM_NUM_SAVE_MODES] != NULL)
-#define OMM_FS_MODE_IS_SPARKLY_STARS            (sOmmFileSelect->mode == OMM_NUM_SAVE_MODES)
+#define OMM_FS_MODE_SPARKLY_STARS               (OMM_NUM_SAVE_MODES + 0)
+#define OMM_FS_MODE_COUNT                       (OMM_NUM_SAVE_MODES + 1)
+#define OMM_FS_MODE_IS_AVAILABLE(mode)          (sOmmFileSelectStrings[sOmmMainMenu->index][mode] != NULL)
+#define OMM_FS_MODE_IS_SAVE_MODE                (sOmmFileSelect->mode < OMM_NUM_SAVE_MODES)
+#define OMM_FS_MODE_IS_SPARKLY_STARS            (sOmmFileSelect->mode == OMM_FS_MODE_SPARKLY_STARS)
 
-#define OMM_FS_SCORE_COURSE_FONT_SIZE           5
+#define OMM_FS_SCORE_COURSE_FONT_SIZE           (5)
 #define OMM_FS_SCORE_COURSE_FONT_SIZE_RATIO     (OMM_FS_SCORE_COURSE_FONT_SIZE / 8.f)
 #define OMM_FS_SCORE_COURSE_DATA_GAP            (12 * (1.f - (sl / 24.f)))
 #define OMM_FS_SCORE_COURSE_LINE_Y              (SCREEN_HEIGHT - 64 - 10 * lineIndex)
 #define OMM_FS_SCORE_COURSE_LEVEL_X_LEFT        (sl + 10)
 #define OMM_FS_SCORE_COURSE_LEVEL_X_RIGHT       (sr - 10 - OMM_FS_SCORE_COURSE_DATA_GAP - maxWidth * OMM_FS_SCORE_COURSE_FONT_SIZE_RATIO - (OMM_FS_SCORE_COURSE_FONT_SIZE + 1) * 7)
-#define OMM_FS_SCORE_COURSE_COINS_X_LEFT        (sl + 10 + OMM_FS_SCORE_COURSE_DATA_GAP + maxWidth * OMM_FS_SCORE_COURSE_FONT_SIZE_RATIO + (OMM_FS_SCORE_COURSE_FONT_SIZE + 1))
-#define OMM_FS_SCORE_COURSE_COINS_X_RIGHT       (sr - 10 - (OMM_FS_SCORE_COURSE_FONT_SIZE + 1) * 6)
-#define OMM_FS_SCORE_COURSE_STARS_X_LEFT        (sl + 10 + OMM_FS_SCORE_COURSE_DATA_GAP + maxWidth * OMM_FS_SCORE_COURSE_FONT_SIZE_RATIO + (OMM_FS_SCORE_COURSE_FONT_SIZE + 1) * k)
-#define OMM_FS_SCORE_COURSE_STARS_X_RIGHT       (sr - 10 - (OMM_FS_SCORE_COURSE_FONT_SIZE + 1) * (7 - k))
+#define OMM_FS_SCORE_COURSE_COINS_X_LEFT        (sl + 12 + OMM_FS_SCORE_COURSE_DATA_GAP + maxWidth * OMM_FS_SCORE_COURSE_FONT_SIZE_RATIO)
+#define OMM_FS_SCORE_COURSE_COINS_X_RIGHT       (sr -  8 - (OMM_FS_SCORE_COURSE_FONT_SIZE + 2) * 7)
+#define OMM_FS_SCORE_COURSE_STARS_X_LEFT        (sl + 12 + OMM_FS_SCORE_COURSE_DATA_GAP + maxWidth * OMM_FS_SCORE_COURSE_FONT_SIZE_RATIO + (OMM_FS_SCORE_COURSE_FONT_SIZE + 2) * k)
+#define OMM_FS_SCORE_COURSE_STARS_X_RIGHT       (sr -  8 - (OMM_FS_SCORE_COURSE_FONT_SIZE + 2) * (7 - k))
 
 #define OMM_FS_SCORE_SPARKLY_LINE_Y             (SCREEN_HEIGHT - 52 - 12 * j)
 #define OMM_FS_SCORE_SPARKLY_LEVEL_X_LEFT       (sl + 10)
@@ -657,7 +658,7 @@ static void omm_main_menu_render() {
 #define OMM_FS_COURSE_TEXTURE(mode, course)     "menu/" OMM_GAME_MENU "/" STRINGIFY(mode) "/" STRINGIFY(course)  ".rgba32"
 #define OMM_FS_COURSE_TEXTURES(course)          OMM_FS_COURSE_TEXTURE(0, course), OMM_FS_COURSE_TEXTURE(1, course), OMM_FS_COURSE_TEXTURE(2, course), OMM_FS_COURSE_TEXTURE(3, course)
 
-static const char *sOmmFileSelectCourses[COURSE_MAX][4] = {
+static const char *sOmmFileSelectCourses[][4] = {
     [COURSE_NONE]  = { OMM_FS_COURSE_TEXTURES(COURSE_NONE)  },
     [COURSE_BOB]   = { OMM_FS_COURSE_TEXTURES(COURSE_BOB)   },
     [COURSE_WF]    = { OMM_FS_COURSE_TEXTURES(COURSE_WF)    },
@@ -693,6 +694,7 @@ static const char *sOmmFileSelectStrings[][4] = {
 };
 
 static const char *sOmmFileSelectBackgrounds[][2] = {
+                     /* ------- Save file --------    ------------ Sparkly star ------------- */
     [OMM_MM_PLAY]  = { OMM_ASSET_MENU_SELECT_BUTTON, NULL                                      },
     [OMM_MM_COPY]  = { OMM_ASSET_MENU_COPY_BUTTON,   NULL                                      },
     [OMM_MM_ERASE] = { OMM_ASSET_MENU_ERASE_BUTTON,  OMM_ASSET_MENU_ERASE_BUTTON               },
@@ -700,27 +702,36 @@ static const char *sOmmFileSelectBackgrounds[][2] = {
 };
 
 static const u8 sOmmFileSelectButtonColors[NUM_SAVE_FILES][3][3] = {
-    { { 0xFF, 0xFF, 0xFF }, { 0x80, 0x80, 0x80 }, { 0xFF, 0xE0, 0x80 } },
-    { { 0xFF, 0xFF, 0xFF }, { 0x80, 0x80, 0x80 }, { 0xC0, 0xE0, 0xFF } },
-    { { 0xFF, 0xFF, 0xFF }, { 0x80, 0x80, 0x80 }, { 0xFF, 0x40, 0x80 } },
-    { { 0xFF, 0xFF, 0xFF }, { 0x80, 0x80, 0x80 }, { 0xFF, 0xFF, 0xFF } },
+    /* ----- Locked -----    --- Save file ----    -- Sparkly star -- */
+    { { 0x80, 0x80, 0x80 }, { 0xFF, 0xFF, 0xFF }, { 0xFF, 0xE0, 0x80 } },
+    { { 0x80, 0x80, 0x80 }, { 0xFF, 0xFF, 0xFF }, { 0xC0, 0xE0, 0xFF } },
+    { { 0x80, 0x80, 0x80 }, { 0xFF, 0xFF, 0xFF }, { 0xFF, 0x40, 0x80 } },
+    { { 0x80, 0x80, 0x80 }, { 0xFF, 0xFF, 0xFF }, { 0xFF, 0xFF, 0xFF } },
 };
 
 static const char *sOmmFileSelectFiles[NUM_SAVE_FILES][3] = {
-    { OMM_TEXT_FS_MARIO_A, OMM_TEXT_LEVEL_UNKNOWN, OMM_TEXT_SPARKLY_1 },
-    { OMM_TEXT_FS_MARIO_B, OMM_TEXT_LEVEL_UNKNOWN, OMM_TEXT_SPARKLY_2 },
-    { OMM_TEXT_FS_MARIO_C, OMM_TEXT_LEVEL_UNKNOWN, OMM_TEXT_SPARKLY_3 },
-    { OMM_TEXT_FS_MARIO_D, OMM_TEXT_LEVEL_UNKNOWN, OMM_TEXT_LEVEL_UNKNOWN },
+    /* ----- Locked -------    --- Save file ---    -- Sparkly star -- */
+    { OMM_TEXT_LEVEL_UNKNOWN, OMM_TEXT_FS_MARIO_A, OMM_TEXT_SPARKLY_1   },
+    { OMM_TEXT_LEVEL_UNKNOWN, OMM_TEXT_FS_MARIO_B, OMM_TEXT_SPARKLY_2   },
+    { OMM_TEXT_LEVEL_UNKNOWN, OMM_TEXT_FS_MARIO_C, OMM_TEXT_SPARKLY_3   },
+    { OMM_TEXT_LEVEL_UNKNOWN, OMM_TEXT_FS_MARIO_D, OMM_TEXT_SPARKLY_ALL },
 };
 
-static const u32 sOmmFileSelectScoreFlags[2][16] = { {
-    SAVE_FLAG_HAVE_WING_CAP, 0xFF, 0x00, 0x00,
-    SAVE_FLAG_HAVE_METAL_CAP, 0x00, 0xD0, 0x00,
-    SAVE_FLAG_HAVE_VANISH_CAP, 0x00, 0x80, 0xFF,
-0 }, {
-    SAVE_FLAG_UNLOCKED_BASEMENT_DOOR | SAVE_FLAG_HAVE_KEY_1, 0xFF, 0xFF, 0x00,
-    SAVE_FLAG_UNLOCKED_UPSTAIRS_DOOR | SAVE_FLAG_HAVE_KEY_2, 0xFF, 0xFF, 0x00,
-0 } };
+static const char *sOmmSparklyScoreMessages[][2] = {
+    { OMM_TEXT_SPARKLY_1_SCORE_MESSAGE_1, OMM_TEXT_SPARKLY_1_SCORE_MESSAGE_2 },
+    { OMM_TEXT_SPARKLY_2_SCORE_MESSAGE_1, OMM_TEXT_SPARKLY_2_SCORE_MESSAGE_2 },
+    { OMM_TEXT_SPARKLY_3_SCORE_MESSAGE_1, OMM_TEXT_SPARKLY_3_SCORE_MESSAGE_2 },
+};
+
+typedef struct { u32 flag; const void *texFull; const void *texEmpty; } ScoreBoardFlag;
+static const ScoreBoardFlag sOmmScoreBoardFlags[] = {
+    { SAVE_FLAG_HAVE_WING_CAP, OMM_TEXTURE_HUD_ICON_CAP_W, OMM_TEXTURE_HUD_ICON_CAP_W_EMPTY },
+    { SAVE_FLAG_HAVE_METAL_CAP, OMM_TEXTURE_HUD_ICON_CAP_M, OMM_TEXTURE_HUD_ICON_CAP_M_EMPTY },
+    { SAVE_FLAG_HAVE_VANISH_CAP, OMM_TEXTURE_HUD_ICON_CAP_V, OMM_TEXTURE_HUD_ICON_CAP_V_EMPTY },
+    { SAVE_FLAG_UNLOCKED_BASEMENT_DOOR | SAVE_FLAG_HAVE_KEY_1, OMM_TEXTURE_HUD_ICON_KEY, OMM_TEXTURE_HUD_ICON_KEY_EMPTY },
+    { SAVE_FLAG_UNLOCKED_UPSTAIRS_DOOR | SAVE_FLAG_HAVE_KEY_2, OMM_TEXTURE_HUD_ICON_KEY, OMM_TEXTURE_HUD_ICON_KEY_EMPTY },
+    { 0, NULL, NULL },
+};
 
 static const char *sOmmFileSelectScoreSparklyTimerGlyphs[] = {
     OMM_TEXTURE_HUD_0,
@@ -740,6 +751,30 @@ static const char *sOmmFileSelectScoreSparklyTimerGlyphs[] = {
 // File Select update
 //
 
+static s32 omm_file_select_next_mode(s32 mode) {
+    for (s32 nextMode = mode + 1;; ++nextMode) {
+
+        // Reached max
+        if (nextMode == OMM_FS_MODE_COUNT) {
+            nextMode = -1;
+            continue;
+        }
+
+        // Not available
+        if (!OMM_FS_MODE_IS_AVAILABLE(nextMode)) {
+            continue;
+        }
+
+        // Sparkly stars
+        if (nextMode == OMM_FS_MODE_SPARKLY_STARS && !OMM_REWARD_IS_SPARKLY_STARS_UNLOCKED) {
+            continue;
+        }
+
+        // OK
+        return nextMode;
+    }
+}
+
 static s32 omm_file_select_update() {
     if (sOmmFileSelect->timer++ < 15) return 0;
 
@@ -753,7 +788,7 @@ static s32 omm_file_select_update() {
         if (sOmmFileScore->timer < 10) return 0;
 
         // Switch between stars/coins score
-        if (!OMM_FS_MODE_IS_SPARKLY_STARS && (inputs & A_BUTTON)) {
+        if (OMM_FS_MODE_IS_SAVE_MODE && (inputs & A_BUTTON)) {
             play_sound(OMM_FS_SOUND_SCORE_COINS, gGlobalSoundArgs);
             sOmmFileScore->coins = !sOmmFileScore->coins;
         }
@@ -771,21 +806,21 @@ static s32 omm_file_select_update() {
         sOmmFileSelect->index = (sOmmFileSelect->index + 2) % 4;
         sOmmFileSelect->timer = 40;
     }
-    
+
     // Next save file (horizontally)
     else if (inputs & (STICK_LEFT | STICK_RIGHT)) {
         play_sound(OMM_FS_SOUND_SCROLL, gGlobalSoundArgs);
         sOmmFileSelect->index = ((sOmmFileSelect->index + 1) % 2) + 2 * (sOmmFileSelect->index / 2);
         sOmmFileSelect->timer = 40;
     }
-    
+
     // Change mode
     else if (inputs & L_TRIG) {
         s32 prevMode = sOmmFileSelect->mode;
-        sOmmFileSelect->mode = (sOmmFileSelect->mode + 1) % (OMM_NUM_SAVE_MODES + (OMM_FS_MODE_SPARKLY_STARS_AVAILABLE && OMM_SPARKLY_IS_GAMEMODE_UNLOCKED));
+        sOmmFileSelect->mode = omm_file_select_next_mode(sOmmFileSelect->mode);
         if (prevMode != sOmmFileSelect->mode) play_sound(OMM_FS_SOUND_CHANGE_MODE, gGlobalSoundArgs);
     }
-    
+
     // Return to main menu or cancel copy
     else if (inputs & B_BUTTON) {
         play_sound(OMM_FS_SOUND_RETURN, gGlobalSoundArgs);
@@ -795,7 +830,7 @@ static s32 omm_file_select_update() {
             return -1;
         }
     }
-    
+
     // Advance (A)
     else if (inputs & A_BUTTON) {
         switch (sOmmMainMenu->index) {
@@ -817,14 +852,14 @@ static s32 omm_file_select_update() {
                     sOmmFileCopy->index = sOmmFileSelect->index;
                     sOmmFileCopy->open = true;
                 }
-                
+
                 // Do the file copy
                 else if (sOmmFileCopy->open && sOmmFileCopy->index != sOmmFileSelect->index && !omm_save_file_exists(sOmmFileSelect->index, sOmmFileSelect->mode)) {
                     play_sound(OMM_FS_SOUND_COPY, gGlobalSoundArgs);
                     omm_save_file_copy(sOmmFileCopy->index, sOmmFileSelect->mode, sOmmFileSelect->index);
                     sOmmFileCopy->open = false;
                 }
-                
+
                 // Invalid
                 else {
                     play_sound(OMM_FS_SOUND_INVALID, gGlobalSoundArgs);
@@ -835,17 +870,23 @@ static s32 omm_file_select_update() {
             case OMM_MM_ERASE: {
 
                 // Erase a save file
-                if (!OMM_FS_MODE_IS_SPARKLY_STARS && omm_save_file_exists(sOmmFileSelect->index, sOmmFileSelect->mode)) {
+                if (OMM_FS_MODE_IS_SAVE_MODE && omm_save_file_exists(sOmmFileSelect->index, sOmmFileSelect->mode)) {
                     play_sound(OMM_FS_SOUND_ERASE, gGlobalSoundArgs);
                     omm_save_file_erase(sOmmFileSelect->index, sOmmFileSelect->mode);
                 }
-                
+
                 // Clear Sparkly stars mode
                 else if (OMM_FS_MODE_IS_SPARKLY_STARS && omm_sparkly_is_timer_started(sOmmFileSelect->index + 1)) {
                     play_sound(OMM_FS_SOUND_ERASE, gGlobalSoundArgs);
                     omm_sparkly_clear_mode(sOmmFileSelect->index + 1);
                 }
-                
+
+                // Clear all Sparkly stars data, including completed flags
+                else if (OMM_FS_MODE_IS_SPARKLY_STARS && sOmmFileSelect->index == 3 && OMM_REWARD_IS_SPARKLY_STARS_UNLOCKED) {
+                    play_sound(OMM_FS_SOUND_ERASE, gGlobalSoundArgs);
+                    omm_sparkly_clear_all();
+                }
+
                 // Invalid
                 else {
                     play_sound(OMM_FS_SOUND_INVALID, gGlobalSoundArgs);
@@ -854,10 +895,10 @@ static s32 omm_file_select_update() {
 
             // Open score board
             case OMM_MM_SCORE: {
-                
+
                 // Save file or Sparkly stars
-                if ((!OMM_FS_MODE_IS_SPARKLY_STARS && omm_save_file_exists(sOmmFileSelect->index, sOmmFileSelect->mode)) ||
-                    ( OMM_FS_MODE_IS_SPARKLY_STARS && omm_sparkly_is_timer_started(sOmmFileSelect->index + 1))) {
+                if ((OMM_FS_MODE_IS_SAVE_MODE && omm_save_file_exists(sOmmFileSelect->index, sOmmFileSelect->mode)) ||
+                    (OMM_FS_MODE_IS_SPARKLY_STARS && omm_sparkly_is_unlocked(sOmmFileSelect->index + 1))) {
                     play_sound(OMM_FS_SOUND_SCORE_OPEN, gGlobalSoundArgs);
                     sOmmFileScore->open = true;
                     sOmmFileScore->timer = 0;
@@ -880,7 +921,7 @@ static s32 omm_file_select_update() {
             case OMM_MM_PLAY: {
                 play_sound(OMM_FS_SOUND_PLAY, gGlobalSoundArgs);
                 omm_check_complete_save(sOmmFileSelect->index, sOmmFileSelect->mode);
-                omm_select_save_file(sOmmFileSelect->index, sOmmFileSelect->mode, omm_save_file_get_last_course(sOmmFileSelect->index, sOmmFileSelect->mode), true);
+                omm_select_save_file(sOmmFileSelect->index, sOmmFileSelect->mode, omm_save_file_get_last_course_num(sOmmFileSelect->index, sOmmFileSelect->mode), true);
                 return sOmmFileSelect->index + 1;
             } break;
         }
@@ -893,11 +934,11 @@ static s32 omm_file_select_update() {
 //
 
 static void omm_file_select_render_background(const void *texture, u8 intensity) {
-    static Vtx vtx[4];
-    vtx[0] = (Vtx) { { { GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(0),              0, 0 }, 0, { 0x000, 0x400 }, { intensity, intensity, intensity, 0xFF } } };
-    vtx[1] = (Vtx) { { { GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(0),             0, 0 }, 0, { 0x400, 0x400 }, { intensity, intensity, intensity, 0xFF } } };
-    vtx[2] = (Vtx) { { { GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(0), SCREEN_HEIGHT, 0 }, 0, { 0x400, 0x000 }, { intensity, intensity, intensity, 0xFF } } };
-    vtx[3] = (Vtx) { { { GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(0),  SCREEN_HEIGHT, 0 }, 0, { 0x000, 0x000 }, { intensity, intensity, intensity, 0xFF } } };
+    Vtx *vtx = omm_alloc_vtx(4);
+    vtx[0] = (Vtx) {{{ GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(0),              0, 0 }, 0, { 0x000, 0x400 }, { intensity, intensity, intensity, 0xFF }}};
+    vtx[1] = (Vtx) {{{ GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(0),             0, 0 }, 0, { 0x400, 0x400 }, { intensity, intensity, intensity, 0xFF }}};
+    vtx[2] = (Vtx) {{{ GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(0), SCREEN_HEIGHT, 0 }, 0, { 0x400, 0x000 }, { intensity, intensity, intensity, 0xFF }}};
+    vtx[3] = (Vtx) {{{ GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(0),  SCREEN_HEIGHT, 0 }, 0, { 0x000, 0x000 }, { intensity, intensity, intensity, 0xFF }}};
 
     omm_render_create_dl_ortho_matrix();
     gSPClearGeometryMode(gDisplayListHead++, G_LIGHTING);
@@ -972,87 +1013,160 @@ static void omm_file_select_render_icon(s16 x, s16 y, s16 w, s16 h, s16 texw, s1
     gSPSetGeometryMode(gDisplayListHead++, G_LIGHTING);
 }
 
-static void omm_file_select_render_course_data(f32 scale, s32 sl, s32 sr, s32 x0, s32 y0, u8 alpha, const u8 *courseName, s32 courseNum, s32 lineIndex, s32 maxWidth, bool leftAlign) {
-    s32 levelKnown = (courseNum == COURSE_NONE || (omm_stars_get_bits_total(omm_level_from_course(courseNum), sOmmFileSelect->mode) != 0 && omm_save_file_get_star_flags(sOmmFileSelect->index, sOmmFileSelect->mode, courseNum - 1) != 0));
-    const u8 *levelStr = (levelKnown ? courseName : omm_text_convert(OMM_TEXT_LEVEL_UNKNOWN, false));
+static s32 omm_render_score_board_course_data(s32 fileIndex, s32 modeIndex, f32 scale, s32 sl, s32 sr, s32 x0, s32 y0, u8 alpha, const u8 *courseName, s32 courseNum, s32 lineIndex, s32 maxWidth, bool leftAlign, bool isCoinScore, bool highlightCurrentCourse) {
+    u8 starCourseFlags = omm_stars_get_course_flags(courseNum, modeIndex);
+    if (!starCourseFlags) return 0;
+    s32 levelKnown = (courseNum == COURSE_NONE || omm_save_file_get_star_flags(fileIndex, modeIndex, courseNum - 1) != 0);
+
+    // Highlight
+    if (highlightCurrentCourse && courseNum != COURSE_NONE && gCurrCourseNum == courseNum) {
+        s32 k = OMM_NUM_STARS_MAX_PER_COURSE;
+        s32 hlX = lerp_f(scale, x0, (leftAlign ? OMM_FS_SCORE_COURSE_LEVEL_X_LEFT : OMM_FS_SCORE_COURSE_LEVEL_X_RIGHT) - 2);
+        s32 hlY = lerp_f(scale, y0, OMM_FS_SCORE_COURSE_LINE_Y - 2);
+        s32 hlW = lerp_f(scale,  0, (leftAlign ? OMM_FS_SCORE_COURSE_STARS_X_LEFT - OMM_FS_SCORE_COURSE_LEVEL_X_LEFT : OMM_FS_SCORE_COURSE_STARS_X_RIGHT - OMM_FS_SCORE_COURSE_LEVEL_X_RIGHT) + 2);
+        s32 hlH = lerp_f(scale,  0, OMM_FS_SCORE_COURSE_FONT_SIZE + 4);
+        s32 hlA = 0x20 + ((coss(gGlobalTimer * 0x800) + 1) * 0x20);
+        omm_render_texrect(hlX, hlY, hlW, hlH, 32, 32, 0xFF, 0xFF, 0x40, (hlA * alpha) / 0xFF, OMM_TEXTURE_MISC_WHITE, false);
+    }
+
+    // Course
+    const u8 *levelStr = (isCoinScore && courseNum == COURSE_NONE ? omm_text_convert(OMM_TEXT_PAUSE_CAPTURES, false) : (levelKnown ? courseName : omm_text_convert(OMM_TEXT_LEVEL_UNKNOWN, false)));
     s32 levelX = lerp_f(scale, x0, (leftAlign ? OMM_FS_SCORE_COURSE_LEVEL_X_LEFT : OMM_FS_SCORE_COURSE_LEVEL_X_RIGHT));
     s32 levelY = lerp_f(scale, y0, OMM_FS_SCORE_COURSE_LINE_Y);
     s32 levelW = lerp_f(scale,  0, OMM_FS_SCORE_COURSE_FONT_SIZE);
     s32 levelC = (levelKnown ? 0xFF : 0x80);
     omm_render_string_sized(levelX, levelY, levelW, levelW, levelC, levelC, levelC, alpha, levelStr, false);
 
-    if (sOmmFileScore->coins && courseNum != COURSE_NONE) {
-        s32 coins = omm_save_file_get_course_coin_score(sOmmFileSelect->index, sOmmFileSelect->mode, courseNum - 1);
-        u8 coinsStr[] = { 0xF9, 0xFB, DIALOG_CHAR_SPACE, (coins >= 100 ? (coins / 100) % 10 : 0xE0), (coins >= 10 ? (coins / 10) % 10 : 0xE0), coins % 10, 0xFF };
-        s32 coinsX = lerp_f(scale, x0, (leftAlign ? OMM_FS_SCORE_COURSE_COINS_X_LEFT : OMM_FS_SCORE_COURSE_COINS_X_RIGHT));
-        s32 coinsY = lerp_f(scale, y0, OMM_FS_SCORE_COURSE_LINE_Y);
-        s32 coinsW = lerp_f(scale,  0, OMM_FS_SCORE_COURSE_FONT_SIZE);
-        omm_render_string_sized(coinsX, coinsY, coinsW, coinsW, 0xFF, 0xFF, 0xFF, alpha, coinsStr, false);
-    } else {
-        u8 starBits = omm_stars_get_bits_total(omm_level_from_course(courseNum), sOmmFileSelect->mode);
-        u8 starFlags = omm_save_file_get_star_flags(sOmmFileSelect->index, sOmmFileSelect->mode, courseNum - 1);
-        u8 starGlyph[] = { DIALOG_CHAR_STAR_FILLED, 0xFF };
-        for (s32 j = 0, k = 0; j != OMM_NUM_STARS_MAX_PER_COURSE; ++j) {
-            if (starBits & (1 << j)) {
-                s32 starX = lerp_f(scale, x0, (leftAlign ? OMM_FS_SCORE_COURSE_STARS_X_LEFT : OMM_FS_SCORE_COURSE_STARS_X_RIGHT));
-                s32 starY = lerp_f(scale, y0, OMM_FS_SCORE_COURSE_LINE_Y);
-                s32 starW = lerp_f(scale,  0, OMM_FS_SCORE_COURSE_FONT_SIZE);
-                s32 starC = (starFlags & (1 << j) ? 0xFF : 0x40);
-                omm_render_string_sized(starX, starY, starW, starW, starC, starC, starC, alpha, starGlyph, false);
+    // Stars
+    s32 numStars = 0;
+    u8 starSaveFlags = omm_save_file_get_star_flags(fileIndex, modeIndex, courseNum - 1);
+    for (s32 starIndex = 0, k = 0; starIndex != OMM_NUM_STARS_MAX_PER_COURSE; ++starIndex) {
+        if (starCourseFlags & (1 << starIndex)) {
+            bool collected = (starSaveFlags & (1 << starIndex)) != 0;
+            numStars += collected;
+#if OMM_GAME_IS_SMSR
+            const BehaviorScript *bhv = NULL;
+            if (omm_stars_get_star_data(omm_level_from_course(courseNum), 1, starIndex, &bhv, NULL) && bhv == bhvCustomSMSRStarReplica &&
+                omm_save_file_get_total_star_count(fileIndex, modeIndex) < 121) {
+                continue;
+            }
+#endif
+            if (!isCoinScore) {
+                s32 starX = lerp_f(scale, x0, (leftAlign ? OMM_FS_SCORE_COURSE_STARS_X_LEFT : OMM_FS_SCORE_COURSE_STARS_X_RIGHT) - 1);
+                s32 starY = lerp_f(scale, y0, OMM_FS_SCORE_COURSE_LINE_Y - 1);
+                s32 starW = lerp_f(scale,  0, OMM_FS_SCORE_COURSE_FONT_SIZE + 2);
+                s32 starC = (collected ? 0xFF : 0x40);
+                const void *starT = omm_render_get_star_glyph(clamp_s(courseNum, 0, 16), OMM_EXTRAS_COLORED_STARS, collected);
+                omm_render_texrect(starX, starY, starW, starW, 128, 128, starC, starC, starC, alpha, starT, false);
                 k++;
             }
         }
     }
+
+    // Score
+    if (isCoinScore) {
+        s32 scoreX = lerp_f(scale, x0, (leftAlign ? OMM_FS_SCORE_COURSE_COINS_X_LEFT : OMM_FS_SCORE_COURSE_COINS_X_RIGHT));
+        s32 scoreY = lerp_f(scale, y0, OMM_FS_SCORE_COURSE_LINE_Y);
+        s32 scoreW = lerp_f(scale,  0, OMM_FS_SCORE_COURSE_FONT_SIZE);
+
+        // Coins
+        if (courseNum != COURSE_NONE) {
+            s32 coins = omm_save_file_get_course_coin_score(fileIndex, modeIndex, courseNum - 1);
+            u8 coinsStr[] = { 0xF9, 0xFB, DIALOG_CHAR_SPACE, (coins >= 100 ? (coins / 100) % 10 : 0xE0), (coins >= 10 ? (coins / 10) % 10 : 0xE0), coins % 10, 0xFF };
+            omm_render_string_sized(scoreX, scoreY, scoreW, scoreW, 0xFF, 0xFF, 0xFF, alpha, coinsStr, false);
+        }
+
+        // Captures
+        else {
+            str_t countBuf;
+            str_fmt(countBuf, sizeof(countBuf), "%d / %d", omm_save_file_get_capture_count(fileIndex, modeIndex), omm_level_get_all_available_captures_count(modeIndex));
+            const u8 *countStr = omm_text_convert(countBuf, false);
+            omm_render_string_sized(scoreX, scoreY, scoreW, scoreW, 0xFF, 0xFF, 0xFF, alpha, countStr, false);
+        }
+    }
+
+    // Collected stars
+    return numStars;
 }
 
-static void omm_file_select_render_flags_data(f32 scale, s32 sl, s32 sr, s32 x0, s32 y0, u8 alpha, const u8 *courseName, s32 lineIndex, s32 maxWidth, const u32 *flags) {
+static void omm_render_score_board_flags_data(s32 fileIndex, s32 modeIndex, f32 scale, s32 sl, s32 sr, s32 x0, s32 y0, u8 alpha, const u8 *courseName, s32 lineIndex, s32 maxWidth, const ScoreBoardFlag *flags) {
     s32 levelX = lerp_f(scale, x0, OMM_FS_SCORE_COURSE_LEVEL_X_RIGHT);
     s32 levelY = lerp_f(scale, y0, OMM_FS_SCORE_COURSE_LINE_Y);
     s32 levelW = lerp_f(scale,  0, OMM_FS_SCORE_COURSE_FONT_SIZE);
     omm_render_string_sized(levelX, levelY, levelW, levelW, 0xFF, 0xFF, 0xFF, alpha, courseName, false);
-    u8 flagGlyph[] = { DIALOG_CHAR_STAR_FILLED, 0xFF };
-    for (s32 i = 0, k = 0; flags[i]; i += 4, ++k) {
-        s32 hasFlag = (omm_save_file_get_flags(sOmmFileSelect->index, sOmmFileSelect->mode) & flags[i]) != 0;
-        s32 flagX = lerp_f(scale, x0, OMM_FS_SCORE_COURSE_STARS_X_RIGHT);
-        s32 flagY = lerp_f(scale, y0, OMM_FS_SCORE_COURSE_LINE_Y);
-        s32 flagW = lerp_f(scale,  0, OMM_FS_SCORE_COURSE_FONT_SIZE);
-        s32 flagR = (hasFlag ? flags[i + 1] : 0x40);
-        s32 flagG = (hasFlag ? flags[i + 2] : 0x40);
-        s32 flagB = (hasFlag ? flags[i + 3] : 0x40);
-        omm_render_string_sized(flagX, flagY, flagW, flagW, flagR, flagG, flagB, alpha, flagGlyph, false);
+    for (s32 k = 0; flags[k].flag; ++k) {
+        s32 hasFlag = (omm_save_file_get_flags(fileIndex, modeIndex) & flags[k].flag) != 0;
+        s32 flagX = lerp_f(scale, x0, OMM_FS_SCORE_COURSE_STARS_X_RIGHT - 1);
+        s32 flagY = lerp_f(scale, y0, OMM_FS_SCORE_COURSE_LINE_Y - 1);
+        s32 flagW = lerp_f(scale,  0, OMM_FS_SCORE_COURSE_FONT_SIZE + 2);
+        s32 flagC = (hasFlag ? 0xFF : 0x40);
+        const void *flagT = (hasFlag ? flags[k].texFull : flags[k].texEmpty);
+        omm_render_texrect(flagX, flagY, flagW, flagW, 128, 128, flagC, flagC, flagC, alpha, flagT, false);
     }
 }
 
-static void omm_file_select_render_score_board(f32 scale) {
+#define score_board_level(panel_, courseNum_, levelNum_) { \
+    s32 index_ = levels[panel_].count++; \
+    levels[panel_].levels[index_].num = courseNum_; \
+    omm_level_get_course_name(levels[panel_].levels[index_].name, levelNum_, modeIndex, false, false); \
+}
+
+#define score_board_name(panel_, courseNum_, name_) { \
+    s32 index_ = levels[panel_].count++; \
+    levels[panel_].levels[index_].num = courseNum_; \
+    omm_text_copy(levels[panel_].levels[index_].name, sizeof(ustr_t), name_); \
+}
+
+void omm_render_score_board(s32 fileIndex, s32 modeIndex, f32 scale, u8 a, bool isCoinScore, bool highlightCurrentCourse) {
     s32 sl = min_s(0, GFX_DIMENSIONS_FROM_LEFT_EDGE(0) / 4);
     s32 sr = SCREEN_WIDTH + max_s(0, (GFX_DIMENSIONS_FROM_RIGHT_EDGE(0) - SCREEN_WIDTH) / 4);
     s32 x0 = SCREEN_WIDTH / 2;
     s32 y0 = SCREEN_HEIGHT / 2;
-    s32 alpha = 0xFF * scale;
-
-    // Background
-    s32 bgw = GFX_DIMENSIONS_SCREEN_WIDTH * scale + 2;
-    s32 bgh = SCREEN_HEIGHT * scale;
-    s32 bgx = (SCREEN_WIDTH - bgw) / 2 - 1;
-    s32 bgy = (SCREEN_HEIGHT - bgh) / 2;
-    omm_render_texrect(bgx, bgy, bgw, bgh, 32, 32, 0x00, 0x00, 0x00, 0xF0, OMM_TEXTURE_MISC_WHITE, false);
+    s32 alpha = a * scale;
 
     // Sparkly stars
-    if (OMM_FS_MODE_IS_SPARKLY_STARS) {
-        s32 sparklyMode = sOmmFileSelect->index + 1;
+    if (modeIndex == OMM_FS_MODE_SPARKLY_STARS) {
+        s32 sparklyMode = fileIndex + 1;
+
+        // If timer is not started yet, display a message
+        if (!omm_sparkly_is_timer_started(sparklyMode)) {
+            u8 r = OMM_SPARKLY_HUD_COLOR[sparklyMode][0];
+            u8 g = OMM_SPARKLY_HUD_COLOR[sparklyMode][1];
+            u8 b = OMM_SPARKLY_HUD_COLOR[sparklyMode][2];
+            s32 numLines = array_length(*sOmmSparklyScoreMessages);
+            s32 messageY = y0 - 4 + 8 * (numLines - 1);
+            for (s32 i = 0; i != numLines; ++i) {
+                const u8 *line = omm_text_convert(sOmmSparklyScoreMessages[fileIndex][i], false);
+                s32 lineX = lerp_f(scale, x0, x0 - omm_render_get_string_width(line) / 2);
+                s32 lineY = lerp_f(scale, y0, messageY - 16 * i);
+                s32 lineW = lerp_f(scale,  0, 8);
+                omm_render_string_sized(lineX, lineY, lineW, lineW, r, g, b, alpha, line, false);
+            }
+            return;
+        }
+
         s32 allStars = (omm_sparkly_get_collected_count(sparklyMode) == omm_sparkly_get_bowser_4_index(sparklyMode) + 1);
         s32 timer = omm_sparkly_get_timer(sparklyMode);
 
         // Collected count
-        s32 starX  = lerp_f(scale, x0, sl + 10);
-        s32 starY  = lerp_f(scale, y0, SCREEN_HEIGHT - 36);
-        s32 starW  = lerp_f(scale,  0, 16);
-        s32 countX = lerp_f(scale, x0, sl + 30);
-        s32 countY = lerp_f(scale, y0, SCREEN_HEIGHT - 36);
-        s32 countW = lerp_f(scale,  0, 16);
-        s32 countS = lerp_f(scale,  0, 12);
-        omm_render_glyph(starX, starY, starW, starW, 0xFF, 0xFF, 0xFF, alpha, OMM_SPARKLY_HUD_GLYPH[sparklyMode], false);
-        omm_render_number(countX, countY, countW, countW, countS, alpha, omm_sparkly_get_collected_count(sparklyMode), 2, true, false);
+        s32 starIconX = lerp_f(scale, x0, sl + 10);
+        s32 starIconY = lerp_f(scale, y0, SCREEN_HEIGHT - 36);
+        s32 starIconW = lerp_f(scale,  0, 16);
+        s32 numStarsX = lerp_f(scale, x0, sl + 30);
+        s32 numStarsY = lerp_f(scale, y0, SCREEN_HEIGHT - 36);
+        s32 numStarsW = lerp_f(scale,  0, 16);
+        s32 numStarsS = lerp_f(scale,  0, 12);
+        s32 sepGlyphX = lerp_f(scale, x0, sl + 56);
+        s32 sepGlyphY = lerp_f(scale, y0, SCREEN_HEIGHT - 36);
+        s32 sepGlyphW = lerp_f(scale,  0, 12);
+        s32 maxStarsX = lerp_f(scale, x0, sl + 66);
+        s32 maxStarsY = lerp_f(scale, y0, SCREEN_HEIGHT - 36);
+        s32 maxStarsW = lerp_f(scale,  0, 12);
+        s32 maxStarsS = lerp_f(scale,  0, 9);
+        omm_render_glyph(starIconX, starIconY, starIconW, starIconW, 0xFF, 0xFF, 0xFF, alpha, OMM_SPARKLY_HUD_GLYPH[sparklyMode], false);
+        omm_render_number(numStarsX, numStarsY, numStarsW, numStarsW, numStarsS, alpha, omm_sparkly_get_collected_count(sparklyMode), 2, true, false);
+        omm_render_glyph(sepGlyphX, sepGlyphY, sepGlyphW, sepGlyphW, 0xFF, 0xFF, 0xFF, alpha, OMM_TEXTURE_HUD_SLASH, false);
+        omm_render_number(maxStarsX, maxStarsY, maxStarsW, maxStarsW, maxStarsS, alpha, omm_sparkly_get_bowser_4_index(sparklyMode) + 1, 2, true, false);
 
         // Elapsed time
         s32 timerGlyphs[] = {
@@ -1069,10 +1183,10 @@ static void omm_file_select_render_score_board(f32 scale) {
 
         // List of stars
         // Needs some preprocessing: compute the length of each column to perfectly balance the display
-        struct { struct { u8 name[0x100]; s32 width; s32 index; } levels[15]; s32 count; s32 maxWidth; } sparklyLevels[2] = { 0 };
+        struct { struct { u8 name[0x100]; s32 width; s32 index; } levels[15]; s32 count; s32 maxWidth; } sparklyLevels[2] = {0};
         for (s32 i = 0, n = omm_sparkly_get_bowser_4_index(sparklyMode); i <= n; ++i) {
-            const u8 *levelName = omm_sparkly_get_level_name(sparklyMode, i);
-            if (levelName) {
+            ustr_t levelName;
+            if (omm_sparkly_get_level_name(levelName, sparklyMode, i)) {
                 s32 courseNum = omm_level_get_course(gOmmSparklyData[sparklyMode][i].levelNum);
                 s32 mainCourse = COURSE_IS_MAIN_COURSE(courseNum);
                 s32 nameLength = omm_text_length(levelName);
@@ -1102,39 +1216,40 @@ static void omm_file_select_render_score_board(f32 scale) {
 
     // Save file
     else {
-        mem_new1(const u8 *, OMM_TEXT_LEVEL_CASTLE_STR, omm_text_convert(OMM_TEXT_LEVEL_CASTLE, true));
-        mem_new1(const u8 *, OMM_TEXT_FS_CAPS_STR, omm_text_convert(OMM_TEXT_FS_CAPS, true));
-        mem_new1(const u8 *, OMM_TEXT_FS_KEYS_STR, omm_text_convert(OMM_TEXT_FS_KEYS, true));
-        struct { struct { const u8 *name; s32 width; s32 index; } levels[15]; s32 count; s32 maxWidth; } levels[2] = { { {
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_BOB   - 1] + 3, 0, COURSE_BOB   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_WF    - 1] + 3, 0, COURSE_WF    },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_JRB   - 1] + 3, 0, COURSE_JRB   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_CCM   - 1] + 3, 0, COURSE_CCM   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_BBH   - 1] + 3, 0, COURSE_BBH   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_HMC   - 1] + 3, 0, COURSE_HMC   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_LLL   - 1] + 3, 0, COURSE_LLL   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_SSL   - 1] + 3, 0, COURSE_SSL   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_DDD   - 1] + 3, 0, COURSE_DDD   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_SL    - 1] + 3, 0, COURSE_SL    },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_WDW   - 1] + 3, 0, COURSE_WDW   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_TTM   - 1] + 3, 0, COURSE_TTM   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_THI   - 1] + 3, 0, COURSE_THI   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_TTC   - 1] + 3, 0, COURSE_TTC   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_RR    - 1] + 3, 0, COURSE_RR    },
-        }, 15, 0 }, { {
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_BITDW - 1] + 3, 0, COURSE_BITDW },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_BITFS - 1] + 3, 0, COURSE_BITFS },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_BITS  - 1] + 3, 0, COURSE_BITS  },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_TOTWC - 1] + 3, 0, COURSE_TOTWC },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_COTMC - 1] + 3, 0, COURSE_COTMC },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_VCUTM - 1] + 3, 0, COURSE_VCUTM },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_PSS   - 1] + 3, 0, COURSE_PSS   },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_SA    - 1] + 3, 0, COURSE_SA    },
-            { gCourseNameTable(sOmmFileSelect->mode)[COURSE_WMOTR - 1] + 3, 0, COURSE_WMOTR },
-            { OMM_TEXT_LEVEL_CASTLE_STR,                                    0, COURSE_NONE  },
-            { OMM_TEXT_FS_CAPS_STR,                                         0, COURSE_NONE  },
-            { OMM_TEXT_FS_KEYS_STR,                                         0, COURSE_NONE  },
-        }, 12, 0 } };
+        mem_new1(const u8 *, OMM_TEXT_LEVEL_SECRET_STARS_STR, omm_text_convert(OMM_TEXT_LEVEL_SECRET_STARS, true));
+        mem_new1(const u8 *, OMM_TEXT_FS_CAPS_AND_KEYS_STR, omm_text_convert(OMM_TEXT_FS_CAPS_AND_KEYS, true));
+        struct { struct { ustr_t name; s32 width; s32 num; } levels[15]; s32 count; s32 maxWidth; } levels[2] = {0};
+        score_board_level(0, COURSE_BOB, LEVEL_BOB);
+        score_board_level(0, COURSE_WF, LEVEL_WF);
+        score_board_level(0, COURSE_JRB, LEVEL_JRB);
+        score_board_level(0, COURSE_CCM, LEVEL_CCM);
+        score_board_level(0, COURSE_BBH, LEVEL_BBH);
+        score_board_level(0, COURSE_HMC, LEVEL_HMC);
+        score_board_level(0, COURSE_LLL, LEVEL_LLL);
+        score_board_level(0, COURSE_SSL, LEVEL_SSL);
+        score_board_level(0, COURSE_DDD, LEVEL_DDD);
+        score_board_level(0, COURSE_SL, LEVEL_SL);
+        score_board_level(0, COURSE_WDW, LEVEL_WDW);
+        score_board_level(0, COURSE_TTM, LEVEL_TTM);
+        score_board_level(0, COURSE_THI, LEVEL_THI);
+        score_board_level(0, COURSE_TTC, LEVEL_TTC);
+        score_board_level(0, COURSE_RR, LEVEL_RR);
+        score_board_level(1, COURSE_BITDW, LEVEL_BITDW);
+        score_board_level(1, COURSE_BITFS, LEVEL_BITFS);
+        score_board_level(1, COURSE_BITS, LEVEL_BITS);
+        score_board_level(1, COURSE_TOTWC, LEVEL_TOTWC);
+        score_board_level(1, COURSE_COTMC, LEVEL_COTMC);
+        score_board_level(1, COURSE_VCUTM, LEVEL_VCUTM);
+        score_board_level(1, COURSE_PSS, LEVEL_PSS);
+        score_board_level(1, COURSE_SA, LEVEL_SA);
+        score_board_level(1, COURSE_WMOTR, LEVEL_WMOTR);
+#if OMM_GAME_IS_R96X
+        score_board_name(1, COURSE_CAKE_END, OMM_TEXT_LEVEL_SECRET_STARS_STR);
+#else
+        score_board_level(1, COURSE_CAKE_END, LEVEL_ENDING);
+#endif
+        score_board_name(1, COURSE_NONE, OMM_TEXT_LEVEL_SECRET_STARS_STR);
+        score_board_name(1, COURSE_NONE, OMM_TEXT_FS_CAPS_AND_KEYS_STR);
 
         // Compute width and maxWidth
         for (s32 i = 0; i != 2; ++i)
@@ -1143,8 +1258,41 @@ static void omm_file_select_render_score_board(f32 scale) {
             levels[i].maxWidth = max_s(levels[i].maxWidth, levels[i].levels[j].width);
         }
 
+        // Main courses
+        s32 numStars = 0;
+        for (s32 i = 0; i != 15; ++i) {
+            numStars += omm_render_score_board_course_data(
+                fileIndex, modeIndex,
+                scale, sl, sr, x0, y0, alpha,
+                levels[0].levels[i].name,
+                levels[0].levels[i].num, i,
+                levels[0].maxWidth, true,
+                isCoinScore, highlightCurrentCourse
+            );
+        }
+
+        // Bowser, Cap, Bonus levels and Castle
+        for (s32 i = 0; i != 11; ++i) {
+            numStars += omm_render_score_board_course_data(
+                fileIndex, modeIndex,
+                scale, sl, sr, x0, y0, alpha,
+                levels[1].levels[i].name,
+                levels[1].levels[i].num, i + (i / 3),
+                levels[1].maxWidth, false,
+                isCoinScore, highlightCurrentCourse
+            );
+        }
+
+        // Flags (caps and Bowser keys)
+        omm_render_score_board_flags_data(
+            fileIndex, modeIndex,
+            scale, sl, sr, x0, y0, alpha,
+            levels[1].levels[11].name, 14,
+            levels[1].maxWidth,
+            sOmmScoreBoardFlags
+        );
+
         // Collected stars
-        s32 numStars  = omm_save_file_get_total_star_count(sOmmFileSelect->index, sOmmFileSelect->mode, COURSE_MIN - 1, COURSE_MAX - 1);
         s32 starIconX = lerp_f(scale, x0, sl + 10);
         s32 starIconY = lerp_f(scale, y0, SCREEN_HEIGHT - 48);
         s32 starIconW = lerp_f(scale,  0, 16);
@@ -1152,11 +1300,20 @@ static void omm_file_select_render_score_board(f32 scale) {
         s32 numStarsY = lerp_f(scale, y0, SCREEN_HEIGHT - 48);
         s32 numStarsW = lerp_f(scale,  0, 16);
         s32 numStarsS = lerp_f(scale,  0, 12);
-        omm_render_glyph(starIconX, starIconY, starIconW, starIconW, 0xFF, 0xFF, 0xFF, alpha, omm_render_get_star_glyph(0, OMM_EXTRAS_COLORED_STARS), false);
+        s32 sepGlyphX = lerp_f(scale, x0, sl + 68);
+        s32 sepGlyphY = lerp_f(scale, y0, SCREEN_HEIGHT - 48);
+        s32 sepGlyphW = lerp_f(scale,  0, 12);
+        s32 maxStarsX = lerp_f(scale, x0, sl + 78);
+        s32 maxStarsY = lerp_f(scale, y0, SCREEN_HEIGHT - 48);
+        s32 maxStarsW = lerp_f(scale,  0, 12);
+        s32 maxStarsS = lerp_f(scale,  0, 9);
+        omm_render_glyph(starIconX, starIconY, starIconW, starIconW, 0xFF, 0xFF, 0xFF, alpha, omm_render_get_star_glyph(0, OMM_EXTRAS_COLORED_STARS, true), false);
         omm_render_number(numStarsX, numStarsY, numStarsW, numStarsW, numStarsS, alpha, numStars, 3, true, false);
+        omm_render_glyph(sepGlyphX, sepGlyphY, sepGlyphW, sepGlyphW, 0xFF, 0xFF, 0xFF, alpha, OMM_TEXTURE_HUD_SLASH, false);
+        omm_render_number(maxStarsX, maxStarsY, maxStarsW, maxStarsW, maxStarsS, alpha, omm_stars_get_total_star_count(modeIndex), 3, true, false);
 
         // Collected coins
-        s32 numCoins  = omm_save_file_get_total_coin_score(sOmmFileSelect->index, sOmmFileSelect->mode, COURSE_MIN - 1, COURSE_MAX - 1);
+        s32 numCoins  = omm_save_file_get_total_coin_score(fileIndex, modeIndex);
         s32 numCoinsS = lerp_f(scale,  0, 12);
         s32 coinIconX = lerp_f(scale, x0, sr - (42 + 4 * numCoinsS));
         s32 coinIconY = lerp_f(scale, y0, SCREEN_HEIGHT - 48);
@@ -1166,53 +1323,51 @@ static void omm_file_select_render_score_board(f32 scale) {
         s32 numCoinsW = lerp_f(scale,  0, 16);
         omm_render_glyph(coinIconX, coinIconY, coinIconW, coinIconW, 0xFF, 0xFF, 0xFF, alpha, OMM_TEXTURE_HUD_COIN, false);
         omm_render_number(numCoinsX, numCoinsY, numCoinsW, numCoinsW, numCoinsS, alpha, numCoins, 5, true, false);
-
-        // Main courses
-        for (s32 i = 0; i != 15; ++i) {
-            omm_file_select_render_course_data(
-                scale, sl, sr, x0, y0, alpha,
-                levels[0].levels[i].name,
-                levels[0].levels[i].index, i,
-                levels[0].maxWidth, true
-            );
-        }
-
-        // Bowser, Cap, Bonus levels and Castle
-        for (s32 i = 0; i != 10; ++i) {
-            omm_file_select_render_course_data(
-                scale, sl, sr, x0, y0, alpha,
-                levels[1].levels[i].name,
-                levels[1].levels[i].index, i + (i / 3),
-                levels[1].maxWidth, false
-            );
-        }
-
-        // Flags (caps and Bowser keys)
-        for (s32 i = 10; i != 12; ++i) {
-            omm_file_select_render_flags_data(
-                scale, sl, sr, x0, y0, alpha,
-                levels[1].levels[i].name, i + 3,
-                levels[1].maxWidth,
-                sOmmFileSelectScoreFlags[i - 10]
-            );
-        }
     }
+}
+
+static void omm_file_select_render_score_board(f32 scale) {
+
+    // Background
+    s32 bgw = GFX_DIMENSIONS_SCREEN_WIDTH * scale + 2;
+    s32 bgh = SCREEN_HEIGHT * scale;
+    s32 bgx = (SCREEN_WIDTH - bgw) / 2 - 1;
+    s32 bgy = (SCREEN_HEIGHT - bgh) / 2;
+    omm_render_texrect(bgx, bgy, bgw, bgh, 32, 32, 0x00, 0x00, 0x00, 0xF0, OMM_TEXTURE_MISC_WHITE, false);
+
+    // Score board
+    omm_render_score_board(sOmmFileSelect->index, sOmmFileSelect->mode, scale, 0xFF, sOmmFileScore->coins, false);
 }
 
 static void omm_file_select_render() {
     s32 SW = SCREEN_WIDTH + max_s(0, (GFX_DIMENSIONS_SCREEN_WIDTH - SCREEN_WIDTH) / 3);
+    s32 type = (OMM_FS_MODE_IS_SAVE_MODE * 1 + OMM_FS_MODE_IS_SPARKLY_STARS * 2);
 
     // Background
-    omm_file_select_render_background(sOmmFileSelectBackgrounds[sOmmMainMenu->index][OMM_FS_MODE_IS_SPARKLY_STARS], (sOmmMainMenu->index == OMM_MM_PLAY ? 0xD2 : 0xFF));
+    omm_file_select_render_background(sOmmFileSelectBackgrounds[sOmmMainMenu->index][type - 1], (sOmmMainMenu->index == OMM_MM_PLAY ? 0xD2 : 0xFF));
 
     // Title
     const u8 *titleStr = omm_text_convert(sOmmFileSelectStrings[sOmmMainMenu->index][sOmmFileSelect->mode], false);
     omm_render_string_hud_centered(OMM_FS_TITLE_Y, 0xFF, 0xFF, 0xFF, 0xFF, titleStr, false);
 
+    // Press L to change the current window
+    s32 nextMode = omm_file_select_next_mode(sOmmFileSelect->mode);
+    if (nextMode != sOmmFileSelect->mode) {
+        const u8 *lStr = omm_text_convert(OMM_TEXT_FS_L, false);
+        const u8 *lArrowStr = omm_text_convert(OMM_TEXT_FS_ARROW, false);
+        const u8 *lModeStr = omm_text_convert(sOmmFileSelectStrings[sOmmMainMenu->index][nextMode], false);
+        omm_render_string(OMM_FS_L_X +  1, OMM_FS_L_Y, 0xFF, 0xFF, 0xFF, 0xFF, lStr, true);
+        omm_render_string(OMM_FS_L_X +  2, OMM_FS_L_Y, 0xFF, 0xFF, 0xFF, 0xFF, lStr, true);
+        omm_render_string(OMM_FS_L_X + 10, OMM_FS_L_Y, 0xFF, 0xFF, 0xFF, 0xFF, lArrowStr, true);
+        omm_render_string(OMM_FS_L_X + 20, OMM_FS_L_Y, 0xFF, 0xFF, 0xFF, 0xFF, lModeStr, true);
+    }
+
     // Files
     for (s32 i = 0; i != 4; ++i) {
-        s32 u = omm_sparkly_is_unlocked(i + 1);
-        s32 j = OMM_FS_MODE_IS_SPARKLY_STARS * (u + 1);
+        bool unlocked = (
+            (OMM_FS_MODE_IS_SAVE_MODE) ||
+            (OMM_FS_MODE_IS_SPARKLY_STARS && ((i == 3) || omm_sparkly_is_unlocked(i + 1)))
+        );
         s32 w = (SW - 2 * (OMM_FS_BACKGROUND_MARGIN + OMM_FS_BACKGROUND_BORDER)) / 2;
         s32 x = (SCREEN_WIDTH / 2) + (w + OMM_FS_FILE_BUTTON_MARGIN_IN) * (i % 2) + OMM_FS_FILE_BUTTON_MARGIN_OUT * ((i + 1) % 2) + (OMM_FS_FILE_BUTTON_WIDTH / 2) - w;
         s32 y = ((SCREEN_HEIGHT - OMM_FS_TITLE_H) / 2) + ((i / 2) == 0 ? +1 : -1) * (OMM_FS_FILE_BUTTON_HEIGHT / 2 + OMM_FS_FILE_BUTTON_MARGIN_OUT);
@@ -1228,62 +1383,88 @@ static void omm_file_select_render() {
         }
 
         // Generic button
-        const u8 *colors = sOmmFileSelectButtonColors[i][j];
+        const u8 *colors = sOmmFileSelectButtonColors[i][unlocked * type];
         omm_file_select_render_button(x, y, colors[0], colors[1], colors[2]);
 
         // File
-        u8 *fileStr = omm_text_convert(sOmmFileSelectFiles[i][j], false);
+        u8 *fileStr = omm_text_convert(sOmmFileSelectFiles[i][unlocked * type], false);
         omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 + 9, y + 10, 0x00, 0x00, 0x00, 0xFF, fileStr, false);
         omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 + 7, y + 10, 0x00, 0x00, 0x00, 0xFF, fileStr, false);
         omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 + 8, y + 11, 0x00, 0x00, 0x00, 0xFF, fileStr, false);
         omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 + 8, y +  9, 0x00, 0x00, 0x00, 0xFF, fileStr, false);
         omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 + 8, y + 10, 0xFF, 0xFF, 0xFF, 0xFF, fileStr, false);
 
-        // Data
+        // Sparkly stars
         if (OMM_FS_MODE_IS_SPARKLY_STARS) {
 
             // Sparkly mode
             s32 sparklyMode = i + 1;
-            s32 numStars = omm_sparkly_get_collected_count(sparklyMode);
-            s32 timer = omm_sparkly_get_timer(sparklyMode);
-            if (u) {
+            s32 numStars = (i == 3 ?
+                omm_sparkly_get_collected_count(OMM_SPARKLY_MODE_NORMAL) +
+                omm_sparkly_get_collected_count(OMM_SPARKLY_MODE_HARD) +
+                omm_sparkly_get_collected_count(OMM_SPARKLY_MODE_LUNATIC) :
+                omm_sparkly_get_collected_count(sparklyMode)
+            );
+            s32 timer = (i == 3 ?
+                omm_sparkly_get_timer(OMM_SPARKLY_MODE_NORMAL) +
+                omm_sparkly_get_timer(OMM_SPARKLY_MODE_HARD) +
+                omm_sparkly_get_timer(OMM_SPARKLY_MODE_LUNATIC) :
+                omm_sparkly_get_timer(sparklyMode)
+            );
+            if (unlocked && (i == 3 || omm_sparkly_is_timer_started(sparklyMode))) {
 
                 // Num stars
-                str_fmt_sa(numStarsBuf, 8, "%d", numStars);
+                str_t numStarsBuf;
+                str_fmt(numStarsBuf, sizeof(numStarsBuf), "%d", numStars);
                 u8 *numStarsStr = omm_text_convert(numStarsBuf, false);
                 omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 +  8, y - 4, 0xFF, 0xFF, 0xFF, 0xFF, array_of(u8) { 0xFA, 0xFF }, true);
                 omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 + 18, y - 4, 0xFF, 0xFF, 0xFF, 0xFF, array_of(u8) { 0xFB, 0xFF }, true);
                 omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 + 28, y - 4, 0xFF, 0xFF, 0xFF, 0xFF, numStarsStr, true);
 
                 // Timer
-                str_fmt_sa(timerBuf, 16, "%02d:%02d:%02d", (timer / 108000), (timer / 1800) % 60, (timer / 30) % 60);
+                str_t timerBuf;
+                str_fmt(timerBuf, sizeof(timerBuf), "%02d:%02d:%02d", (timer / 108000), (timer / 1800) % 60, (timer / 30) % 60);
                 u8 *timerStr = omm_text_convert(timerBuf, false);
                 omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 + 8, y - 18, 0xFF, 0xFF, 0xFF, 0xFF, timerStr, true);
             }
-            
+
             // Star icon
-            s32 k = omm_sparkly_is_completed(sparklyMode);
-            s32 c = (u && k ? 0xFF : 0x00);
-            s32 a = (u && k ? 0xFF : 0x80);
-            s32 s = ((OMM_FS_FILE_BUTTON_HEIGHT - 2 * OMM_FS_FILE_BUTTON_BORDER) * 3) / 4;
-            omm_file_select_render_icon(x, y, s, s, 128, 128, c, c, c, a, OMM_SPARKLY_HUD_GLYPH[clamp_s(sparklyMode, 0, OMM_SPARKLY_MODE_COUNT - 1)]);
+            if (i == 3) {
+                static const f32 SPARKLY_STARS_ALL_DELTA_X[3] = { -0.50f, +0.50f,  0.00f };
+                static const f32 SPARKLY_STARS_ALL_DELTA_Y[3] = { -0.30f, -0.30f, +0.45f };
+                s32 s = (OMM_FS_FILE_BUTTON_HEIGHT - 2 * OMM_FS_FILE_BUTTON_BORDER) / 2;
+                for (s32 m = 0; m != 3; ++m) {
+                    s32 k = omm_sparkly_is_completed(m + 1);
+                    s32 c = (k ? 0xFF : 0x00);
+                    s32 a = (k ? 0xFF : 0x80);
+                    omm_file_select_render_icon(x + SPARKLY_STARS_ALL_DELTA_X[m] * s, y + SPARKLY_STARS_ALL_DELTA_Y[m] * s, s, s, 128, 128, c, c, c, a, OMM_SPARKLY_HUD_GLYPH[m + 1]);
+                }
+            } else {
+                s32 k = omm_sparkly_is_completed(sparklyMode);
+                s32 c = (unlocked && k ? 0xFF : 0x00);
+                s32 a = (unlocked && k ? 0xFF : 0x80);
+                s32 s = ((OMM_FS_FILE_BUTTON_HEIGHT - 2 * OMM_FS_FILE_BUTTON_BORDER) * 3) / 4;
+                omm_file_select_render_icon(x, y, s, s, 128, 128, c, c, c, a, OMM_SPARKLY_HUD_GLYPH[sparklyMode]);
+            }
         } else {
 
             // Save file
             if (omm_save_file_exists(i, sOmmFileSelect->mode)) {
-                s32 numStars = omm_save_file_get_total_star_count(i, sOmmFileSelect->mode, COURSE_MIN - 1, COURSE_MAX - 1);
-                s32 numCoins = omm_save_file_get_total_coin_score(i, sOmmFileSelect->mode, COURSE_MIN - 1, COURSE_MAX - 1);
-                s32 lastCourseNum = omm_save_file_get_last_course(i, sOmmFileSelect->mode);
+                s32 numStars = omm_save_file_get_total_star_count(i, sOmmFileSelect->mode);
+                s32 numCoins = omm_save_file_get_total_coin_score(i, sOmmFileSelect->mode);
+                s32 lastCourseNum = omm_save_file_get_last_course_num(i, sOmmFileSelect->mode);
 
                 // Num stars
-                str_fmt_sa(numStarsBuf, 8, "%d", numStars);
+                str_t numStarsBuf;
+                str_fmt(numStarsBuf, sizeof(numStarsBuf), "%d", numStars);
                 u8 *numStarsStr = omm_text_convert(numStarsBuf, false);
                 omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 +  8, y - 4, 0xFF, 0xFF, 0xFF, 0xFF, array_of(u8) { 0xFA, 0xFF }, true);
                 omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 + 18, y - 4, 0xFF, 0xFF, 0xFF, 0xFF, array_of(u8) { 0xFB, 0xFF }, true);
                 omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 + 28, y - 4, 0xFF, 0xFF, 0xFF, 0xFF, numStarsStr, true);
 
                 // Num coins
-                str_fmt_sa(numCoinsBuf, 8, "%d", numCoins);
+                str_t numCoinsBuf;
+                str_fmt(numCoinsBuf, sizeof(numCoinsBuf), "%d", numCoins);
                 u8 *numCoinsStr = omm_text_convert(numCoinsBuf, false);
                 omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 +  8, y - 18, 0xFF, 0xFF, 0xFF, 0xFF, array_of(u8) { 0xF9, 0xFF }, true);
                 omm_render_string(x + OMM_FS_FILE_BUTTON_WIDTH / 2 + 18, y - 18, 0xFF, 0xFF, 0xFF, 0xFF, array_of(u8) { 0xFB, 0xFF }, true);
@@ -1295,7 +1476,8 @@ static void omm_file_select_render() {
                 omm_file_select_render_icon(x, y, wi, hi, 320, 240, 0xFF, 0xFF, 0xFF, 0xFF, sOmmFileSelectCourses[lastCourseNum][sOmmFileSelect->mode]);
 
                 // Last course
-                u8 *courseStr = omm_level_get_course_name(omm_level_from_course(lastCourseNum), sOmmFileSelect->mode, false, false);
+                ustr_t courseStr;
+                omm_level_get_course_name(courseStr, omm_level_from_course(lastCourseNum), sOmmFileSelect->mode, false, false);
                 omm_render_string_sized(x - OMM_FS_FILE_BUTTON_WIDTH / 2, y - (OMM_FS_FILE_BUTTON_HEIGHT / 2) - 9, 5, 5, 0xFF, 0xFF, 0xFF, 0xFF, courseStr, true);
             } else {
 
@@ -1330,25 +1512,23 @@ static void omm_file_select_render() {
 //
 
 static s32 omm_level_main_menu_init(UNUSED s32 arg, UNUSED s32 unused) {
-    mem_clr(sOmmMainMenu, sizeof(*sOmmMainMenu));
-    mem_clr(sOmmFileSelect, sizeof(*sOmmFileSelect));
-    mem_clr(sOmmFileCopy, sizeof(*sOmmFileCopy));
-    mem_clr(sOmmFileScore, sizeof(*sOmmFileScore));
-    mem_clr(gPlayerSpawnInfos, sizeof(*gPlayerSpawnInfos));
-    mem_clr(gPlayerCameraState, sizeof(*gPlayerCameraState));
-    mem_clr(gBodyStates, sizeof(*gBodyStates));
-    mem_clr(gMarioState, sizeof(*gMarioState));
+    mem_zero(sOmmMainMenu, sizeof(*sOmmMainMenu));
+    mem_zero(sOmmFileSelect, sizeof(*sOmmFileSelect));
+    mem_zero(sOmmFileCopy, sizeof(*sOmmFileCopy));
+    mem_zero(sOmmFileScore, sizeof(*sOmmFileScore));
+    mem_zero(gPlayerSpawnInfos, sizeof(*gPlayerSpawnInfos));
+    mem_zero(gPlayerCameraState, sizeof(*gPlayerCameraState));
+    mem_zero(gBodyStates, sizeof(*gBodyStates));
+    mem_zero(gMarioState, sizeof(*gMarioState));
     gMarioState->controller = gControllers;
     gMarioState->spawnInfo = gPlayerSpawnInfos;
     gMarioState->statusForCamera = gPlayerCameraState;
     gMarioState->marioBodyState = gBodyStates;
     gMarioState->marioBodyState->capState = MARIO_HAS_DEFAULT_CAP_OFF;
     gMarioState->marioBodyState->handState = MARIO_HAND_FISTS;
-    gMarioState->unkB0 = 0xBD;
+    gCurrCreditsEntry = NULL;
     sOmmCompleteSaveSequenceIndex = 0;
     gMarioAnimations = &gMarioAnimsData;
-    omm_register_warp_functions();
-    omm_disable_warp_functions();
     return 0;
 }
 
@@ -1374,7 +1554,6 @@ static s32 omm_level_main_menu_update(UNUSED s32 arg, UNUSED s32 unused) {
 }
 
 static s32 omm_level_main_menu_end(UNUSED s32 arg, UNUSED s32 unused) {
-    omm_enable_warp_functions();
     omm_player_select(gOmmCharacter);
     sOmmCompleteSaveSequenceIndex = 0;
     return 0;

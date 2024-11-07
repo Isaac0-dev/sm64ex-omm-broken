@@ -7,43 +7,32 @@
 // Save filename (not used, kept because compiling issues)
 #define SAVE_FILENAME "sm64_save_file.bin"
 
-// Resources dir
-#ifndef FS_BASEDIR
-#define FS_BASEDIR "res"
-#endif
+// Base ROM
+#define BASEROM_US_Z64 "baserom.us.z64"
 
-// Vanilla assets
-#ifndef FS_BASEPACK_PREFIX
-#define FS_BASEPACK_PREFIX "base"
-#endif
-
-// Textures root
-#ifndef FS_TEXTUREDIR
-#define FS_TEXTUREDIR "gfx"
-#endif
-
-// Sounds root
-#ifndef FS_SOUNDDIR
-#define FS_SOUNDDIR "sound"
-#endif
+// Resources
+#define FS_BASEPACK     "base." OMM_GAME_CODE ".zip"
+#define FS_TEXTUREDIR   "gfx"
+#define FS_SOUNDDIR     "sound"
+#define FS_OMM_BASEPACK "omm.zip"
 
 // Dir flags
 #define FS_DIR_READ  (1 << 0)
 #define FS_DIR_WRITE (1 << 1)
+#define FS_DIR_PACKS (1 << 2)
 
 // Walk return codes
-#define FS_WALK_SUCCESS     0
-#define FS_WALK_INTERRUPTED 1
-#define FS_WALK_NOTFOUND    2
-#define FS_WALK_ERROR       4
-
-// Paths
-extern char fs_gamedir[];
-extern char fs_writepath[];
+#define FS_WALK_SUCCESS     (0)
+#define FS_WALK_INTERRUPTED (1)
+#define FS_WALK_NOTFOUND    (2)
+#define FS_WALK_ERROR       (4)
 
 //
 // Structs
 //
+
+// Filepath string
+typedef char sys_path_t[SYS_MAX_PATH];
 
 // Walk function signature
 typedef bool (*walk_fn_t)(void *, const char *);
@@ -79,6 +68,7 @@ typedef struct fs_packtype_s {
     s64        (*size)    (void *pack, fs_file_t *file);
     bool       (*eof)     (void *pack, fs_file_t *file);
     void       (*close)   (void *pack, fs_file_t *file);
+    s64        (*fsize)   (void *pack, const char *path);
 } fs_packtype_t;
 
 //
@@ -96,19 +86,26 @@ bool          fs_is_dir          (const char *fname);
 fs_file_t    *fs_open            (const char *vpath);
 void          fs_close           (fs_file_t *file);
 s64           fs_read            (fs_file_t *file, void *buf, const u64 size);
-const char   *fs_readline        (fs_file_t *file, char *dst, const u64 size);
 bool          fs_seek            (fs_file_t *file, const s64 ofs);
 s64           fs_tell            (fs_file_t *file);
 s64           fs_size            (fs_file_t *file);
 bool          fs_eof             (fs_file_t *file);
+s64           fs_fsize           (const char *vpath);
 void         *fs_load_file       (const char *vpath, u64 *outsize);
 u8           *fs_load_png        (const char *vpath, s32 *w, s32 *h);
 const char   *fs_readline        (fs_file_t *file, char *dst, u64 size);
-const char   *fs_find            (char *outname, const u64 outlen, const char *pattern, u8 flags);
-const char   *fs_match           (char *outname, const u64 outlen, const char *prefix, u8 flags);
-const char   *fs_get_write_path  (const char *vpath);
-const char   *fs_convert_path    (char *buf, const u64 bufsiz, const char *path);
-const char   *fs_cat_paths       (char *buf, const u64 bufsiz, const char *path1, const char *path2);
+const char   *fs_find            (sys_path_t dst, const char *pattern, u8 flags);
+const char   *fs_match           (sys_path_t dst, const char *prefix, u8 flags);
+const char   *fs_convert_path    (sys_path_t dst, const char *path);
+const char   *fs_cat_paths       (sys_path_t dst, const char *path1, const char *path2);
+const char   *fs_get_game_path   (sys_path_t dst, const char *vpath);
+const char   *fs_get_save_path   (sys_path_t dst, const char *vpath);
+const char   *fs_get_write_path  (const char *vpath); // For compatibility, do not use
+
+#if defined(AUDIO_LOAD_H) || (OMM_GAME_IS_R96X && defined(AUDIO_DATA_H))
+extern u8 *rom_asset_load_sound_data(const char *name);
+#define fs_load_file(name, ...) rom_asset_load_sound_data(name)
+#endif
 
 //
 // Real file system
@@ -119,7 +116,7 @@ fs_pathlist_t fs_sys_enumerate   (const char *base, const bool recur);
 bool          fs_sys_file_exists (const char *name);
 bool          fs_sys_dir_exists  (const char *name);
 bool          fs_sys_mkdir       (const char *name);
-bool          fs_sys_copy_file   (const char *oldname, const char *newname);
+bool          fs_sys_copy_file   (const char *from, const char *to);
 bool          fs_sys_delete_file (const char *name);
 
 #endif // _SM64_FS_H_

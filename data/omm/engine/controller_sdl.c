@@ -2,13 +2,14 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
-#define VK_OFS_SDL_MOUSE 0x0100
-#define VK_BASE_SDL_MOUSE (VK_BASE_SDL_GAMEPAD + VK_OFS_SDL_MOUSE)
-#define NUM_JOYSTICK_BUTTONS (1 + MAX(MAX(VK_LTRIGGER, VK_RTRIGGER) - VK_BASE_SDL_GAMEPAD, SDL_CONTROLLER_BUTTON_MAX))
 
-#define CM_BUTTON(cm) (u32) (((cm) >> 32llu) & 0xFFFFFFFFllu)
-#define CM_MASK(cm) (u32) (((cm) >>  0llu) & 0xFFFFFFFFllu)
-#define CM_MAPPING(button, mask) ((((u64) (button)) << 32llu) | (((u64) (mask)) << 0llu))
+#define VK_OFS_SDL_MOUSE            (0x0100)
+#define VK_BASE_SDL_MOUSE           (VK_BASE_SDL_GAMEPAD + VK_OFS_SDL_MOUSE)
+#define NUM_JOYSTICK_BUTTONS        (1 + MAX(MAX(VK_LTRIGGER, VK_RTRIGGER) - VK_BASE_SDL_GAMEPAD, SDL_CONTROLLER_BUTTON_MAX))
+
+#define CM_BUTTON(cm)               (u32) (((cm) >> 32llu) & 0xFFFFFFFFllu)
+#define CM_MASK(cm)                 (u32) (((cm) >>  0llu) & 0xFFFFFFFFllu)
+#define CM_MAPPING(button, mask)    ((((u64) (button)) << 32llu) | (((u64) (mask)) << 0llu))
 
 static OmmArray sJoystickMapping = omm_array_zero;
 static OmmArray sMouseMapping = omm_array_zero;
@@ -20,17 +21,6 @@ static bool sControllerInited;
 static SDL_GameController *sController;
 s32 gMouseHasFreeControl = FALSE;
 s32 gMouseHasCenterControl = FALSE;
-
-void tas_shutdown(void);
-void tas_record(OSContPad *pad);
-void tas_init(void);
-
-bool is_controller_active(void) {
-    if (OMM_LIKELY(sControllerInited) && sController) {
-        return true;
-    }
-    return false;
-}
 
 //
 // Joystick
@@ -48,12 +38,9 @@ static void controller_sdl_update_joystick_button(s32 index, bool down) {
 // Mouse
 //
 
-s32 gMouseX;
-s32 gMouseY;
-
 static u32 controller_sdl_get_mouse_state() {
     SDL_SetRelativeMouseMode(BETTER_CAM_MOUSE_CAM && OMM_CAMERA_CLASSIC && sCurrPlayMode != 2);
-    return SDL_GetRelativeMouseState(&gMouseX, &gMouseY);
+    return SDL_GetRelativeMouseState(&gOmmGlobals->mouseDeltaX, &gOmmGlobals->mouseDeltaY);
 }
 
 //
@@ -103,14 +90,12 @@ static void controller_sdl_bind(void) {
 static void controller_sdl_init(void) {
     if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) {
         fprintf(stderr, "SDL init error: %s\n", SDL_GetError());
+        fflush(stderr);
         return;
     }
     controller_sdl_bind();
     controller_sdl_get_mouse_state();
     sControllerInited = true;
-    if (gTas.controllerType == 2) {
-        tas_init();
-    }
 }
 
 static void controller_sdl_read(OSContPad *pad) {
@@ -201,10 +186,6 @@ static void controller_sdl_read(OSContPad *pad) {
             case STICK_DOWN:  pad->stick_y = -0x7F; break;
             case STICK_UP:    pad->stick_y = +0x7F; break;
         }
-
-        if (gTas.controllerType == 2) {
-            tas_record(pad);
-        }
     }
 }
 
@@ -231,9 +212,6 @@ static void controller_sdl_shutdown(void) {
             sController = NULL;
         }
         SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER);
-        if (gTas.controllerType == 2) {
-            tas_shutdown();
-        }
     }
     sControllerInited = false;
 }

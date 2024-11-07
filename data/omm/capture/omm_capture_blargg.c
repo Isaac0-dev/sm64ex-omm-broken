@@ -7,7 +7,6 @@
 //
 
 bool omm_cappy_blargg_init(UNUSED struct Object *o) {
-    gOmmObject->state.actionState = 0;
     return true;
 }
 
@@ -16,8 +15,12 @@ void omm_cappy_blargg_end(struct Object *o) {
     o->oInteractStatus = 0;
 }
 
+u64 omm_cappy_blargg_get_type(UNUSED struct Object *o) {
+    return 0;
+}
+
 f32 omm_cappy_blargg_get_top(struct Object *o) {
-    return 100.f * o->oScaleY;
+    return omm_capture_get_hitbox_height(o);
 }
 
 //
@@ -29,7 +32,6 @@ s32 omm_cappy_blargg_update(struct Object *o) {
     // Hitbox
     o->hitboxRadius = omm_capture_get_hitbox_radius(o);
     o->hitboxHeight = omm_capture_get_hitbox_height(o);
-    o->hitboxDownOffset = omm_capture_get_hitbox_down_offset(o);
     o->oWallHitboxRadius = omm_capture_get_wall_hitbox_radius(o);
 
     // Properties
@@ -37,12 +39,11 @@ s32 omm_cappy_blargg_update(struct Object *o) {
     POBJ_SET_INVULNERABLE;
     POBJ_SET_IMMUNE_TO_FIRE;
     POBJ_SET_IMMUNE_TO_LAVA;
-    POBJ_SET_IMMUNE_TO_SAND;
-    POBJ_SET_IMMUNE_TO_WIND;
-    POBJ_SET_ATTACKING;
+    POBJ_SET_IMMUNE_TO_STRONG_WINDS;
+    POBJ_SET_ATTACKING_BREAKABLE;
 
     // Inputs
-    if (!omm_mario_is_locked(gMarioState)) {
+    if (pobj_process_inputs(o)) {
         gOmmObject->state.actionState = 0;
         pobj_move(o, false, false, false);
         if (POBJ_B_BUTTON_PRESSED) {
@@ -51,14 +52,25 @@ s32 omm_cappy_blargg_update(struct Object *o) {
         }
     }
 
+    // Spit fireball
+    else if (gOmmObject->state.actionState == 1) {
+        if (obj_anim_is_past_frame(o, 12)) {
+            omm_obj_spawn_blargg_fireball(o);
+        } else if (obj_anim_is_near_end(o)) {
+            gOmmObject->state.actionState = 0;
+            omm_mario_unlock(gMarioState);
+        }
+    }
+
     // Movement
-    Vec3f previousPos = { o->oPosX, o->oPosY, o->oPosZ };
+    Vec3f previousPos;
+    obj_pos_as_vec3f(o, previousPos);
     perform_object_step(o, POBJ_STEP_FLAGS);
     if (!obj_is_on_ground(o) || o->oFloor->type != SURFACE_BURNING) {
         vec3f_copy(&o->oPosX, previousPos);
         obj_drop_to_floor(o);
     }
-    pobj_decelerate(o, 0.80f, 0.95f);
+    pobj_decelerate(o);
     pobj_handle_special_floors(o);
     pobj_stop_if_unpossessed();
 
@@ -66,38 +78,22 @@ s32 omm_cappy_blargg_update(struct Object *o) {
     pobj_process_interactions();
     pobj_stop_if_unpossessed();
 
-    // Gfx
-    obj_update_gfx(o);
-    obj_make_step_sound_and_particle(o, &gOmmObject->state.walkDistance, 0.f, 0.f, -1, OBJ_PARTICLE_FLAME);
-
-    // Animation
-    switch (gOmmObject->state.actionState) {
-
-        // Idle/Moving
-        case 0: {
-            obj_anim_play(o, 0, 1.f);
-        } break;
-
-        // Throw fire ball
-        case 1: {
-            obj_anim_play(o, 1, 1.5f);
-            if (obj_anim_is_past_frame(o, 12)) {
-                obj_play_sound(o, SOUND_OBJ_FLAME_BLOWN | 0xFF00);
-                omm_spawn_blargg_fire_ball(o);
-            } else if (obj_anim_is_near_end(o)) {
-                gOmmObject->state.actionState = 0;
-                omm_mario_unlock(gMarioState);
-            }
-        } break;
-    }
-    
-    // Cappy values
-    gOmmObject->cappy.offset[0] = -6.f;
-    gOmmObject->cappy.offset[1] = 96.f + 10.f * sins(((obj_anim_get_frame(o) - 6) * 0x10000) / 30);
-    gOmmObject->cappy.offset[2] = 88.f;
-    gOmmObject->cappy.angle[0]  = -0x1400;
-    gOmmObject->cappy.scale     = 1.f * (gOmmObject->state.actionState != 1);
+    // Animation, sound and particles
+    obj_anim_play(o, gOmmObject->state.actionState, gOmmObject->state.actionState ? 1.5f : 1.f);
+    obj_make_step_sound_and_particle(o, NULL, 0, 0, 0, OBJ_PARTICLE_FLAME);
 
     // OK
     pobj_return_ok;
+}
+
+void omm_cappy_blargg_update_gfx(struct Object *o) {
+    if (gOmmObject->state.actionState) {
+        pobj_freeze_gfx_during_star_dance();
+    }
+
+    // Gfx
+    obj_update_gfx(o);
+
+    // Cappy transform
+    gOmmObject->cappy.object = o;
 }

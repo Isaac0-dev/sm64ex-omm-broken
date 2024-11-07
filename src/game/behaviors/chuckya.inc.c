@@ -1,6 +1,7 @@
 // chuckya.c.inc
 
 void common_anchor_mario_behavior(f32 sp28, f32 sp2C, s32 sp30) {
+omm_patch__common_anchor_mario_behavior__obj_update_held_mario
     switch (o->parentObj->oChuckyaUnk88) {
         case 0:
             break;

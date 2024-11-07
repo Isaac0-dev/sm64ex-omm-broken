@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -105,7 +106,7 @@ omm_number_define_gfx(2digits_x9b, 9b, 8);
 // Geo functions
 //
 
-Gfx *omm_geo_number_switch_1digit(s32 callContext, struct GraphNode *node, UNUSED void *context) {
+static Gfx *omm_geo_number_switch_1digit(s32 callContext, struct GraphNode *node, UNUSED void *context) {
     if (gCurrGraphNodeObject && callContext == GEO_CONTEXT_RENDER) {
         s32 number = gCurrGraphNodeObject->oBehParams2ndByte;
         struct GraphNodeSwitchCase *switchCase = (struct GraphNodeSwitchCase *) node;
@@ -118,7 +119,7 @@ Gfx *omm_geo_number_switch_1digit(s32 callContext, struct GraphNode *node, UNUSE
     return NULL;
 }
 
-Gfx *omm_geo_number_switch_2digits_left(s32 callContext, struct GraphNode *node, UNUSED void *context) {
+static Gfx *omm_geo_number_switch_2digits_left(s32 callContext, struct GraphNode *node, UNUSED void *context) {
     if (gCurrGraphNodeObject && callContext == GEO_CONTEXT_RENDER) {
         s32 number = gCurrGraphNodeObject->oBehParams2ndByte;
         struct GraphNodeSwitchCase *switchCase = (struct GraphNodeSwitchCase *) node;
@@ -131,7 +132,7 @@ Gfx *omm_geo_number_switch_2digits_left(s32 callContext, struct GraphNode *node,
     return NULL;
 }
 
-Gfx *omm_geo_number_switch_2digits_right(s32 callContext, struct GraphNode *node, UNUSED void *context) {
+static Gfx *omm_geo_number_switch_2digits_right(s32 callContext, struct GraphNode *node, UNUSED void *context) {
     if (gCurrGraphNodeObject && callContext == GEO_CONTEXT_RENDER) {
         s32 number = gCurrGraphNodeObject->oBehParams2ndByte;
         struct GraphNodeSwitchCase *switchCase = (struct GraphNodeSwitchCase *) node;
@@ -195,6 +196,55 @@ const GeoLayout omm_geo_number[] = {
                 GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_x9_gfx),
                 GEO_DISPLAY_LIST(LAYER_ALPHA, NULL),
             GEO_CLOSE_NODE(),
+        GEO_CLOSE_NODE(),
+    GEO_CLOSE_NODE(),
+    GEO_END(),
+};
+
+const GeoLayout omm_geo_number_no_billboard[] = {
+    GEO_NODE_START(),
+    GEO_OPEN_NODE(),
+        GEO_SWITCH_CASE(11, omm_geo_number_switch_1digit),
+        GEO_OPEN_NODE(),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_1digit_0_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_1digit_1_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_1digit_2_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_1digit_3_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_1digit_4_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_1digit_5_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_1digit_6_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_1digit_7_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_1digit_8_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_1digit_9_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, NULL),
+        GEO_CLOSE_NODE(),
+        GEO_SWITCH_CASE(11, omm_geo_number_switch_2digits_left),
+        GEO_OPEN_NODE(),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_0x_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_1x_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_2x_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_3x_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_4x_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_5x_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_6x_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_7x_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_8x_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_9x_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, NULL),
+        GEO_CLOSE_NODE(),
+        GEO_SWITCH_CASE(11, omm_geo_number_switch_2digits_right),
+        GEO_OPEN_NODE(),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_x0_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_x1_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_x2_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_x3_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_x4_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_x5_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_x6_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_x7_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_x8_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_number_2digits_x9_gfx),
+            GEO_DISPLAY_LIST(LAYER_ALPHA, NULL),
         GEO_CLOSE_NODE(),
     GEO_CLOSE_NODE(),
     GEO_END(),
@@ -264,7 +314,7 @@ static void bhv_omm_star_number_loop() {
         return;
     }
 
-    obj_set_pos(o, p->oPosX, p->oPosY + 150.f * o->oScaleY, p->oPosZ);
+    obj_set_xyz(o, p->oPosX, p->oPosY + 150.f * o->oScaleY, p->oPosZ);
     obj_set_angle(o, 0, 0, 0);
     obj_set_scale(o, 1.f, 1.f, 1.f);
     o->oNodeFlags = p->oNodeFlags;
@@ -272,10 +322,10 @@ static void bhv_omm_star_number_loop() {
 
 const BehaviorScript bhvOmmStarNumber[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_star_number_loop,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_star_number_loop),
+    BHV_END_LOOP(),
 };
 
 static void bhv_omm_blue_coins_number_loop() {
@@ -284,7 +334,7 @@ static void bhv_omm_blue_coins_number_loop() {
     struct Object *p = m->marioObj->platform;
     if (p && p->behavior == bhvBlueCoinSwitch && p->oAction == BLUE_COIN_SWITCH_ACT_IDLE) {
         o->oBehParams2ndByte = obj_get_count_with_behavior(bhvHiddenBlueCoin);
-        obj_set_pos(o, m->pos[0], m->pos[1] + 200, m->pos[2]);
+        obj_set_xyz(o, m->pos[0], m->pos[1] + 200, m->pos[2]);
         obj_set_angle(o, 0, 0, 0);
         obj_set_scale(o, 0.8f, 0.8f, 0.8f);
     } else {
@@ -294,37 +344,40 @@ static void bhv_omm_blue_coins_number_loop() {
 
 const BehaviorScript bhvOmmBlueCoinsNumber[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_blue_coins_number_loop,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_blue_coins_number_loop),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_orange_number(struct Object *o, s32 n) {
-    struct Object *number = spawn_object_relative(n, 0, 0, 0, o, MODEL_NONE, bhvOrangeNumber);
-    number->oGraphNode = geo_layout_to_graph_node(NULL, omm_geo_number);
-    number->oPosY += 25.f;
+struct Object *omm_obj_spawn_orange_number(struct Object *o, s32 num, f32 offsetY, s32 soundBits, s32 variation, const GeoLayout *geoLayout) {
+    struct Object *number = spawn_object_relative(num, 0, 0, 0, o, MODEL_NONE, bhvOrangeNumber);
+    number->oGraphNode = geo_layout_to_graph_node(NULL, geoLayout);
+    number->oPosY += offsetY;
+    if (soundBits != NO_SOUND) {
+        play_sound(soundBits + (variation << 16), gGlobalSoundArgs);
+    }
     return number;
 }
 
-struct Object *omm_spawn_blue_coins_number(struct Object *o) {
+struct Object *omm_obj_spawn_blue_coins_number(struct Object *o) {
     struct Object *number = obj_spawn_from_geo(o, omm_geo_number_b, bhvOmmBlueCoinsNumber);
     number->oBehParams2ndByte = 0;
     return number;
 }
 
-struct Object *omm_spawn_star_number(struct Object *o) {
+struct Object *omm_obj_spawn_star_number(struct Object *o) {
     u8 starIndex = (u8) (o->oBehParams >> 24);
     if (starIndex < OMM_NUM_STARS_MAX_PER_COURSE) {
         struct Object *number = obj_spawn_from_geo(o, omm_geo_number, bhvOmmStarNumber);
         number->oBehParams2ndByte = 0;
-        u8 total = omm_stars_get_bits_total(gCurrLevelNum, OMM_GAME_MODE);
+        u8 starLevelFlags = omm_stars_get_level_flags(gCurrLevelNum, OMM_GAME_MODE);
         for (u8 i = 0; i <= starIndex; ++i) {
-            number->oBehParams2ndByte += ((total >> i) & 1);
+            number->oBehParams2ndByte += ((starLevelFlags >> i) & 1);
         }
         return number;
     }

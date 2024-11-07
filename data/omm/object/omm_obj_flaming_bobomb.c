@@ -1,14 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
-
-//
-// Geo layout
-//
-
-const GeoLayout omm_geo_flaming_bobomb[] = {
-    OMM_GEO_BRANCH(black_bobomb_geo)
-};
+#include "behavior_commands.h"
 
 //
 // Behavior
@@ -63,8 +56,8 @@ static void bhv_omm_flaming_bobomb_update() {
 
         // Boom
         case 4: {
-            omm_spawn_flaming_bobomb_explosion(o);
-            omm_spawn_shockwave_fire(o, 100, 80, 120, 40, 5000, OMM_TEXTURE_BOWSER_FIRE_BLUE_1, OMM_TEXTURE_BOWSER_FIRE_BLUE_2);
+            omm_obj_spawn_flaming_bobomb_explosion(o);
+            omm_obj_spawn_bowser_shockwave_fire(o, 100, 80, 120, 40, 5000, OMM_TEXTURE_BOWSER_FIRE_BLUE_1, OMM_TEXTURE_BOWSER_FIRE_BLUE_2);
             obj_mark_for_deletion(o->oFlamingBobombAura);
             obj_mark_for_deletion(o);
         } return;
@@ -106,12 +99,12 @@ static void bhv_omm_flaming_bobomb_update() {
     o->oFaceAnglePitch += o->oAngleVelPitch;
     o->oFaceAngleYaw += o->oAngleVelYaw;
     o->oFaceAngleRoll += o->oAngleVelRoll;
+    o->oFlags |= OBJ_FLAG_SHADOW_COPY_OBJ_POS;
     Vec3f offset = { 0, 49.f * o->oScaleY, 0 };
     vec3f_rotate_zxy(offset, offset, o->oFaceAnglePitch, o->oFaceAngleYaw, o->oFaceAngleRoll);
     vec3f_set(o->oGfxPos, o->oPosX - offset[0], o->oPosY - offset[1], o->oPosZ - offset[2]);
     vec3s_set(o->oGfxAngle, o->oFaceAnglePitch, o->oFaceAngleYaw, o->oFaceAngleRoll);
-    obj_set_shadow_pos_to_object_pos(o);
-    obj_set_params(o, INTERACT_FLAME, 1, 99, 0, true);
+    obj_set_params(o, INTERACT_FLAME, 1, 99, 0, o->oAction == 1 || o->oAction == 3 || o->oAction == 5);
     obj_reset_hitbox(o, 50, 100, 0, 0, 0, 50);
     obj_anim_play_with_sound(o, 0, 1.f, 0, 0);
 
@@ -124,18 +117,18 @@ static void bhv_omm_flaming_bobomb_update() {
 
 const BehaviorScript bhvOmmFlamingBobomb[] = {
     OBJ_TYPE_GENACTOR,
-    0x27260000, (uintptr_t) bobomb_seg8_anims_0802396C,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_flaming_bobomb_update,
-    0x09000000,
+    BHV_LOAD_ANIMATIONS(oAnimations, bobomb_seg8_anims_0802396C),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_flaming_bobomb_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_flaming_bobomb(struct Object *o, f32 x, f32 y, f32 z, s32 index, s32 count, f32 maxRadius, f32 maxHeight) {
-    struct Object *bobomb           = obj_spawn_from_geo(o, omm_geo_flaming_bobomb, bhvOmmFlamingBobomb);
+struct Object *omm_obj_spawn_flaming_bobomb(struct Object *o, f32 x, f32 y, f32 z, s32 index, s32 count, f32 maxRadius, f32 maxHeight) {
+    struct Object *bobomb           = obj_spawn_from_geo(o, black_bobomb_geo, bhvOmmFlamingBobomb);
     bobomb->oFlamingBobombAura      = obj_spawn_from_geo(bobomb, omm_geo_flaming_bobomb_aura, bhvOmmFlamingBobombAura);
     bobomb->oFlamingBobombIndex     = index;
     bobomb->oFlamingBobombCount     = count;

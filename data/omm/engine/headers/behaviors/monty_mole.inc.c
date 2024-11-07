@@ -58,6 +58,7 @@ void monty_mole_spawn_dirt_particles(s8 offsetY, s8 velYBase) {
 }
 
 static void monty_mole_act_select_hole(void) {
+    cur_obj_hide();
     o->oInteractStatus = 0;
 
     // Select a hole to pop out of
@@ -184,14 +185,14 @@ void bhv_monty_mole_update(void) {
 
     // Actions
     switch (o->oAction) {
-        case MONTY_MOLE_ACT_SELECT_HOLE:          monty_mole_act_select_hole(); break;
-        case MONTY_MOLE_ACT_RISE_FROM_HOLE:       monty_mole_act_rise_from_hole(); break;
-        case MONTY_MOLE_ACT_SPAWN_ROCK:           monty_mole_act_spawn_rock(); break;
+        case MONTY_MOLE_ACT_SELECT_HOLE: monty_mole_act_select_hole(); break;
+        case MONTY_MOLE_ACT_RISE_FROM_HOLE: monty_mole_act_rise_from_hole(); break;
+        case MONTY_MOLE_ACT_SPAWN_ROCK: monty_mole_act_spawn_rock(); break;
         case MONTY_MOLE_ACT_BEGIN_JUMP_INTO_HOLE: monty_mole_act_begin_jump_into_hole(); break;
-        case MONTY_MOLE_ACT_THROW_ROCK:           monty_mole_act_throw_rock(); break;
-        case MONTY_MOLE_ACT_JUMP_INTO_HOLE:       monty_mole_act_jump_into_hole(); break;
-        case MONTY_MOLE_ACT_HIDE:                 monty_mole_act_hide(); break;
-        case MONTY_MOLE_ACT_JUMP_OUT_OF_HOLE:     monty_mole_act_jump_out_of_hole(); break;
+        case MONTY_MOLE_ACT_THROW_ROCK: monty_mole_act_throw_rock(); break;
+        case MONTY_MOLE_ACT_JUMP_INTO_HOLE: monty_mole_act_jump_into_hole(); break;
+        case MONTY_MOLE_ACT_HIDE: monty_mole_act_hide(); break;
+        case MONTY_MOLE_ACT_JUMP_OUT_OF_HOLE: monty_mole_act_jump_out_of_hole(); break;
     }
 
     // Spawn a 1-up if Mario kills 8 monty moles

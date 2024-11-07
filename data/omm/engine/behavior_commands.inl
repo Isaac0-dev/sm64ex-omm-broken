@@ -125,3 +125,7 @@
 #define DISABLE_RENDERING()                                                 _B000(0x35)
 #define SET_INT_UNUSED(field, value)                                        _BB00(0x36, field), _HHHH(0, value)
 #define SPAWN_WATER_DROPLET(params)                                         _B000(0x37), _UPTR(params)
+
+// Overrides
+#define bhv_hidden_red_coin_star_init bhv_hidden_red_coin_star_init_
+#define bhv_hidden_red_coin_star_loop bhv_hidden_red_coin_star_loop_

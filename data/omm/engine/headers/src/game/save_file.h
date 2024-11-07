@@ -5,12 +5,20 @@
 #include "level_table.h"
 #include "course_table.h"
 
-#define EEPROM_SIZE 0x200
-#define NUM_SAVE_FILES 4
-#if OMM_GAME_IS_R96X
-#define NUM_KEYS 10
-#define NUM_WARIO_COINS 06
-#endif
+#define EEPROM_SIZE (0x200)
+#define NUM_SAVE_FILES (4)
+#define NUM_SAVE_MODES (2)
+
+// -------- Render96 -------- //
+#define NUM_KEYS (10)
+#define NUM_WARIO_COINS (6)
+// -------------------------- //
+
+#define OMM_SAVE_FILE_SECTION_GAME_DATA     "[%s:%c%d]"
+#define OMM_SAVE_FILE_SECTION_SPARKLY_STARS "[sparkly_stars]"
+#define OMM_SAVE_FILE_SECTION_STATS         "[stats]"
+#define OMM_SAVE_FILE_SECTION_MARIO_COLORS  "[mario_colors]"
+#define OMM_SAVE_FILE_SECTION_PEACH_COLORS  "[peach_colors]"
 
 struct WarpNode;
 struct SaveBuffer { bool unused; };
@@ -42,10 +50,10 @@ extern u8 gSpecialTripleJump;
 #define SAVE_FLAG_UNLOCKED_BITFS_DOOR       (1 << 15)
 #define SAVE_FLAG_UNLOCKED_50_STAR_DOOR     (1 << 16)
 #define SAVE_FLAG_ALL_FLAGS                 ((1 << 17) - 1)
-#define SAVE_FLAG_CAP_ON_GROUND             0
-#define SAVE_FLAG_CAP_ON_KLEPTO             0
-#define SAVE_FLAG_CAP_ON_UKIKI              0
-#define SAVE_FLAG_CAP_ON_MR_BLIZZARD        0
+#define SAVE_FLAG_CAP_ON_GROUND             (0)
+#define SAVE_FLAG_CAP_ON_KLEPTO             (0)
+#define SAVE_FLAG_CAP_ON_UKIKI              (0)
+#define SAVE_FLAG_CAP_ON_MR_BLIZZARD        (0)
 
 // Not flags, another ex-alo thing...
 #define SAVE_FLAG_COLLECTED_TOAD_STAR_1     (1 << 24)
@@ -62,9 +70,13 @@ u32  omm_save_file_get_star_flags        (s32 fileIndex, s32 modeIndex, s32 cour
 u32  omm_save_file_get_cannon_unlocked   (s32 fileIndex, s32 modeIndex, s32 courseIndex);
 s32  omm_save_file_get_course_star_count (s32 fileIndex, s32 modeIndex, s32 courseIndex);
 s32  omm_save_file_get_course_coin_score (s32 fileIndex, s32 modeIndex, s32 courseIndex);
-s32  omm_save_file_get_total_star_count  (s32 fileIndex, s32 modeIndex, s32 courseIndexMin, s32 courseIndexMax);
-s32  omm_save_file_get_total_coin_score  (s32 fileIndex, s32 modeIndex, s32 courseIndexMin, s32 courseIndexMax);
-s32  omm_save_file_get_last_course       (s32 fileIndex, s32 modeIndex);
+s32  omm_save_file_get_total_star_count  (s32 fileIndex, s32 modeIndex);
+s32  omm_save_file_get_total_coin_score  (s32 fileIndex, s32 modeIndex);
+s32  omm_save_file_get_last_file_index   ();
+s32  omm_save_file_get_last_mode_index   ();
+s32  omm_save_file_get_last_course_num   (s32 fileIndex, s32 modeIndex);
+u64  omm_save_file_get_capture_flags     (s32 fileIndex, s32 modeIndex);
+s32  omm_save_file_get_capture_count     (s32 fileIndex, s32 modeIndex);
 u32  omm_save_file_get_taken_luigi_key   (s32 fileIndex, s32 modeIndex, s32 keyIndex);
 u32  omm_save_file_get_taken_wario_coin  (s32 fileIndex, s32 modeIndex, s32 coinIndex);
 s32  omm_save_file_get_luigi_keys_count  (s32 fileIndex, s32 modeIndex);
@@ -73,20 +85,32 @@ s32  omm_save_file_get_wario_coins_count (s32 fileIndex, s32 modeIndex);
 void omm_save_file_do_save               ();
 void omm_save_file_load_all              ();
 void omm_save_file_set_flags             (s32 fileIndex, s32 modeIndex, u32 flags);
-void omm_save_file_set_star_flags        (s32 fileIndex, s32 modeIndex, s32 courseIndex, u32 stars);
+void omm_save_file_set_star_flags        (s32 fileIndex, s32 modeIndex, s32 courseIndex, u32 starFlags);
 void omm_save_file_set_cannon_unlocked   (s32 fileIndex, s32 modeIndex, s32 courseIndex);
 void omm_save_file_set_last_course       (s32 fileIndex, s32 modeIndex, s32 courseIndex);
+void omm_save_file_register_capture      (s32 fileIndex, s32 modeIndex, u64 captureFlag);
 void omm_save_file_set_taken_luigi_key   (s32 fileIndex, s32 modeIndex, s32 keyIndex);
 void omm_save_file_set_taken_wario_coin  (s32 fileIndex, s32 modeIndex, s32 coinIndex);
-void omm_save_file_collect_star_or_key   (s32 fileIndex, s32 modeIndex, s32 levelIndex, s32 starIndex, s32 coins);
+void omm_save_file_collect_star_or_key   (s32 fileIndex, s32 modeIndex, s32 levelIndex, s32 starIndex, s32 numCoins);
 void omm_save_file_clear_flags           (s32 fileIndex, s32 modeIndex, u32 flags);
-void omm_save_file_clear_star_flags      (s32 fileIndex, s32 modeIndex, s32 courseIndex, u32 stars);
+void omm_save_file_clear_star_flags      (s32 fileIndex, s32 modeIndex, s32 courseIndex, u32 starFlags);
 void omm_save_file_erase                 (s32 fileIndex, s32 modeIndex);
 void omm_save_file_copy                  (s32 fileIndex, s32 modeIndex, s32 destIndex);
 
 bool warp_checkpoint_check               (struct WarpNode *warpNode, s32 actIndex);
 void warp_checkpoint_check_if_should_set (struct WarpNode *warpNode, s32 courseIndex, s32 actIndex);
 void warp_checkpoint_disable             ();
+
+#define OMM_SAVE_FILE_WRITE_BUFFER_LENGTH (0x10000)
+#define omm_save_file_write_buffer(...) { \
+    extern char *gOmmSaveFileWriteBuffer; \
+    extern s32 gOmmSaveFileWrittenLength; \
+    if (gOmmSaveFileWrittenLength < OMM_SAVE_FILE_WRITE_BUFFER_LENGTH) { \
+        s32 written = snprintf(gOmmSaveFileWriteBuffer, OMM_SAVE_FILE_WRITE_BUFFER_LENGTH - gOmmSaveFileWrittenLength, __VA_ARGS__); \
+        gOmmSaveFileWriteBuffer += written; \
+        gOmmSaveFileWrittenLength += written; \
+    } \
+}
 
 #define save_file_exists(fileIndex)                                                 omm_save_file_exists(fileIndex, OMM_GAME_MODE)
 #define save_file_get_flags()                                                       omm_save_file_get_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE)
@@ -95,7 +119,7 @@ void warp_checkpoint_disable             ();
 #define save_file_get_cannon_flags(fileIndex, courseIndex)                          omm_save_file_get_cannon_unlocked(fileIndex, OMM_GAME_MODE, courseIndex)
 #define save_file_get_course_star_count(fileIndex, courseIndex)                     omm_save_file_get_course_star_count(fileIndex, OMM_GAME_MODE, courseIndex)
 #define save_file_get_course_coin_score(fileIndex, courseIndex)                     omm_save_file_get_course_coin_score(fileIndex, OMM_GAME_MODE, courseIndex)
-#define save_file_get_total_star_count(fileIndex, courseIndexMin, courseIndexMax)   omm_save_file_get_total_star_count(fileIndex, OMM_GAME_MODE, courseIndexMin, courseIndexMax)
+#define save_file_get_total_star_count(fileIndex, courseIndexMin, courseIndexMax)   omm_save_file_get_total_star_count(fileIndex, OMM_GAME_MODE)
 #define save_file_taken_key(fileIndex, keyIndex)                                    omm_save_file_get_taken_luigi_key(fileIndex, OMM_GAME_MODE, keyIndex)
 #define save_file_taken_wario_coin(fileIndex, coinIndex)                            omm_save_file_get_taken_wario_coin(fileIndex, OMM_GAME_MODE, coinIndex)
 #define save_file_get_keys(fileIndex)                                               omm_save_file_get_luigi_keys_count(fileIndex, OMM_GAME_MODE)
@@ -107,18 +131,18 @@ void warp_checkpoint_disable             ();
 
 #define save_file_do_save(...)                                                      omm_save_file_do_save()
 #define save_file_load_all()                                                        omm_save_file_load_all()
-#define save_file_reload()
+#define save_file_reload()                                                          {}
 #define save_file_set_flags(flags)                                                  omm_save_file_set_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, flags)
-#define save_file_set_star_flags(fileIndex, courseIndex, stars)                     omm_save_file_set_star_flags(fileIndex, OMM_GAME_MODE, courseIndex, stars)
+#define save_file_set_star_flags(fileIndex, courseIndex, starFlags)                 omm_save_file_set_star_flags(fileIndex, OMM_GAME_MODE, courseIndex, starFlags)
 #define save_file_set_cannon_unlocked()                                             omm_save_file_set_cannon_unlocked(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1)
 #define save_file_clear_flags(flags)                                                omm_save_file_clear_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, flags)
-#define save_file_collect_star_or_key(coins, starIndex)                             omm_save_file_collect_star_or_key(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrLevelNum - 1, starIndex, coins)
+#define save_file_collect_star_or_key(numCoins, starIndex)                          omm_save_file_collect_star_or_key(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrLevelNum - 1, starIndex, numCoins)
 #define save_file_register_key(fileIndex, keyIndex)                                 omm_save_file_set_taken_luigi_key(fileIndex, OMM_GAME_MODE, keyIndex)
 #define save_file_register_wario_coin(fileIndex, coinIndex)                         omm_save_file_set_taken_wario_coin(fileIndex, OMM_GAME_MODE, coinIndex)
-#define save_file_update_player_model(...)
-#define save_file_set_cap_pos(...)
-#define save_file_set_sound_mode(...)
-#define save_file_move_cap_to_default_location()
+#define save_file_update_player_model(...)                                          {}
+#define save_file_set_cap_pos(...)                                                  {}
+#define save_file_set_sound_mode(...)                                               {}
+#define save_file_move_cap_to_default_location()                                    {}
 #define save_file_erase(fileIndex)                                                  omm_save_file_erase(fileIndex, OMM_GAME_MODE)
 #define save_file_copy(fileIndex, destIndex)                                        omm_save_file_copy(fileIndex, OMM_GAME_MODE, destIndex)
 

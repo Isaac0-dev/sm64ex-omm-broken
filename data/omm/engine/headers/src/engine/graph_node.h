@@ -13,40 +13,40 @@
 #define GRAPH_RENDER_CYLBOARD                   (1 << 6)
 #define GRAPH_RENDER_ALWAYS                     (1 << 7)
 
-#define GRAPH_NODE_TYPE_FUNCTIONAL              0x100
-#define GRAPH_NODE_TYPE_400                     0x400
+#define GRAPH_NODE_TYPE_FUNCTIONAL              (0x100)
+#define GRAPH_NODE_TYPE_400                     (0x400)
 
-#define GRAPH_NODE_TYPE_ROOT                    0x001
-#define GRAPH_NODE_TYPE_ORTHO_PROJECTION        0x002
-#define GRAPH_NODE_TYPE_PERSPECTIVE            (0x003 | GRAPH_NODE_TYPE_FUNCTIONAL)
-#define GRAPH_NODE_TYPE_MASTER_LIST             0x004
-#define GRAPH_NODE_TYPE_START                   0x00A
-#define GRAPH_NODE_TYPE_LEVEL_OF_DETAIL         0x00B
-#define GRAPH_NODE_TYPE_SWITCH_CASE            (0x00C | GRAPH_NODE_TYPE_FUNCTIONAL)
-#define GRAPH_NODE_TYPE_CAMERA                 (0x014 | GRAPH_NODE_TYPE_FUNCTIONAL)
-#define GRAPH_NODE_TYPE_TRANSLATION_ROTATION    0x015
-#define GRAPH_NODE_TYPE_TRANSLATION             0x016
-#define GRAPH_NODE_TYPE_ROTATION                0x017
-#define GRAPH_NODE_TYPE_OBJECT                  0x018
-#define GRAPH_NODE_TYPE_ANIMATED_PART           0x019
-#define GRAPH_NODE_TYPE_BILLBOARD               0x01A
-#define GRAPH_NODE_TYPE_DISPLAY_LIST            0x01B
-#define GRAPH_NODE_TYPE_SCALE                   0x01C
-#define GRAPH_NODE_TYPE_SHADOW                  0x028
-#define GRAPH_NODE_TYPE_OBJECT_PARENT           0x029
-#define GRAPH_NODE_TYPE_GENERATED_LIST         (0x02A | GRAPH_NODE_TYPE_FUNCTIONAL)
-#define GRAPH_NODE_TYPE_BACKGROUND             (0x02C | GRAPH_NODE_TYPE_FUNCTIONAL)
-#define GRAPH_NODE_TYPE_HELD_OBJ               (0x02E | GRAPH_NODE_TYPE_FUNCTIONAL)
-#define GRAPH_NODE_TYPE_CULLING_RADIUS          0x02F
+#define GRAPH_NODE_TYPE_ROOT                    (0x001)
+#define GRAPH_NODE_TYPE_ORTHO_PROJECTION        (0x002)
+#define GRAPH_NODE_TYPE_PERSPECTIVE             (0x003 | GRAPH_NODE_TYPE_FUNCTIONAL)
+#define GRAPH_NODE_TYPE_MASTER_LIST             (0x004)
+#define GRAPH_NODE_TYPE_START                   (0x00A)
+#define GRAPH_NODE_TYPE_LEVEL_OF_DETAIL         (0x00B)
+#define GRAPH_NODE_TYPE_SWITCH_CASE             (0x00C | GRAPH_NODE_TYPE_FUNCTIONAL)
+#define GRAPH_NODE_TYPE_CAMERA                  (0x014 | GRAPH_NODE_TYPE_FUNCTIONAL)
+#define GRAPH_NODE_TYPE_TRANSLATION_ROTATION    (0x015)
+#define GRAPH_NODE_TYPE_TRANSLATION             (0x016)
+#define GRAPH_NODE_TYPE_ROTATION                (0x017)
+#define GRAPH_NODE_TYPE_OBJECT                  (0x018)
+#define GRAPH_NODE_TYPE_ANIMATED_PART           (0x019)
+#define GRAPH_NODE_TYPE_BILLBOARD               (0x01A)
+#define GRAPH_NODE_TYPE_DISPLAY_LIST            (0x01B)
+#define GRAPH_NODE_TYPE_SCALE                   (0x01C)
+#define GRAPH_NODE_TYPE_SHADOW                  (0x028)
+#define GRAPH_NODE_TYPE_OBJECT_PARENT           (0x029)
+#define GRAPH_NODE_TYPE_GENERATED_LIST          (0x02A | GRAPH_NODE_TYPE_FUNCTIONAL)
+#define GRAPH_NODE_TYPE_BACKGROUND              (0x02C | GRAPH_NODE_TYPE_FUNCTIONAL)
+#define GRAPH_NODE_TYPE_HELD_OBJ                (0x02E | GRAPH_NODE_TYPE_FUNCTIONAL)
+#define GRAPH_NODE_TYPE_CULLING_RADIUS          (0x02F)
 
-#define GEO_CONTEXT_CREATE                      0 // called when node is created from a geo command
-#define GEO_CONTEXT_RENDER                      1 // called from rendering_graph_node.c
-#define GEO_CONTEXT_AREA_UNLOAD                 2 // called when unloading an area
-#define GEO_CONTEXT_AREA_LOAD                   3 // called when loading an area
-#define GEO_CONTEXT_AREA_INIT                   4 // called when initializing the 8 areas
-#define GEO_CONTEXT_HELD_OBJ                    5 // called when processing a GraphNodeHeldObject
+#define GEO_CONTEXT_CREATE                      (0) // called when node is created from a geo command
+#define GEO_CONTEXT_RENDER                      (1) // called from rendering_graph_node.c
+#define GEO_CONTEXT_AREA_UNLOAD                 (2) // called when unloading an area
+#define GEO_CONTEXT_AREA_LOAD                   (3) // called when loading an area
+#define GEO_CONTEXT_AREA_INIT                   (4) // called when initializing the 8 areas
+#define GEO_CONTEXT_HELD_OBJ                    (5) // called when processing a GraphNodeHeldObject
 
-#define DISPLAY_LISTS_NUM_LAYERS                8
+#define DISPLAY_LISTS_NUM_LAYERS                (8)
 
 typedef Gfx *(*GraphNodeFunc)(s32 callContext, struct GraphNode *node, void *context);
 
@@ -218,17 +218,16 @@ struct GraphNode *geo_add_child(struct GraphNode *parent, struct GraphNode *node
 struct GraphNode *geo_remove_child(struct GraphNode *node);
 struct GraphNode *geo_make_first_child(struct GraphNode *node);
 
-void  geo_move_from_camera(struct GraphNodeObject *node, struct GraphNodeTranslation *tnode, f32 offset);
+Gfx  *geo_move_from_camera(s32 callContext, struct GraphNode *node, void *context);
+Gfx  *geo_move_from_camera_mario_scale(s32 callContext, struct GraphNode *node, void *context);
 void  geo_call_global_function_nodes(struct GraphNode *node, s32 callContext);
 void  geo_reset_object_node(struct GraphNodeObject *node);
 void  geo_obj_init(struct GraphNodeObject *node, void *sharedChild, Vec3f pos, Vec3s angle);
 void  geo_obj_init_spawninfo(struct GraphNodeObject *node, struct SpawnInfo *spawn);
-void  geo_obj_init_animation(struct GraphNodeObject *node, struct Animation **animPtrAddr);
-void  geo_obj_init_animation_accel(struct GraphNodeObject *node, struct Animation **animPtrAddr, u32 animAccel);
-s32   retrieve_animation_index(s32 frame, u16 **attributes);
-s16   geo_update_animation_frame(struct AnimInfoStruct *obj, s32 *accelAssist);
-void *geo_get_geo_data(struct Object *o, s32 size, const Gfx *gfxSrc, s32 gfxSize);
+void *geo_get_geo_data(struct Object *o, s32 structSize, const u32 *displayListsOffsets, s32 numOffsets);
 Gfx  *geo_link_geo_data(s32 callContext, struct GraphNode *node, void *context);
+Gfx  *geo_link_geo_data_skip_mirror_obj(s32 callContext, struct GraphNode *node, void *context);
+Gfx  *gfx_copy_and_fill_null(Gfx *dest, const Gfx *src, s32 size, const Gfx *gfx);
 
 typedef struct GraphNodeGenerated *(*ObjectEffectFunc)(struct Object *, bool);
 void geo_register_object_effects(ObjectEffectFunc func);

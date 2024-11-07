@@ -1,24 +1,33 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
-#define OMM_PERRY_SHOCKWAVE_WAVE_NUM_POINTS   16
-#define OMM_PERRY_SHOCKWAVE_WAVE_RADIUS       100.f
+#define OMM_PERRY_SHOCKWAVE_WAVE_NUM_POINTS   (16)
+#define OMM_PERRY_SHOCKWAVE_WAVE_RADIUS       (100.f)
 #define OMM_PERRY_SHOCKWAVE_WAVE_SEGMENTS     (array_of(f32) { 0.f, 0.9f, 1.f })
-#define OMM_PERRY_SHOCKWAVE_GLOW_NUM_POINTS   16
-#define OMM_PERRY_SHOCKWAVE_GLOW_RADIUS       128.f
+#define OMM_PERRY_SHOCKWAVE_GLOW_NUM_POINTS   (16)
+#define OMM_PERRY_SHOCKWAVE_GLOW_RADIUS       (128.f)
 #define OMM_PERRY_SHOCKWAVE_GLOW_SEGMENTS     (array_of(f32) { 0.f, 0.25f, 1.f })
 
 //
 // Gfx data
 //
 
-static const Gfx omm_perry_shockwave_gfx[] = {
+static const Gfx omm_perry_shockwave_wave_gfx[] = {
     gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
     gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
     gsDPLoadTextureBlock(OMM_TEXTURE_EFFECT_PERRY_SHOCKWAVE, G_IM_FMT_RGBA, G_IM_SIZ_32b, 128, 128, 0, 0, 0, 0, 0, 0, 0),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsSPDisplayList(null),
+    gsSPDisplayList(NULL),
+    gsSPSetGeometryMode(G_CULL_BACK | G_LIGHTING),
+    gsSPEndDisplayList(),
+};
+
+static const Gfx omm_perry_shockwave_glow_gfx[] = {
+    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
+    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
+    gsSPDisplayList(NULL),
     gsSPSetGeometryMode(G_CULL_BACK | G_LIGHTING),
     gsSPEndDisplayList(),
 };
@@ -28,10 +37,23 @@ static const Gfx omm_perry_shockwave_gfx[] = {
 //
 
 typedef struct {
-    Gfx gfx[array_length(omm_perry_shockwave_gfx)];
-    Gfx tri[4 * (OMM_PERRY_SHOCKWAVE_WAVE_NUM_POINTS + OMM_PERRY_SHOCKWAVE_GLOW_NUM_POINTS) + 3];
-    Vtx vtx[8 * (OMM_PERRY_SHOCKWAVE_WAVE_NUM_POINTS + OMM_PERRY_SHOCKWAVE_GLOW_NUM_POINTS)];
+    Gfx *displayLists[2];
+    struct {
+        Gfx gfx[array_length(omm_perry_shockwave_wave_gfx)];
+        Gfx tri[4 * OMM_PERRY_SHOCKWAVE_WAVE_NUM_POINTS + 1];
+        Vtx vtx[8 * OMM_PERRY_SHOCKWAVE_WAVE_NUM_POINTS];
+    } wave;
+    struct {
+        Gfx gfx[array_length(omm_perry_shockwave_glow_gfx)];
+        Gfx tri[4 * OMM_PERRY_SHOCKWAVE_GLOW_NUM_POINTS + 1];
+        Vtx vtx[8 * OMM_PERRY_SHOCKWAVE_GLOW_NUM_POINTS];
+    } glow;
 } OmmPeachPerryShockwaveGeoData;
+
+static const u32 sOmmPeachPerryShockwaveGeoDataDisplayListsOffsets[] = {
+    offsetof(OmmPeachPerryShockwaveGeoData, wave.gfx),
+    offsetof(OmmPeachPerryShockwaveGeoData, glow.gfx),
+};
 
 //
 // Geo layout
@@ -40,8 +62,11 @@ typedef struct {
 const GeoLayout omm_geo_perry_shockwave[] = {
     GEO_NODE_START(),
     GEO_OPEN_NODE(),
+        GEO_ASM(0, geo_link_geo_data),
+        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, NULL),
+        GEO_BILLBOARD(),
         GEO_OPEN_NODE(),
-            GEO_ASM(0, geo_link_geo_data),
+            GEO_ASM(1, geo_link_geo_data),
             GEO_DISPLAY_LIST(LAYER_TRANSPARENT, NULL),
         GEO_CLOSE_NODE(),
     GEO_CLOSE_NODE(),
@@ -57,7 +82,7 @@ static void bhv_omm_perry_shockwave_explode(struct Object *o, f32 x, f32 y, f32 
     o->oPosY = y;
     o->oPosZ = z;
     if (o->oPerryShockwaveBlast) {
-        omm_spawn_perry_blast(o, o->oPerryType);
+        omm_obj_spawn_perry_blast(o, o->oPerryType);
         obj_mark_for_deletion(o);
     } else {
         o->oTimer = 0;
@@ -182,11 +207,11 @@ static void bhv_omm_perry_shockwave_update() {
 
     // Spawn trail
     if (o->oAction == 1 && o->oPerryShockwaveBlast) {
-        struct Object *trail = omm_spawn_perry_shockwave(o, 0, o->oPerryType, 0);
+        struct Object *trail = omm_obj_spawn_perry_shockwave(o, 0, o->oPerryType, 0);
         trail->oPerryShockwaveBaseScale = o->oScaleX;
         trail->oIntangibleTimer = -1;
         trail->oAction = 3;
-        omm_spawn_sparkle(o,
+        omm_obj_spawn_sparkle(o,
             lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[0], 0xFF),
             lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[1], 0xFF),
             lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[2], 0xFF),
@@ -197,11 +222,17 @@ static void bhv_omm_perry_shockwave_update() {
     }
 
     // Update gfx
-    OmmPeachPerryShockwaveGeoData *data = geo_get_geo_data(o, sizeof(OmmPeachPerryShockwaveGeoData), omm_perry_shockwave_gfx, sizeof(omm_perry_shockwave_gfx));
+    OmmPeachPerryShockwaveGeoData *data = geo_get_geo_data(o,
+        sizeof(OmmPeachPerryShockwaveGeoData),
+        sOmmPeachPerryShockwaveGeoDataDisplayListsOffsets,
+        array_length(sOmmPeachPerryShockwaveGeoDataDisplayListsOffsets)
+    );
     o->oPerryShockwaveAngleYaw += 0x1800 * o->oPerryShockwaveAngleDir;
     obj_set_angle(o, 0, 0, 0);
-    Vtx *vtx = data->vtx;
-    Gfx *tri = data->tri;
+
+    // Wave
+    Vtx *waveVtx = data->wave.vtx;
+    Gfx *waveTri = data->wave.tri;
     if (o->oAction != 3) {
 
         // Axes
@@ -226,7 +257,7 @@ static void bhv_omm_perry_shockwave_update() {
             f32 r1 = OMM_PERRY_SHOCKWAVE_WAVE_RADIUS * t1;
 
             // Points
-            for (s32 i = 0; i != OMM_PERRY_SHOCKWAVE_WAVE_NUM_POINTS; vtx += 4, ++i) {
+            for (s32 i = 0; i != OMM_PERRY_SHOCKWAVE_WAVE_NUM_POINTS; ++i) {
                 s16 a0 = ((i + 0) * 0x10000) / OMM_PERRY_SHOCKWAVE_WAVE_NUM_POINTS;
                 s16 a1 = ((i + 1) * 0x10000) / OMM_PERRY_SHOCKWAVE_WAVE_NUM_POINTS;
 
@@ -246,27 +277,28 @@ static void bhv_omm_perry_shockwave_update() {
                 s32 v11 = (coss(a1) * t1 * 64 + 64) * 32;
 
                 // Triangles
-                gSPVertex(tri++, vtx, 4, 0);
-                gSP2Triangles(tri++, 0, 1, 2, 0, 2, 1, 3, 0);
+                gSPVertex(waveTri++, waveVtx, 4, 0);
+                gSP2Triangles(waveTri++, 0, 1, 2, 0, 2, 1, 3, 0);
 
                 // Vertices
-                vtx[0] = (Vtx) { { { r0 * p0[0], r0 * p0[1], r0 * p0[2] }, 0, { u00, v00 * o->oPerryShockwaveAngleDir }, { OMM_PERRY_COLOR(2 - (j + 0), 0), OMM_PERRY_COLOR(2 - (j + 0), 1), OMM_PERRY_COLOR(2 - (j + 0), 2), o->oOpacity * (o->oAction != 2) } } };
-                vtx[1] = (Vtx) { { { r0 * p1[0], r0 * p1[1], r0 * p1[2] }, 0, { u01, v01 * o->oPerryShockwaveAngleDir }, { OMM_PERRY_COLOR(2 - (j + 0), 0), OMM_PERRY_COLOR(2 - (j + 0), 1), OMM_PERRY_COLOR(2 - (j + 0), 2), o->oOpacity * (o->oAction != 2) } } };
-                vtx[2] = (Vtx) { { { r1 * p0[0], r1 * p0[1], r1 * p0[2] }, 0, { u10, v10 * o->oPerryShockwaveAngleDir }, { OMM_PERRY_COLOR(2 - (j + 1), 0), OMM_PERRY_COLOR(2 - (j + 1), 1), OMM_PERRY_COLOR(2 - (j + 1), 2), o->oOpacity * (o->oAction != 2) } } };
-                vtx[3] = (Vtx) { { { r1 * p1[0], r1 * p1[1], r1 * p1[2] }, 0, { u11, v11 * o->oPerryShockwaveAngleDir }, { OMM_PERRY_COLOR(2 - (j + 1), 0), OMM_PERRY_COLOR(2 - (j + 1), 1), OMM_PERRY_COLOR(2 - (j + 1), 2), o->oOpacity * (o->oAction != 2) } } };
+                *(waveVtx++) = (Vtx) { { { r0 * p0[0], r0 * p0[1], r0 * p0[2] }, 0, { u00, v00 * o->oPerryShockwaveAngleDir }, { OMM_PERRY_COLOR(2 - (j + 0), 0), OMM_PERRY_COLOR(2 - (j + 0), 1), OMM_PERRY_COLOR(2 - (j + 0), 2), o->oOpacity * (o->oAction != 2) } } };
+                *(waveVtx++) = (Vtx) { { { r0 * p1[0], r0 * p1[1], r0 * p1[2] }, 0, { u01, v01 * o->oPerryShockwaveAngleDir }, { OMM_PERRY_COLOR(2 - (j + 0), 0), OMM_PERRY_COLOR(2 - (j + 0), 1), OMM_PERRY_COLOR(2 - (j + 0), 2), o->oOpacity * (o->oAction != 2) } } };
+                *(waveVtx++) = (Vtx) { { { r1 * p0[0], r1 * p0[1], r1 * p0[2] }, 0, { u10, v10 * o->oPerryShockwaveAngleDir }, { OMM_PERRY_COLOR(2 - (j + 1), 0), OMM_PERRY_COLOR(2 - (j + 1), 1), OMM_PERRY_COLOR(2 - (j + 1), 2), o->oOpacity * (o->oAction != 2) } } };
+                *(waveVtx++) = (Vtx) { { { r1 * p1[0], r1 * p1[1], r1 * p1[2] }, 0, { u11, v11 * o->oPerryShockwaveAngleDir }, { OMM_PERRY_COLOR(2 - (j + 1), 0), OMM_PERRY_COLOR(2 - (j + 1), 1), OMM_PERRY_COLOR(2 - (j + 1), 2), o->oOpacity * (o->oAction != 2) } } };
             }
         }
     }
-    gSPTexture(tri++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
-    gDPSetCombineLERP(tri++, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE);
-
-    // Billboard plane
-    Vec3f camN, camE1, camE2;
-    vec3f_dif(camN, gCamera->pos, &o->oPosX);
-    vec3f_get_nullspace(camN, camE1, camE2, camN);
-    Vec3f xyzScale = { 1.f, 1.f / (o->oAction != 2 ? 3.f : 1.f), 1.f };
+    gSPEndDisplayList(waveTri++);
+    gfx_copy_and_fill_null(data->wave.gfx, omm_perry_shockwave_wave_gfx, sizeof(omm_perry_shockwave_wave_gfx), data->wave.tri);
 
     // Glow
+    Vtx *glowVtx = data->glow.vtx;
+    Gfx *glowTri = data->glow.tri;
+    f32 glowScale = 1.f;
+    if (o->oAction != 2) {
+        Vec3f v; vec3f_normalize(vec3f_dif(v, gCamera->focus, gCamera->pos));
+        glowScale = relerp_0_1_f(abs_f(v[1]), 0.f, 1.f, 1.f / 3.f, 1.f);
+    }
     for (s32 j = 0; j != 2; ++j) {
         f32 t0 = OMM_PERRY_SHOCKWAVE_GLOW_SEGMENTS[j + 0];
         f32 t1 = OMM_PERRY_SHOCKWAVE_GLOW_SEGMENTS[j + 1];
@@ -274,7 +306,7 @@ static void bhv_omm_perry_shockwave_update() {
         f32 r1 = OMM_PERRY_SHOCKWAVE_GLOW_RADIUS * t1;
 
         // Points
-        for (s32 i = 0; i != OMM_PERRY_SHOCKWAVE_GLOW_NUM_POINTS; vtx += 4, ++i) {
+        for (s32 i = 0; i != OMM_PERRY_SHOCKWAVE_GLOW_NUM_POINTS; ++i) {
             s16 a0 = ((i + 0) * 0x10000) / OMM_PERRY_SHOCKWAVE_GLOW_NUM_POINTS;
             s16 a1 = ((i + 1) * 0x10000) / OMM_PERRY_SHOCKWAVE_GLOW_NUM_POINTS;
 
@@ -285,36 +317,33 @@ static void bhv_omm_perry_shockwave_update() {
             f32 y1 = coss(a1);
 
             // Triangles
-            gSPVertex(tri++, vtx, 4, 0);
-            gSP2Triangles(tri++, 0, 1, 2, 0, 2, 1, 3, 0);
+            gSPVertex(glowTri++, glowVtx, 4, 0);
+            gSP2Triangles(glowTri++, 0, 1, 2, 0, 2, 1, 3, 0);
 
             // Vertices
-            vtx[0] = (Vtx) { { { 0, 0, 0 }, 0, { 0, 0 }, { OMM_PERRY_COLOR(j + 0, 0), OMM_PERRY_COLOR(j + 0, 1), OMM_PERRY_COLOR(j + 0, 2), o->oOpacity * (1.f - t0) } } };
-            vtx[1] = (Vtx) { { { 0, 0, 0 }, 0, { 0, 0 }, { OMM_PERRY_COLOR(j + 0, 0), OMM_PERRY_COLOR(j + 0, 1), OMM_PERRY_COLOR(j + 0, 2), o->oOpacity * (1.f - t0) } } };
-            vtx[2] = (Vtx) { { { 0, 0, 0 }, 0, { 0, 0 }, { OMM_PERRY_COLOR(j + 1, 0), OMM_PERRY_COLOR(j + 1, 1), OMM_PERRY_COLOR(j + 1, 2), o->oOpacity * (1.f - t1) } } };
-            vtx[3] = (Vtx) { { { 0, 0, 0 }, 0, { 0, 0 }, { OMM_PERRY_COLOR(j + 1, 0), OMM_PERRY_COLOR(j + 1, 1), OMM_PERRY_COLOR(j + 1, 2), o->oOpacity * (1.f - t1) } } };
-            vec2f_to_3d_plane(vtx[0].v.ob, (Vec2f) { r0 * x0, r0 * y0 }, gVec3fZero, camE1, xyzScale, camE2, xyzScale);
-            vec2f_to_3d_plane(vtx[1].v.ob, (Vec2f) { r0 * x1, r0 * y1 }, gVec3fZero, camE1, xyzScale, camE2, xyzScale);
-            vec2f_to_3d_plane(vtx[2].v.ob, (Vec2f) { r1 * x0, r1 * y0 }, gVec3fZero, camE1, xyzScale, camE2, xyzScale);
-            vec2f_to_3d_plane(vtx[3].v.ob, (Vec2f) { r1 * x1, r1 * y1 }, gVec3fZero, camE1, xyzScale, camE2, xyzScale);
+            *(glowVtx++) = (Vtx) { { { r0 * x0, r0 * y0 * glowScale, 0 }, 0, { 0, 0 }, { OMM_PERRY_COLOR(j + 0, 0), OMM_PERRY_COLOR(j + 0, 1), OMM_PERRY_COLOR(j + 0, 2), o->oOpacity * (1.f - t0) } } };
+            *(glowVtx++) = (Vtx) { { { r0 * x1, r0 * y1 * glowScale, 0 }, 0, { 0, 0 }, { OMM_PERRY_COLOR(j + 0, 0), OMM_PERRY_COLOR(j + 0, 1), OMM_PERRY_COLOR(j + 0, 2), o->oOpacity * (1.f - t0) } } };
+            *(glowVtx++) = (Vtx) { { { r1 * x0, r1 * y0 * glowScale, 0 }, 0, { 0, 0 }, { OMM_PERRY_COLOR(j + 1, 0), OMM_PERRY_COLOR(j + 1, 1), OMM_PERRY_COLOR(j + 1, 2), o->oOpacity * (1.f - t1) } } };
+            *(glowVtx++) = (Vtx) { { { r1 * x1, r1 * y1 * glowScale, 0 }, 0, { 0, 0 }, { OMM_PERRY_COLOR(j + 1, 0), OMM_PERRY_COLOR(j + 1, 1), OMM_PERRY_COLOR(j + 1, 2), o->oOpacity * (1.f - t1) } } };
         }
     }
-    gSPEndDisplayList(tri);
+    gSPEndDisplayList(glowTri++);
+    gfx_copy_and_fill_null(data->glow.gfx, omm_perry_shockwave_glow_gfx, sizeof(omm_perry_shockwave_glow_gfx), data->glow.tri);
 }
 
 const BehaviorScript bhvOmmPerryShockwave[] = {
     OBJ_TYPE_SPECIAL,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_perry_shockwave_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_perry_shockwave_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_perry_shockwave(struct Object *o, s32 delay, s32 type, bool clockwise) {
+struct Object *omm_obj_spawn_perry_shockwave(struct Object *o, s32 delay, s32 type, bool clockwise) {
     struct Object *wave = obj_spawn_from_geo(o, omm_geo_perry_shockwave, bhvOmmPerryShockwave);
     obj_set_always_rendered(wave, true);
     obj_set_angle(wave, 0, 0, 0);

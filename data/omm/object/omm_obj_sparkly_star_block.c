@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -136,7 +137,7 @@ static void bhv_omm_sparkly_star_block_update() {
     struct Object *o = gCurrentObject;
     switch (o->oAction) {
         case 0: {
-            load_object_collision_model();
+            obj_load_collision_model(o);
             if (cur_obj_was_attacked_or_ground_pounded()) {
                 o->oIntangibleTimer = -1;
                 o->oHomeY = o->oPosY;
@@ -152,7 +153,7 @@ static void bhv_omm_sparkly_star_block_update() {
             o->oPosY = o->oHomeY - (o->oScaleY - 2.5f) * 25.f;
             if (o->oTimer == 6) {
                 for (s32 i = 0; i != 60; ++i) {
-                    omm_spawn_sparkly_star_sparkle(o, o->oSparklyStarMode, o->oScaleY * 25.f, 60.f, 0.8f, 80.f);
+                    omm_obj_spawn_sparkly_star_sparkle(o, o->oSparklyStarMode, o->oScaleY * 25.f, 60.f, 0.8f, 80.f);
                 }
                 o->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
                 obj_play_sound(o, SOUND_GENERAL_BREAK_BOX);
@@ -182,39 +183,39 @@ static void bhv_omm_sparkly_star_block_update() {
 
 const BehaviorScript bhvOmmSparklyStarBlock1[] = {
     OBJ_TYPE_SURFACE,
-    0x11010001,
-    0x2A000000, (uintptr_t) exclamation_box_outline_seg8_collision_08025F78,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_sparkly_star_block_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_LOAD_COLLISION_DATA(exclamation_box_outline_seg8_collision_08025F78),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_sparkly_star_block_update),
+    BHV_END_LOOP(),
 };
 
 const BehaviorScript bhvOmmSparklyStarBlock2[] = {
     OBJ_TYPE_SURFACE,
-    0x11010001,
-    0x2A000000, (uintptr_t) exclamation_box_outline_seg8_collision_08025F78,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_sparkly_star_block_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_LOAD_COLLISION_DATA(exclamation_box_outline_seg8_collision_08025F78),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_sparkly_star_block_update),
+    BHV_END_LOOP(),
 };
 
 const BehaviorScript bhvOmmSparklyStarBlock3[] = {
     OBJ_TYPE_SURFACE,
-    0x11010001,
-    0x2A000000, (uintptr_t) exclamation_box_outline_seg8_collision_08025F78,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_sparkly_star_block_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_LOAD_COLLISION_DATA(exclamation_box_outline_seg8_collision_08025F78),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_sparkly_star_block_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_sparkly_star_block(struct Object *o, s32 sparklyMode, f32 x, f32 y, f32 z) {
+struct Object *omm_obj_spawn_sparkly_star_block(struct Object *o, s32 sparklyMode, f32 x, f32 y, f32 z) {
     struct Object *block = obj_spawn_from_geo(o, OMM_SPARKLY_BLOCK_GEO[sparklyMode], OMM_SPARKLY_BLOCK_BHV[sparklyMode]);
     obj_set_always_rendered(block, true);
-    obj_set_pos(block, x, y, z);
+    obj_set_xyz(block, x, y, z);
     obj_set_angle(block, 0, 0, 0);
     obj_scale(block, 2.5f);
     obj_set_params(block, INTERACT_BREAKABLE, 0, 1, 0, true);

@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Geo layouts
@@ -24,20 +25,20 @@ static void bhv_omm_fire_smoke_init() {
 
 const BehaviorScript bhvOmmFireSmoke[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x0C000000, (uintptr_t) bhv_omm_fire_smoke_init,
-    0x101AFFFF,
-    0x0500000A,
-    0x0F1A0001,
-    0x06000000,
-    0x1D000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_CALL_NATIVE(bhv_omm_fire_smoke_init),
+    BHV_SET_INT(oAnimState, -1),
+    BHV_BEGIN_REPEAT(10),
+        BHV_ADD_INT(oAnimState, 1),
+    BHV_END_REPEAT(),
+    BHV_DEACTIVATE(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_fire_smoke(struct Object *o, s32 type) {
+struct Object *omm_obj_spawn_fire_smoke(struct Object *o, s32 type) {
     struct Object *smoke = NULL;
     switch (type) {
         default:

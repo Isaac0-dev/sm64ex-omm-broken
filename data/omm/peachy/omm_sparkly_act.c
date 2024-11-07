@@ -7,7 +7,15 @@
 // Star dance
 //
 
-static s32 sOmmSparklyStarDanceAnimData[][5] = {
+typedef struct {
+    s32 animID;
+    s32 handState;
+    s16 yawOffset;
+    f32 yOffset;
+    f32 animSpeed;
+} OmmSparklyStarDanceAnimFrame;
+
+static const OmmSparklyStarDanceAnimFrame OMM_SPARKLY_STAR_DANCE_ANIM_FRAMES[] = {
     // Animation, Hands, Yaw, PosY, Speed
     { MARIO_ANIM_TRIPLE_JUMP_LAND, MARIO_HAND_FISTS, 0x0000,  0, 1 }, // 00
     { MARIO_ANIM_TRIPLE_JUMP_LAND, MARIO_HAND_FISTS, 0x0000,  0, 1 }, // 01
@@ -48,7 +56,6 @@ static s32 sOmmSparklyStarDanceAnimData[][5] = {
 };
 
 static bool omm_sparkly_act_star_dance_update(struct MarioState *m) {
-    static struct Object *celebStar;
 
     // Enable time stop and spawn the celebration star
     if (m->actionTimer == 0) {
@@ -57,37 +64,38 @@ static bool omm_sparkly_act_star_dance_update(struct MarioState *m) {
         disable_background_sound();
         music_pause();
         omm_sound_play(OMM_SOUND_EVENT_SPARKLY_STAR_GET, gGlobalSoundArgs);
-        celebStar = omm_spawn_sparkly_star_celebration(m->marioObj, gOmmSparklyMode);
+        omm_obj_spawn_sparkly_star_celebration(m->marioObj, gOmmSparklyMode);
         set_time_stop_flags(TIME_STOP_ENABLED | TIME_STOP_MARIO_AND_DOORS);
         m->marioObj->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
     }
-    
+
     // Display the text box "Pink-Gold/Crystal/Nebula star"
     else if (m->actionTimer == 28) {
         s32 starIndex = omm_sparkly_get_index(gOmmSparklyMode, gCurrLevelNum, gCurrAreaIndex);
+        ustr_t levelName, starName;
         omm_render_effect_you_got_a_star_begin(
             OMM_SPARKLY_TEXT_STAR[gOmmSparklyMode],
-            omm_sparkly_get_level_name(gOmmSparklyMode, starIndex),
-            omm_sparkly_get_star_name(gOmmSparklyMode, starIndex)
+            omm_sparkly_get_level_name(levelName, gOmmSparklyMode, starIndex),
+            omm_sparkly_get_star_name(starName, gOmmSparklyMode, starIndex)
         );
     }
-    
+
     // Wa-hoo!
     else if (m->actionTimer == 29) {
-        obj_play_sound(m->marioObj, SOUND_MARIO_HERE_WE_GO);
+        SFX(SOUND_MARIO_HERE_WE_GO);
         set_camera_shake_from_hit(SHAKE_GROUND_POUND);
     }
-    
+
     // Resume action
     else if (m->actionTimer == 90) {
-        obj_mark_for_deletion(celebStar);
+        obj_deactivate_all_with_behavior(bhvOmmSparklyStarCelebration);
         m->marioObj->activeFlags &= ~ACTIVE_FLAG_INITIATED_TIME_STOP;
         clear_time_stop_flags(TIME_STOP_ENABLED | TIME_STOP_MARIO_AND_DOORS);
         enable_background_sound();
         music_resume();
         omm_render_effect_you_got_a_star_end();
-        omm_health_fully_heal_mario(m);
-        m->healCounter = OMM_O2_REFILL;
+        omm_health_fully_heal_mario(m, true);
+        m->healCounter = OMM_BREATH_REFILL;
         return true;
     }
 
@@ -95,12 +103,12 @@ static bool omm_sparkly_act_star_dance_update(struct MarioState *m) {
     omm_mario_lock_camera(m, true);
 
     // Animation
-    s32 *animData = sOmmSparklyStarDanceAnimData[min_s(m->actionTimer, 35)];
-    obj_anim_play(m->marioObj, animData[0], animData[4]);
+    const OmmSparklyStarDanceAnimFrame *frame = &OMM_SPARKLY_STAR_DANCE_ANIM_FRAMES[min_s(m->actionTimer, 35)];
+    ANM(frame->animID, frame->animSpeed);
     if (m->actionTimer >= 33) obj_anim_clamp_frame(m->marioObj, 0, 9); // Luigi's freaking flutter jump
-    m->marioBodyState->handState = animData[1];
-    m->marioObj->oGfxAngle[1] = m->faceAngle[1] - (s16) animData[2];
-    m->marioObj->oGfxPos[1] = m->pos[1] + animData[3];
+    m->marioBodyState->handState = frame->handState;
+    m->marioObj->oGfxAngle[1] = m->faceAngle[1] - (s16) frame->yawOffset;
+    m->marioObj->oGfxPos[1] = m->pos[1] + frame->yOffset;
     m->actionTimer++;
     return false;
 }
@@ -128,7 +136,7 @@ typedef struct {
 static struct {
     s32 timer;
     u8 fade;
-    u8 msg[256];
+    ustr_t msg;
 } sOmmEndToadDialog[1];
 
 static void omm_sparkly_act_ending_update_toad_anim(EndToadStruct *toad) {
@@ -149,7 +157,7 @@ static void omm_sparkly_act_ending_update_toad_jump(EndToadStruct *toad) {
 
 static void omm_sparkly_act_ending_set_toad_message(const char *msg, s16 duration) {
     const u8 *converted = omm_text_get_string_for_selected_player(omm_text_convert(msg, false));
-    mem_cpy(sOmmEndToadDialog->msg, converted, omm_text_length(converted) + 1);
+    omm_text_copy(sOmmEndToadDialog->msg, sizeof(ustr_t), converted);
     sOmmEndToadDialog->timer = duration + 10; // + Fade in/out frames
     sOmmEndToadDialog->fade = 0;
 }
@@ -165,7 +173,7 @@ static void omm_sparkly_act_ending_set_visual_pos(struct Object *o, f32 *value) 
 
 static struct Object *omm_sparkly_act_ending_get_grand_star() {
     for_each_object_with_behavior(grandStar, bhvStaticObject) {
-        if (obj_check_model(grandStar, MODEL_STAR) || obj_has_graph_node(grandStar, geo_layout_to_graph_node(NULL, omm_geo_star_0_opaque))) {
+        if (obj_has_model(grandStar, MODEL_STAR) || obj_has_geo_layout(grandStar, omm_geo_star_0_opaque)) {
             return grandStar;
         }
     }
@@ -288,7 +296,7 @@ s32 omm_sparkly_act_ending_1(struct MarioState *m) {
             } break;
 
             case 4: {
-                obj_anim_play(m->marioObj, MARIO_ANIM_CREDITS_RETURN_FROM_LOOK_UP, 1.f);
+                ANM(MARIO_ANIM_CREDITS_RETURN_FROM_LOOK_UP, 1.f);
                 m->actionState = 0;
                 m->actionTimer = 0;
                 m->actionArg++;
@@ -303,12 +311,12 @@ s32 omm_sparkly_act_ending_1(struct MarioState *m) {
 
                     // Mario scratches his head
                     case 1: {
-                        obj_anim_play(m->marioObj, MARIO_ANIM_MISSING_CAP, 1.f);
+                        ANM(MARIO_ANIM_MISSING_CAP, 1.f);
                     } break;
 
                     // Toad message 1
                     case 60: {
-                        obj_anim_play(m->marioObj, MARIO_ANIM_FIRST_PERSON, 1.f);
+                        ANM(MARIO_ANIM_FIRST_PERSON, 1.f);
                         sEndToadL.jump = 8;
                         omm_sound_play(OMM_SOUND_TOAD_1, sEndToadL.obj->oCameraToObject);
                         omm_sparkly_act_ending_set_toad_message(OMM_TEXT_BAD_ENDING_TOAD_1, 30);
@@ -331,7 +339,7 @@ s32 omm_sparkly_act_ending_1(struct MarioState *m) {
                     case 300: {
                         omm_sound_play(OMM_SOUND_TOAD_4, sEndToadR.obj->oCameraToObject);
                         omm_sparkly_act_ending_set_toad_message(OMM_TEXT_BAD_ENDING_TOAD_4, 60);
-                        obj_anim_play(m->marioObj, MARIO_ANIM_DYING_FALL_OVER, 1.f);
+                        ANM(MARIO_ANIM_DYING_FALL_OVER, 1.f);
                     } break;
 
                     // Toad message 5, Mario stands up, credits sequence
@@ -339,12 +347,12 @@ s32 omm_sparkly_act_ending_1(struct MarioState *m) {
                         sEndToadR.jump = 8;
                         omm_sound_play(OMM_SOUND_TOAD_5, sEndToadR.obj->oCameraToObject);
                         omm_sparkly_act_ending_set_toad_message(OMM_TEXT_BAD_ENDING_TOAD_5, 60);
-                        obj_anim_play(m->marioObj, MARIO_ANIM_WAKE_FROM_SLEEP, 1.f);
+                        ANM(MARIO_ANIM_WAKE_FROM_SLEEP, 1.f);
                     } break;
 
                     // Mario looks at Toads
                     case 480: {
-                        obj_anim_play(m->marioObj, MARIO_ANIM_FIRST_PERSON, 1.f);
+                        ANM(MARIO_ANIM_FIRST_PERSON, 1.f);
                     } break;
 
                     // Toad message 6
@@ -388,12 +396,12 @@ s32 omm_sparkly_act_ending_1(struct MarioState *m) {
                     case 800: {
                         sEndToadL.anim = 0;
                         sEndToadR.anim = 2;
-                        obj_anim_play(m->marioObj, MARIO_ANIM_CREDITS_START_WALK_LOOK_UP, 1.f);
+                        ANM(MARIO_ANIM_CREDITS_START_WALK_LOOK_UP, 1.f);
                     } break;
 
                     // Mario moves
                     case 900: {
-                        obj_anim_play(m->marioObj, MARIO_ANIM_CREDITS_LOOK_BACK_THEN_RUN, 1.f);
+                        ANM(MARIO_ANIM_CREDITS_LOOK_BACK_THEN_RUN, 1.f);
                     } break;
 
                     // Camera starts moving up, birds spawn
@@ -428,8 +436,6 @@ s32 omm_sparkly_act_ending_1(struct MarioState *m) {
         override_viewport_and_clip(NULL, &sEndCutsceneVp, 0, 0, 0);
         return OMM_MARIO_ACTION_RESULT_BREAK;
     }
-#else
-    OMM_UNUSED(m);
 #endif
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }
@@ -447,8 +453,6 @@ s32 omm_sparkly_act_ending_2(struct MarioState *m) {
         }
         return OMM_MARIO_ACTION_RESULT_BREAK;
     }
-#else
-    OMM_UNUSED(m);
 #endif
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }

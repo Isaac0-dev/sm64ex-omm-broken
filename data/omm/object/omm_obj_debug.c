@@ -2,39 +2,40 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 #if OMM_CODE_DEBUG
+#include "behavior_commands.h"
 
-#define SIN_0000 0.000f
-#define SIN_1000 0.383f
-#define SIN_2000 0.707f
-#define SIN_3000 0.924f
-#define SIN_4000 1.000f
-#define SIN_5000 0.924f
-#define SIN_6000 0.707f
-#define SIN_7000 0.383f
-#define SIN_8000 0.000f
-#define SIN_9000 -0.383f
-#define SIN_A000 -0.707f
-#define SIN_B000 -0.924f
-#define SIN_C000 -1.000f
-#define SIN_D000 -0.924f
-#define SIN_E000 -0.707f
-#define SIN_F000 -0.383f
-#define COS_0000 SIN_4000
-#define COS_1000 SIN_5000
-#define COS_2000 SIN_6000
-#define COS_3000 SIN_7000
-#define COS_4000 SIN_8000
-#define COS_5000 SIN_9000
-#define COS_6000 SIN_A000
-#define COS_7000 SIN_B000
-#define COS_8000 SIN_C000
-#define COS_9000 SIN_D000
-#define COS_A000 SIN_E000
-#define COS_B000 SIN_F000
-#define COS_C000 SIN_0000
-#define COS_D000 SIN_1000
-#define COS_E000 SIN_2000
-#define COS_F000 SIN_3000
+#define SIN_0000 (0.000f)
+#define SIN_1000 (0.383f)
+#define SIN_2000 (0.707f)
+#define SIN_3000 (0.924f)
+#define SIN_4000 (1.000f)
+#define SIN_5000 (0.924f)
+#define SIN_6000 (0.707f)
+#define SIN_7000 (0.383f)
+#define SIN_8000 (0.000f)
+#define SIN_9000 (-0.383f)
+#define SIN_A000 (-0.707f)
+#define SIN_B000 (-0.924f)
+#define SIN_C000 (-1.000f)
+#define SIN_D000 (-0.924f)
+#define SIN_E000 (-0.707f)
+#define SIN_F000 (-0.383f)
+#define COS_0000 (SIN_4000)
+#define COS_1000 (SIN_5000)
+#define COS_2000 (SIN_6000)
+#define COS_3000 (SIN_7000)
+#define COS_4000 (SIN_8000)
+#define COS_5000 (SIN_9000)
+#define COS_6000 (SIN_A000)
+#define COS_7000 (SIN_B000)
+#define COS_8000 (SIN_C000)
+#define COS_9000 (SIN_D000)
+#define COS_A000 (SIN_E000)
+#define COS_B000 (SIN_F000)
+#define COS_C000 (SIN_0000)
+#define COS_D000 (SIN_1000)
+#define COS_E000 (SIN_2000)
+#define COS_F000 (SIN_3000)
 
 //
 // Gfx data
@@ -223,7 +224,7 @@ static const Gfx omm_debug_wallbox_gfx[] = {
 //
 
 static const GeoLayout omm_geo_debug_box[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 0),
+    GEO_NODE_START(),
     GEO_OPEN_NODE(),
         GEO_SWITCH_CASE(3, geo_switch_anim_state),
         GEO_OPEN_NODE(),
@@ -241,7 +242,7 @@ static const GeoLayout omm_geo_debug_box[] = {
 
 static void bhv_omm_debug_box_update() {
     struct Object *o = gCurrentObject;
-    if (!o->parentObj || !o->parentObj->activeFlags) {
+    if (!o->parentObj || !o->parentObj->activeFlags || o->parentObj->oIntangibleTimer != 0 || (o->parentObj == gMarioObject && omm_mario_is_capture(gMarioState))) {
         obj_mark_for_deletion(o);
         return;
     }
@@ -252,7 +253,7 @@ static void bhv_omm_debug_box_update() {
         case 0: {
             if (o->parentObj == gOmmCapture) {
                 o->oPosX   = o->parentObj->oPosX;
-                o->oPosY   = o->parentObj->oPosY - gOmmMario->capture.hitboxOffset;
+                o->oPosY   = o->parentObj->oPosY;
                 o->oPosZ   = o->parentObj->oPosZ;
                 o->oScaleX = gOmmMario->capture.hitboxRadius / 100.f;
                 o->oScaleY = gOmmMario->capture.hitboxHeight / 100.f;
@@ -281,7 +282,7 @@ static void bhv_omm_debug_box_update() {
         case 2: {
             if (o->parentObj == gOmmCapture) {
                 o->oPosX   = o->parentObj->oPosX;
-                o->oPosY   = o->parentObj->oPosY - gOmmMario->capture.hitboxOffset;
+                o->oPosY   = o->parentObj->oPosY;
                 o->oPosZ   = o->parentObj->oPosZ;
                 o->oScaleX = gOmmMario->capture.hitboxWall   / 100.f;
                 o->oScaleY = gOmmMario->capture.hitboxHeight / 100.f;
@@ -299,20 +300,20 @@ static void bhv_omm_debug_box_update() {
     obj_set_angle(o, 0, 0, 0);
 }
 
-static const BehaviorScript bhv_omm_debug_box[] = {
+static const BehaviorScript bhvOmmDebugBox[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_debug_box_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_debug_box_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-static struct Object *omm_spawn_debug_box(struct Object *o, s32 type) {
-    struct Object *box = obj_spawn_from_geo(o, omm_geo_debug_box, bhv_omm_debug_box);
+static struct Object *omm_obj_spawn_debug_box(struct Object *o, s32 type) {
+    struct Object *box = obj_spawn_from_geo(o, omm_geo_debug_box, bhvOmmDebugBox);
     obj_set_always_rendered(box, true);
     box->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
     box->oAnimState = type;
@@ -331,7 +332,7 @@ OMM_ROUTINE_UPDATE(omm_debug_update) {
 
         // Register existing boxes and unload unused ones
         bool objHasBox[OBJECT_POOL_CAPACITY][3] = { false };
-        for_each_object_with_behavior(box, bhv_omm_debug_box) {
+        for_each_object_with_behavior(box, bhvOmmDebugBox) {
             struct Object *p = box->parentObj;
             s32 boxType = box->oAnimState;
             if (p && p->activeFlags && (
@@ -372,17 +373,17 @@ OMM_ROUTINE_UPDATE(omm_debug_update) {
 
                     // Hitbox
                     if (gOmmDebugHitbox && !objHasBox[objIndex][0]) {
-                        omm_spawn_debug_box(obj, 0);
+                        omm_obj_spawn_debug_box(obj, 0);
                     }
 
                     // Hurtbox
                     if (gOmmDebugHurtbox && !objHasBox[objIndex][1]) {
-                        omm_spawn_debug_box(obj, 1);
+                        omm_obj_spawn_debug_box(obj, 1);
                     }
 
                     // Wallbox
                     if (gOmmDebugWallbox && !objHasBox[objIndex][2]) {
-                        omm_spawn_debug_box(obj, 2);
+                        omm_obj_spawn_debug_box(obj, 2);
                     }
                 }
                 next = (struct Object *) next->header.next; 
@@ -391,26 +392,51 @@ OMM_ROUTINE_UPDATE(omm_debug_update) {
     }
 
     // Mario info
+    s32 y0 = 4;
+    s32 x0 = GFX_DIMENSIONS_FROM_LEFT_EDGE(4);
     if (gOmmDebugMario) {
-        omm_debug_text(-60, 58, "POS %d %d %d", (s32) m->pos[0], (s32) m->pos[1], (s32) m->pos[2]);
-        omm_debug_text(-60, 40, "PEAK %d YAW %04X", (s32) (OMM_MOVESET_CLASSIC ? m->peakHeight : gOmmMario->state.peakHeight), (u16) m->faceAngle[1]);
-        omm_debug_text(-60, 22, "UEL %d %d %d FWD %d", (s32) m->vel[0], (s32) m->vel[1], (s32) m->vel[2], (s32) m->forwardVel);
-        omm_debug_text(-60,  4, "L %d C %d A %d R %d", (s32) gCurrLevelNum, (s32) gCurrCourseNum, (s32) gCurrAreaIndex, (s32) (m->floor ? m->floor->room : 0));
+        struct Object *playAsCappy = omm_cappy_get_object_play_as();
+        if (playAsCappy) {
+            struct Surface *floor = NULL;
+            find_floor(playAsCappy->oPosX, playAsCappy->oPosY, playAsCappy->oPosZ, &floor);
+            omm_debug_text(x0, y0 + 72, "POS %d %d %d", (s32) playAsCappy->oPosX, (s32) playAsCappy->oPosY, (s32) playAsCappy->oPosZ);
+            omm_debug_text(x0, y0 + 54, "UEL %d %d %d FWD %d", (s32) m->vel[0], (s32) m->vel[1], (s32) m->vel[2], (s32) m->forwardVel);
+            omm_debug_text(x0, y0 + 36, "ANG %04X %04X %04X", (u16) m->faceAngle[0], (u16) m->faceAngle[1], (u16) m->faceAngle[2]);
+            omm_debug_text(x0, y0 + 18, "PEAK %d FY %04d", (s32) (OMM_MOVESET_CLASSIC ? m->peakHeight : gOmmMario->state.peakHeight), (s32) (floor ? floor->normal.y * 1000.f : 0));
+            omm_debug_text(x0, y0 +  0, "L %d C %d A %d R %d", (s32) gCurrLevelNum, (s32) gCurrCourseNum, (s32) gCurrAreaIndex, (s32) (floor ? floor->room : 0));
+        } else {
+            omm_debug_text(x0, y0 + 72, "POS %d %d %d", (s32) m->pos[0], (s32) m->pos[1], (s32) m->pos[2]);
+            omm_debug_text(x0, y0 + 54, "UEL %d %d %d FWD %d", (s32) m->vel[0], (s32) m->vel[1], (s32) m->vel[2], (s32) m->forwardVel);
+            omm_debug_text(x0, y0 + 36, "ANG %04X %04X %04X", (u16) m->faceAngle[0], (u16) m->faceAngle[1], (u16) m->faceAngle[2]);
+            omm_debug_text(x0, y0 + 18, "PEAK %d FY %04d", (s32) (OMM_MOVESET_CLASSIC ? m->peakHeight : gOmmMario->state.peakHeight), (s32) (m->floor ? m->floor->normal.y * 1000.f : 0));
+            omm_debug_text(x0, y0 +  0, "L %d C %d A %d R %d", (s32) gCurrLevelNum, (s32) gCurrCourseNum, (s32) gCurrAreaIndex, (s32) (m->floor ? m->floor->room : 0));
+        }
+        y0 += 90;
     }
 
     // Cappy info
     if (gOmmDebugCappy && gLoadedGraphNodes) {
-        s32 sCapModels[5] = {
-            omm_player_graphics_get_selected_model(),
-            omm_player_graphics_get_selected_normal_cap(),
-            omm_player_graphics_get_selected_wing_cap(),
-            omm_player_graphics_get_selected_metal_cap(),
-            omm_player_graphics_get_selected_winged_metal_cap()
+        struct { char type; s32 index; } sCapModels[5] = {
+            { ',', omm_player_graphics_get_selected_model() },
+            { 'N', omm_player_graphics_get_selected_normal_cap() },
+            { 'W', omm_player_graphics_get_selected_wing_cap() },
+            { 'M', omm_player_graphics_get_selected_metal_cap() },
+            { '*', omm_player_graphics_get_selected_winged_metal_cap() },
         };
         for (s32 i = 0; i != 5; ++i) {
-            u32 id = omm_cappy_gfx_get_graph_node_identifier(gLoadedGraphNodes[sCapModels[i]]);
-            omm_debug_text(-60, 76 - 18 * i, "%08X", id);
+            static struct Object dummy[1];
+            dummy->oGraphNode = gLoadedGraphNodes[sCapModels[i].index];
+            omm_models_update_object(dummy);
+            u32 id = omm_cappy_gfx_get_graph_node_identifier(dummy->oGraphNode);
+            omm_debug_text(x0, y0 + 72 - 18 * i, "%c %08X", sCapModels[i].type, id);
         }
+        y0 += 90;
+    }
+
+    // Surface info
+    if (gOmmDebugSurface) {
+        extern void omm_debug_surfaces_print_info(s32 x, s32 y);
+        omm_debug_surfaces_print_info(x0, y0);
     }
 }
 

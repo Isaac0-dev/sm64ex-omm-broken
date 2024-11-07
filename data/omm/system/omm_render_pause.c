@@ -6,19 +6,31 @@
 // Data
 //
 
-static Scroll sCastleScrollV = { 0 };
-static Scroll sCastleScrollH = { 0 };
-static Scroll sCourseScrollV = { 0 };
+// struct
+static Scroll sCastleScrollV = {0};
+static Scroll sCastleScrollH = {0};
+static Scroll sCourseScrollV = {0};
 static s32 sPauseType = 0;
 static s32 sPauseAlpha = 0;
-static s32 sLevelList[] = { LEVEL_BOB, LEVEL_WF, LEVEL_JRB, LEVEL_CCM, LEVEL_BBH, LEVEL_HMC, LEVEL_LLL, LEVEL_SSL, LEVEL_DDD, LEVEL_SL, LEVEL_WDW, LEVEL_TTM, LEVEL_THI, LEVEL_TTC, LEVEL_RR, LEVEL_BITDW, LEVEL_BITFS, LEVEL_BITS, LEVEL_TOTWC, LEVEL_COTMC, LEVEL_VCUTM, LEVEL_PSS, LEVEL_SA, LEVEL_WMOTR, LEVEL_CASTLE };
+
+static s32 OMM_PAUSE_LEVEL_LIST[] = {
+    LEVEL_BOB, LEVEL_WF, LEVEL_JRB, LEVEL_CCM, LEVEL_BBH,
+    LEVEL_HMC, LEVEL_LLL, LEVEL_SSL, LEVEL_DDD, LEVEL_SL,
+    LEVEL_WDW, LEVEL_TTM, LEVEL_THI, LEVEL_TTC, LEVEL_RR,
+    LEVEL_BITDW, LEVEL_BITFS, LEVEL_BITS,
+    LEVEL_TOTWC, LEVEL_COTMC, LEVEL_VCUTM,
+    LEVEL_PSS, LEVEL_SA, LEVEL_WMOTR,
+    LEVEL_ENDING, LEVEL_CASTLE
+};
+
+#define OMM_PAUSE_NUM_LEVELS ((s32) array_length(OMM_PAUSE_LEVEL_LIST))
 
 //
 // Sparkly Stars timer
 //
 
 static void omm_render_pause_sparkly_timer(s16 x, s16 y, s16 w, u8 alpha, s32 sparklyMode, s32 timer, bool blink) {
-    static const char *sTimerGlyphs[] = {
+    static const char *OMM_PAUSE_SPARKLY_TIMER_GLYPHS[] = {
         OMM_TEXTURE_HUD_0,
         OMM_TEXTURE_HUD_1,
         OMM_TEXTURE_HUD_2,
@@ -53,7 +65,7 @@ static void omm_render_pause_sparkly_timer(s16 x, s16 y, s16 w, u8 alpha, s32 sp
             u8 a = alpha / ((glyphs[i] == 10 && blink && (timer % 30) >= 15) ? 3 : 1);
             omm_render_glyph(
                 x + (i - 2) * OMM_RENDER_SPARKLY_TIMER_OFFSET_X(w), y, w, w,
-                0xFF, 0xFF, 0xFF, a, sTimerGlyphs[glyphs[i]], false
+                0xFF, 0xFF, 0xFF, a, OMM_PAUSE_SPARKLY_TIMER_GLYPHS[glyphs[i]], false
             );
         }
     }
@@ -80,6 +92,7 @@ static void omm_render_pause_collectibles() {
                 omm_save_file_get_taken_luigi_key(gCurrSaveFileNum - 1, OMM_GAME_MODE, i)
             );
         }
+        gOmmGlobals->hideHudRadar = true;
     }
 
     // Wario coins
@@ -92,6 +105,7 @@ static void omm_render_pause_collectibles() {
                 omm_save_file_get_taken_wario_coin(gCurrSaveFileNum - 1, OMM_GAME_MODE, i)
             );
         }
+        gOmmGlobals->hideHudRadar = true;
     }
 #endif
 }
@@ -102,7 +116,7 @@ static void omm_render_pause_collectibles() {
 
 void omm_render_pause_init() {
     sPauseAlpha = 0;
-    level_set_transition(-1, 0);
+    level_set_transition(-1, NULL);
     play_sound(SOUND_MENU_PAUSE | 0xFF00, gGlobalSoundArgs);
     if (gCurrCourseNum != COURSE_NONE) {
         sPauseType = 1;
@@ -113,6 +127,12 @@ void omm_render_pause_init() {
             sCastleScrollV.idx = -1;
         }
     }
+}
+
+static void omm_render_pause_score_board(bool isCoinScore) {
+    omm_render_texrect(GFX_DIMENSIONS_FROM_LEFT_EDGE(-1), 0, GFX_DIMENSIONS_FROM_RIGHT_EDGE(-1) - GFX_DIMENSIONS_FROM_LEFT_EDGE(-1), SCREEN_HEIGHT, 32, 32, 0x00, 0x00, 0x00, sPauseAlpha * 0.8f, OMM_TEXTURE_MISC_WHITE, false);
+    extern void omm_render_score_board(s32 fileIndex, s32 modeIndex, f32 scale, u8 a, bool isCoinScore, bool highlightCurrentCourse);
+    omm_render_score_board(gCurrSaveFileNum - 1, OMM_GAME_MODE, 1.f, sPauseAlpha, isCoinScore, true);
 }
 
 //
@@ -137,8 +157,9 @@ static s16 omm_render_pause_course_name(s16 y) {
     } else {
         textCourse[textCourseLength - 3] = 0xFF;
     }
+    ustr_t courseName;
     omm_render_string_right_align(OMM_RENDER_PAUSE_COURSE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sPauseAlpha, textCourse, true);
-    omm_render_string_left_align(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sPauseAlpha, omm_level_get_course_name(levelNum, OMM_GAME_MODE, false, false), false);
+    omm_render_string_left_align(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sPauseAlpha, omm_level_get_course_name(courseName, levelNum, OMM_GAME_MODE, false, false), false);
     y -= OMM_RENDER_PAUSE_COURSE_OFFSET_Y;
     return y;
 }
@@ -151,8 +172,9 @@ static s16 omm_render_pause_course_act(s16 y) {
         textAct[length - 2] = DIALOG_CHAR_SPACE;
         textAct[length - 1] = gCurrActNum;
         textAct[length - 0] = 0xFF;
+        ustr_t actName;
         omm_render_string_right_align(OMM_RENDER_PAUSE_COURSE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sPauseAlpha, textAct, true);
-        omm_render_string_left_align(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sPauseAlpha, omm_level_get_act_name(levelNum, gCurrActNum, OMM_GAME_MODE, false, false), false);
+        omm_render_string_left_align(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sPauseAlpha, omm_level_get_act_name(actName, levelNum, gCurrActNum, OMM_GAME_MODE, false, false), false);
         y -= OMM_RENDER_PAUSE_COURSE_OFFSET_Y;
     }
     return y;
@@ -160,10 +182,10 @@ static s16 omm_render_pause_course_act(s16 y) {
 
 static s16 omm_render_pause_course_stars(s16 y) {
     s32 levelNum = OMM_BOWSER_IN_THE_LEVEL(gCurrLevelNum);
-    if (omm_stars_get_bits_total(levelNum, OMM_GAME_MODE) != 0) {
+    if (omm_stars_get_level_flags(levelNum, OMM_GAME_MODE) != 0) {
         u8 *textStars = omm_text_convert(OMM_TEXT_MY_STARS, false);
         omm_render_string_right_align(OMM_RENDER_PAUSE_COURSE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sPauseAlpha, textStars, true);
-        omm_render_hud_stars(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sPauseAlpha, levelNum, true, false);
+        omm_render_hud_stars(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sPauseAlpha, levelNum);
         y -= OMM_RENDER_PAUSE_COURSE_OFFSET_Y;
     }
     return y;
@@ -171,19 +193,17 @@ static s16 omm_render_pause_course_stars(s16 y) {
 
 static s16 omm_render_pause_course_coins(s16 y) {
     s32 levelNum = OMM_BOWSER_IN_THE_LEVEL(gCurrLevelNum);
-    if (omm_stars_get_bits_total(levelNum, OMM_GAME_MODE) != 0) {
+    if (omm_stars_get_level_flags(levelNum, OMM_GAME_MODE) != 0) {
         u8 *textScore = omm_text_convert(OMM_TEXT_MY_SCORE, false);
         omm_render_string_right_align(OMM_RENDER_PAUSE_COURSE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sPauseAlpha, textScore, true);
-        omm_render_hud_coins(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sPauseAlpha, omm_save_file_get_course_coin_score(gCurrSaveFileNum - 1, OMM_GAME_MODE, omm_level_get_course(levelNum) - 1), false);
+        omm_render_hud_coins(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sPauseAlpha, omm_save_file_get_course_coin_score(gCurrSaveFileNum - 1, OMM_GAME_MODE, omm_level_get_course(levelNum) - 1));
         y -= OMM_RENDER_PAUSE_COURSE_OFFSET_Y;
     }
     return y;
 }
 
 static void omm_render_pause_course_red_coins() {
-    s32 numRedCoins = omm_level_get_num_red_coins(gCurrLevelNum, gCurrAreaIndex);
-    if (numRedCoins > 0 && obj_get_red_coin_star()) {
-        s32 redCoinsCollected = numRedCoins - obj_get_count_with_behavior(bhvRedCoin);
+    if (gOmmArea->redCoins > 0 && obj_get_red_coin_star()) {
         s32 x = OMM_RENDER_RED_COINS_X;
         omm_render_texrect(
             x, OMM_RENDER_RED_COINS_Y, OMM_RENDER_GLYPH_SIZE, OMM_RENDER_GLYPH_SIZE,
@@ -197,11 +217,12 @@ static void omm_render_pause_course_red_coins() {
             false
         );
         x += 2 * OMM_RENDER_NUMBER_OFFSET_X;
-        omm_render_number_hud(x, OMM_RENDER_RED_COINS_Y, sPauseAlpha, redCoinsCollected, 2, true, false);
+        omm_render_number_hud(x, OMM_RENDER_RED_COINS_Y, sPauseAlpha, min_s(gRedCoinsCollected, gOmmArea->redCoins), 2, true, false);
         x += OMM_RENDER_NUMBER_OFFSET_X + OMM_RENDER_GLYPH_SIZE;
         omm_render_glyph_hud(x, OMM_RENDER_RED_COINS_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, OMM_TEXTURE_HUD_SLASH, false);
         x += OMM_RENDER_GLYPH_SIZE;
-        omm_render_number_hud(x, OMM_RENDER_RED_COINS_Y, sPauseAlpha, numRedCoins, 2, true, false);
+        omm_render_number_hud(x, OMM_RENDER_RED_COINS_Y, sPauseAlpha, gOmmArea->redCoins, 2, true, false);
+        gOmmGlobals->hideHudCamera = true;
     }
 }
 
@@ -226,10 +247,14 @@ static void omm_render_pause_course_sparkly_timer() {
 
 static void omm_render_pause_course_options() {
     omm_render_update_scroll(&sCourseScrollV, 4, -gPlayer1Controller->stickY);
+
+    // Options
     omm_render_string_left_align(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, OMM_RENDER_PAUSE_COURSE_OPTIONS_Y - 0 * OMM_RENDER_PAUSE_COURSE_OFFSET_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, omm_text_convert(OMM_TEXT_CONTINUE, false), false);
     omm_render_string_left_align(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, OMM_RENDER_PAUSE_COURSE_OPTIONS_Y - 1 * OMM_RENDER_PAUSE_COURSE_OFFSET_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, omm_text_convert(OMM_TEXT_RESTART_LEVEL, false), false);
     omm_render_string_left_align(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, OMM_RENDER_PAUSE_COURSE_OPTIONS_Y - 2 * OMM_RENDER_PAUSE_COURSE_OFFSET_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, omm_text_convert(OMM_TEXT_EXIT_LEVEL, false), false);
     omm_render_string_left_align(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, OMM_RENDER_PAUSE_COURSE_OPTIONS_Y - 3 * OMM_RENDER_PAUSE_COURSE_OFFSET_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, omm_text_convert(OMM_TEXT_RETURN_TO_CASTLE, false), false);
+
+    // Cursor
     static const Vtx sWhiteTriVtx[] = {
         { { {  0,  0, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
         { { { -6, -6, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
@@ -247,7 +272,7 @@ static void omm_render_pause_course_options() {
 
 static void omm_render_pause_course_select_option() {
     if (gPlayer1Controller->buttonPressed & (A_BUTTON | START_BUTTON)) {
-        level_set_transition(0, 0);
+        level_set_transition(0, NULL);
         play_sound(SOUND_MENU_PAUSE_2, gGlobalSoundArgs);
         sPauseType = 0;
         gMenuMode = -1;
@@ -263,7 +288,7 @@ static void omm_render_pause_course_select_option() {
             } break;
             
             case 2: { // Exit Level
-                omm_exit_level();
+                omm_exit_level(gCurrLevelNum, gCurrAreaIndex, false);
             } break;
 
             case 3: { // Return to Castle (same as Exit Course)
@@ -275,17 +300,20 @@ static void omm_render_pause_course_select_option() {
 }
 
 void omm_render_pause_course() {
-    gDialogTextAlpha = sPauseAlpha;
-    s16 y = OMM_RENDER_PAUSE_COURSE_INFO_Y - OMM_RENDER_PAUSE_COURSE_OFFSET_Y * !(OMM_STARS_CLASSIC && COURSE_IS_MAIN_COURSE(omm_level_get_course(OMM_BOWSER_IN_THE_LEVEL(gCurrLevelNum))));
-    y = omm_render_pause_course_name(y);
-    y = omm_render_pause_course_act(y);
-    y = omm_render_pause_course_stars(y);
-    y = omm_render_pause_course_coins(y);
-    omm_render_pause_course_options();
-    omm_render_pause_course_red_coins();
-    omm_render_pause_course_collectibles();
-    omm_render_pause_course_sparkly_timer();
-    omm_render_pause_course_select_option();
+    if (gPlayer1Controller->buttonDown & L_TRIG) {
+        omm_render_pause_score_board(gPlayer1Controller->buttonDown & A_BUTTON);
+    } else {
+        s16 y = OMM_RENDER_PAUSE_COURSE_INFO_Y - OMM_RENDER_PAUSE_COURSE_OFFSET_Y * !(OMM_STARS_CLASSIC && COURSE_IS_MAIN_COURSE(omm_level_get_course(OMM_BOWSER_IN_THE_LEVEL(gCurrLevelNum))));
+        y = omm_render_pause_course_name(y);
+        y = omm_render_pause_course_act(y);
+        y = omm_render_pause_course_stars(y);
+        y = omm_render_pause_course_coins(y);
+        omm_render_pause_course_options();
+        omm_render_pause_course_red_coins();
+        omm_render_pause_course_collectibles();
+        omm_render_pause_course_sparkly_timer();
+        omm_render_pause_course_select_option();
+    }
 }
 
 //
@@ -293,21 +321,35 @@ void omm_render_pause_course() {
 //
 
 static void omm_render_pause_castle_update() {
+
+    // Try to place the cursor on the last visited course
     if (sCastleScrollV.idx == -1) {
-        for (s32 i = 0; i != array_length(sLevelList); ++i) {
-            if (gLastCompletedLevelNum == sLevelList[i]) {
+        for (s32 i = 0; i != OMM_PAUSE_NUM_LEVELS; ++i) {
+            if (gLastCompletedLevelNum == OMM_PAUSE_LEVEL_LIST[i]) {
                 sCastleScrollV.idx = i;
                 gLastCompletedLevelNum = LEVEL_CASTLE;
                 break;
             }
         }
     }
-    omm_render_update_scroll(&sCastleScrollV, array_length(sLevelList) + OMM_SPARKLY_MODE_IS_ENABLED, -gPlayer1Controller->stickY);
+
+    // Update the cursor, skip unknown courses (no star collected)
+    s32 count = OMM_PAUSE_NUM_LEVELS + 1 + OMM_SPARKLY_MODE_IS_ENABLED;
+    omm_render_update_scroll(&sCastleScrollV, count, -gPlayer1Controller->stickY);
+    for (s32 dir = sign_s(-gPlayer1Controller->stickY);; sCastleScrollV.idx = (sCastleScrollV.idx + count + dir) % count) {
+        if (sCastleScrollV.idx >= OMM_PAUSE_NUM_LEVELS - 1 || omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, omm_level_get_course(OMM_PAUSE_LEVEL_LIST[sCastleScrollV.idx]) - 1) != 0) {
+            break;
+        }
+    }
 }
 
 static void omm_render_pause_castle_pause() {
+
+    // Pause
     u8 *textPause = omm_text_convert(OMM_TEXT_PAUSE, false);
     omm_render_string_hud_centered(SCREEN_HEIGHT / 2, 0xFF, 0xFF, 0xFF, sPauseAlpha, textPause, false);
+
+    // Black box
     static const Vtx sBlackBoxVtx[] = {
         { { { -OMM_RENDER_PAUSE_CASTLE_BOX_W / 2, -OMM_RENDER_PAUSE_CASTLE_BOX_H / 2, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
         { { { -OMM_RENDER_PAUSE_CASTLE_BOX_W / 2, +OMM_RENDER_PAUSE_CASTLE_BOX_H / 2, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
@@ -322,6 +364,8 @@ static void omm_render_pause_castle_pause() {
     gSPVertex(gDisplayListHead++, sBlackBoxVtx, 4, 0);
     gSP2Triangles(gDisplayListHead++, 2, 1, 0, 0, 1, 2, 3, 0);
     gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
+
+    // Vertical arrows
     static const Vtx sWhiteTriVtx[] = {
         { { {  0, -8, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
         { { { -8,  0, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
@@ -347,15 +391,18 @@ static void omm_render_pause_castle_pause() {
 }
 
 static void omm_render_pause_castle_course() {
-    s32 levelNum = sLevelList[sCastleScrollV.idx];
+    s32 levelNum = OMM_PAUSE_LEVEL_LIST[sCastleScrollV.idx];
     s32 courseIndex = omm_level_get_course(levelNum) - 1;
     
     // Course name
-    const u8 *textCourseName = ((courseIndex != -1) ? (omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, courseIndex) ? 
-        omm_level_get_course_name(levelNum, OMM_GAME_MODE, false, true) :
-        omm_text_convert(OMM_TEXT_LEVEL_UNKNOWN, false)) :
-        omm_text_convert(OMM_TEXT_LEVEL_SECRET_STARS, false)
-    );
+    ustr_t textCourseName;
+    if (courseIndex == -1) {
+        omm_text_copy(textCourseName, sizeof(ustr_t), omm_text_convert(OMM_TEXT_LEVEL_SECRET_STARS, false));
+    } else if (omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, courseIndex)) {
+        omm_level_get_course_name(textCourseName, levelNum, OMM_GAME_MODE, false, true);
+    } else {
+        omm_text_copy(textCourseName, sizeof(ustr_t), omm_text_convert(OMM_TEXT_LEVEL_UNKNOWN, false));
+    }
     omm_render_string_centered(OMM_RENDER_PAUSE_CASTLE_BOX_LINE_1_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, textCourseName, false);
 
     // Course stars
@@ -363,12 +410,19 @@ static void omm_render_pause_castle_course() {
         omm_render_counter(OMM_RENDER_PAUSE_CASTLE_BOX_LINE_2_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, 0xFA, omm_save_file_get_course_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE, -1));
     } else {
         s16 x = (SCREEN_WIDTH - 92) / 2;
-        u8 starBits = omm_stars_get_bits_total(levelNum, OMM_GAME_MODE);
-        u8 starFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, courseIndex);
+        u8 starLevelFlags = omm_stars_get_level_flags(levelNum, OMM_GAME_MODE);
+        u8 starSaveFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, courseIndex);
         u8 starGlyph[] = { DIALOG_CHAR_STAR_FILLED, 0xFF };
-        for (s32 i = 0; i != 7; ++i) {
-            if (starBits & (1 << i)) {
-                if (starFlags & (1 << i)) {
+        for (s32 starIndex = 0; starIndex != OMM_NUM_STARS_MAX_PER_COURSE; ++starIndex) {
+            if (starLevelFlags & (1 << starIndex)) {
+#if OMM_GAME_IS_SMSR
+                const BehaviorScript *bhv = NULL;
+                if (omm_stars_get_star_data(levelNum, 1, starIndex, &bhv, NULL) && bhv == bhvCustomSMSRStarReplica &&
+                    omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE) < 121) {
+                    continue;
+                }
+#endif
+                if (starSaveFlags & (1 << starIndex)) {
                     omm_render_string_left_align(x, OMM_RENDER_PAUSE_CASTLE_BOX_LINE_2_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, starGlyph, false);
                 } else {
                     omm_render_string_left_align(x, OMM_RENDER_PAUSE_CASTLE_BOX_LINE_2_Y, 0x80, 0x80, 0x80, sPauseAlpha, starGlyph, false);
@@ -384,6 +438,48 @@ static void omm_render_pause_castle_course() {
     }
 }
 
+static void omm_render_pause_castle_caps_keys_captures() {
+    const u32 flagsAndColors[][4] = {
+        { SAVE_FLAG_HAVE_WING_CAP, 0xFF, 0x00, 0x00 },
+        { SAVE_FLAG_HAVE_METAL_CAP, 0x00, 0xC0, 0x00 },
+        { SAVE_FLAG_HAVE_VANISH_CAP, 0x00, 0x80, 0xFF },
+        { SAVE_FLAG_UNLOCKED_BASEMENT_DOOR | SAVE_FLAG_HAVE_KEY_1, 0xFF, 0xFF, 0x00 },
+        { SAVE_FLAG_UNLOCKED_UPSTAIRS_DOOR | SAVE_FLAG_HAVE_KEY_2, 0xFF, 0xFF, 0x00 },
+    };
+    u32 flags = omm_save_file_get_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE);
+    u8 starGlyph[] = { DIALOG_CHAR_STAR_FILLED, 0xFF };
+
+    // Caps
+    const u8 *textCaps = omm_text_convert(OMM_TEXT_PAUSE_CAPS, false);
+    omm_render_string_right_align(SCREEN_WIDTH / 2 - 5, OMM_RENDER_PAUSE_CASTLE_BOX_LINE_1_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, textCaps, false);
+    for (s32 i = 0; i != 3; ++i) {
+        if (flags & flagsAndColors[i][0]) {
+            omm_render_string_left_align(SCREEN_WIDTH / 2 + 5 + i * 12, OMM_RENDER_PAUSE_CASTLE_BOX_LINE_1_Y, flagsAndColors[i][1], flagsAndColors[i][2], flagsAndColors[i][3], sPauseAlpha, starGlyph, false);
+        } else {
+            omm_render_string_left_align(SCREEN_WIDTH / 2 + 5 + i * 12, OMM_RENDER_PAUSE_CASTLE_BOX_LINE_1_Y, 0x80, 0x80, 0x80, sPauseAlpha, starGlyph, false);
+        }
+    }
+
+    // Bowser keys
+    const u8 *textKeys = omm_text_convert(OMM_TEXT_PAUSE_KEYS, false);
+    omm_render_string_right_align(SCREEN_WIDTH / 2 - 5, OMM_RENDER_PAUSE_CASTLE_BOX_LINE_2_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, textKeys, false);
+    for (s32 i = 3; i != 5; ++i) {
+        if (flags & flagsAndColors[i][0]) {
+            omm_render_string_left_align(SCREEN_WIDTH / 2 + 5 + (i - 3) * 12, OMM_RENDER_PAUSE_CASTLE_BOX_LINE_2_Y, flagsAndColors[i][1], flagsAndColors[i][2], flagsAndColors[i][3], sPauseAlpha, starGlyph, false);
+        } else {
+            omm_render_string_left_align(SCREEN_WIDTH / 2 + 5 + (i - 3) * 12, OMM_RENDER_PAUSE_CASTLE_BOX_LINE_2_Y, 0x80, 0x80, 0x80, sPauseAlpha, starGlyph, false);
+        }
+    }
+
+    // Captures
+    str_t strCaptureCount;
+    str_fmt(strCaptureCount, sizeof(strCaptureCount), "%d / %d", omm_save_file_get_capture_count(gCurrSaveFileNum - 1, OMM_GAME_MODE), omm_level_get_all_available_captures_count(OMM_GAME_MODE));
+    const u8 *textCaptures = omm_text_convert(OMM_TEXT_PAUSE_CAPTURES, false);
+    const u8 *textCaptureCount = omm_text_convert(strCaptureCount, false);
+    omm_render_string_right_align(SCREEN_WIDTH / 2 - 5, OMM_RENDER_PAUSE_CASTLE_BOX_LINE_3_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, textCaptures, false);
+    omm_render_string_left_align(SCREEN_WIDTH / 2 + 5, OMM_RENDER_PAUSE_CASTLE_BOX_LINE_3_Y, 0xFF, 0xFF, 0xFF, sPauseAlpha, textCaptureCount, false);
+}
+
 static void omm_render_pause_castle_sparkly_stars_and_timer() {
     s32 sparklyMode = gOmmSparklyMode;
     s32 count = omm_sparkly_get_bowser_4_index(sparklyMode) + 1;
@@ -391,6 +487,30 @@ static void omm_render_pause_castle_sparkly_stars_and_timer() {
     u8 textG = OMM_SPARKLY_HUD_COLOR[sparklyMode][1];
     u8 textB = OMM_SPARKLY_HUD_COLOR[sparklyMode][2];
     omm_render_update_scroll(&sCastleScrollH, count, gPlayer1Controller->stickX);
+
+    // Horizontal arrows
+    static const Vtx sWhiteTriVtx[] = {
+        { { { -8,  0, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
+        { { {  0, -8, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
+        { { {  0, +8, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
+        { { { +8,  0, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
+    };
+    create_dl_translation_matrix(MENU_MTX_PUSH, OMM_RENDER_PAUSE_CASTLE_BOX_TRIANGLE_LEFT_X, OMM_RENDER_PAUSE_CASTLE_BOX_Y, 0);
+    gDPSetEnvColor(gDisplayListHead++, 0xFF, 0xFF, 0xFF, sPauseAlpha);
+    gSPClearGeometryMode(gDisplayListHead++, G_LIGHTING);
+    gDPSetCombineLERP(gDisplayListHead++, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0);
+    gDPSetRenderMode(gDisplayListHead++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
+    gSPVertex(gDisplayListHead++, sWhiteTriVtx + 0, 3, 0);
+    gSP1Triangle(gDisplayListHead++, 2, 1, 0, 0);
+    gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
+    create_dl_translation_matrix(MENU_MTX_PUSH, OMM_RENDER_PAUSE_CASTLE_BOX_TRIANGLE_RIGHT_X, OMM_RENDER_PAUSE_CASTLE_BOX_Y, 0);
+    gDPSetEnvColor(gDisplayListHead++, 0xFF, 0xFF, 0xFF, sPauseAlpha);
+    gSPClearGeometryMode(gDisplayListHead++, G_LIGHTING);
+    gDPSetCombineLERP(gDisplayListHead++, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0);
+    gDPSetRenderMode(gDisplayListHead++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
+    gSPVertex(gDisplayListHead++, sWhiteTriVtx + 1, 3, 0);
+    gSP1Triangle(gDisplayListHead++, 0, 1, 2, 0);
+    gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
 
     // Title
     u8 *textSparklyStars = omm_text_convert(OMM_SPARKLY_TEXT_STARS[sparklyMode], false);
@@ -401,8 +521,8 @@ static void omm_render_pause_castle_sparkly_stars_and_timer() {
 
     // Level display
     for (;; sCastleScrollH.idx = (sCastleScrollH.idx + count + sign_s(sCastleScrollH.inc)) % count) {
-        u8 *levelName = omm_sparkly_get_level_name(sparklyMode, sCastleScrollH.idx);
-        if (levelName) {
+        ustr_t levelName;
+        if (omm_sparkly_get_level_name(levelName, sparklyMode, sCastleScrollH.idx)) {
             if ((sCastleScrollH.idx == count - 1 && omm_sparkly_is_grand_star_collected(sparklyMode)) || omm_sparkly_is_star_collected(sparklyMode, sCastleScrollH.idx)) {
                 omm_render_string_centered(OMM_RENDER_PAUSE_CASTLE_BOX_LINE_3_Y, textR, textG, textB, sPauseAlpha, levelName, false);
             } else if (sCastleScrollH.idx == count - 1) {
@@ -449,7 +569,7 @@ static void omm_render_pause_castle_collectibles() {
 
 static void omm_render_pause_castle_close() {
     if (gPlayer1Controller->buttonPressed & (A_BUTTON | START_BUTTON)) {
-        level_set_transition(0, 0);
+        level_set_transition(0, NULL);
         play_sound(SOUND_MENU_PAUSE_2, gGlobalSoundArgs);
         sPauseType = 0;
         gMenuMode = -1;
@@ -460,20 +580,24 @@ static void omm_render_pause_castle_close() {
 }
 
 void omm_render_pause_castle() {
-    gDialogTextAlpha = sPauseAlpha;
     omm_render_create_dl_ortho_matrix();
-    if (!time_trials_render_time_table(&gDialogLineIndex)) {
+    if (gPlayer1Controller->buttonDown & L_TRIG) {
+        omm_render_pause_score_board(gPlayer1Controller->buttonDown & A_BUTTON);
+    } else if (time_trials_render_pause_castle(sPauseAlpha)) {
+        omm_render_pause_castle_collectibles();
+        omm_render_pause_castle_close();
+    } else {
         omm_render_pause_castle_update();
         omm_render_pause_castle_pause();
         omm_render_pause_castle_sm74_edition();
-        if (sCastleScrollV.idx != array_length(sLevelList)) {
-            omm_render_pause_castle_course();
-        } else {
-            omm_render_pause_castle_sparkly_stars_and_timer();
+        switch (sCastleScrollV.idx) {
+            case OMM_PAUSE_NUM_LEVELS + 0: omm_render_pause_castle_caps_keys_captures(); break;
+            case OMM_PAUSE_NUM_LEVELS + 1: omm_render_pause_castle_sparkly_stars_and_timer(); break;
+            default:             omm_render_pause_castle_course(); break;
         }
+        omm_render_pause_castle_collectibles();
+        omm_render_pause_castle_close();
     }
-    omm_render_pause_castle_collectibles();
-    omm_render_pause_castle_close();
 }
 
 //
@@ -481,8 +605,12 @@ void omm_render_pause_castle() {
 //
 
 s32 omm_render_pause() {
+    if (gOmmGlobals->cameraSnapshotMode) {
+        omm_camera_snapshot_mode_update();
+        return 0;
+    }
     omm_render_create_dl_ortho_matrix();
-    omm_render_shade_screen(110);
+    omm_render_shade_screen(0x7F);
     if (optmenu_open) {
         optmenu_draw();
     } else switch (sPauseType) {

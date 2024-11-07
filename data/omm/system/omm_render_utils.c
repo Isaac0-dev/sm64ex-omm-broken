@@ -1,12 +1,14 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
-#define FONT_TEXT_MISSING   "levels/menu/main_menu_seg7_us.0B700.ia8"
-#define FONT_HUD_MISSING    OMM_TEXTURE_FONT_HUD_QMARK
+#define FONT_TEXT_MISSING OMM_TEXTURE_FONT_TEXT_MISSING
+#define FONT_HUD_MISSING OMM_TEXTURE_FONT_HUD_QMARK
 
 //
 // Fonts
 //
+
+static const char OMM_TEXTURE_FONT_TEXT_MISSING[] = "levels/menu/main_menu_seg7_us.0B700.ia8";
 
 const char *gOmmFontText[0x100] = {
     /* 0x00 */ "levels/menu/main_menu_seg7_us.0AC40.ia8",
@@ -98,10 +100,10 @@ const char *gOmmFontText[0x100] = {
     /* 0x56 */ OMM_TEXTURE_FONT_TEXT_C_BUTTON,
     /* 0x57 */ OMM_TEXTURE_FONT_TEXT_Z_BUTTON,
     /* 0x58 */ OMM_TEXTURE_FONT_TEXT_R_BUTTON,
-    /* 0x59 */ FONT_TEXT_MISSING,
-    /* 0x5A */ FONT_TEXT_MISSING,
-    /* 0x5B */ FONT_TEXT_MISSING,
-    /* 0x5C */ FONT_TEXT_MISSING,
+    /* 0x59 */ OMM_TEXTURE_FONT_TEXT_L_BUTTON,
+    /* 0x5A */ OMM_TEXTURE_FONT_TEXT_X_BUTTON,
+    /* 0x5B */ OMM_TEXTURE_FONT_TEXT_Y_BUTTON,
+    /* 0x5C */ OMM_TEXTURE_FONT_TEXT_D_BUTTON,
     /* 0x5D */ FONT_TEXT_MISSING,
     /* 0x5E */ FONT_TEXT_MISSING,
     /* 0x5F */ FONT_TEXT_MISSING,
@@ -233,11 +235,11 @@ const char *gOmmFontText[0x100] = {
     /* 0xDD */ FONT_TEXT_MISSING,
     /* 0xDE */ FONT_TEXT_MISSING,
     /* 0xDF */ FONT_TEXT_MISSING,
-    /* 0xE0 */ OMM_TEXTURE_MISC_TRANSPARENT,
+    /* 0xE0 */ FONT_TEXT_MISSING,
     /* 0xE1 */ OMM_TEXTURE_FONT_TEXT_BRACKET_LEFT,
     /* 0xE2 */ FONT_TEXT_MISSING,
     /* 0xE3 */ OMM_TEXTURE_FONT_TEXT_BRACKET_RIGHT,
-    /* 0xE4 */ FONT_TEXT_MISSING,
+    /* 0xE4 */ OMM_TEXTURE_FONT_TEXT_PLUS,
     /* 0xE5 */ "levels/menu/main_menu_seg7_us.0B800.ia8",
     /* 0xE6 */ OMM_TEXTURE_FONT_TEXT_COLON,
     /* 0xE7 */ FONT_TEXT_MISSING,
@@ -394,8 +396,8 @@ const char *gOmmFontHud[0x100] = {
     /* 0x7B */ FONT_HUD_MISSING,
     /* 0x7C */ FONT_HUD_MISSING,
     /* 0x7D */ FONT_HUD_MISSING,
-    /* 0x7E */ FONT_HUD_MISSING,
-    /* 0x7F */ FONT_HUD_MISSING,
+    /* 0x7E */ OMM_TEXTURE_STAR_EMPTY_CLASSIC,
+    /* 0x7F */ OMM_TEXTURE_STAR_EMPTY,
     /* 0x80 */ OMM_TEXTURE_STAR_FULL_0,
     /* 0x81 */ OMM_TEXTURE_STAR_FULL_1,
     /* 0x82 */ OMM_TEXTURE_STAR_FULL_2,
@@ -562,21 +564,18 @@ void omm_render_create_dl_ortho_matrix() {
 }
 
 void omm_render_shade_screen(u8 alpha) {
-    static Vtx sBlackScreenVtx[4];
-    sBlackScreenVtx[0] = (Vtx) {{{ GFX_DIMENSIONS_FROM_LEFT_EDGE(0), 0, 0 }, 0, { 0, 0 }, { 0x00, 0x00, 0x00, 0xFF }}};
-    sBlackScreenVtx[1] = (Vtx) {{{ GFX_DIMENSIONS_FROM_RIGHT_EDGE(0), 0, 0 }, 0, { 0, 0 }, { 0x00, 0x00, 0x00, 0xFF }}};
-    sBlackScreenVtx[2] = (Vtx) {{{ GFX_DIMENSIONS_FROM_RIGHT_EDGE(0), SCREEN_HEIGHT, 0 }, 0, { 0, 0 }, { 0x00, 0x00, 0x00, 0xFF }}};
-    sBlackScreenVtx[3] = (Vtx) {{{ GFX_DIMENSIONS_FROM_LEFT_EDGE(0), SCREEN_HEIGHT, 0 }, 0, { 0, 0 }, { 0x00, 0x00, 0x00, 0xFF }}};
+    Vtx *vtx = omm_alloc_vtx(4);
+    vtx[0] = (Vtx) {{{ GFX_DIMENSIONS_FROM_LEFT_EDGE(0), 0, 0 }, 0, { 0, 0 }, { 0x00, 0x00, 0x00, 0xFF }}};
+    vtx[1] = (Vtx) {{{ GFX_DIMENSIONS_FROM_RIGHT_EDGE(0), 0, 0 }, 0, { 0, 0 }, { 0x00, 0x00, 0x00, 0xFF }}};
+    vtx[2] = (Vtx) {{{ GFX_DIMENSIONS_FROM_RIGHT_EDGE(0), SCREEN_HEIGHT, 0 }, 0, { 0, 0 }, { 0x00, 0x00, 0x00, 0xFF }}};
+    vtx[3] = (Vtx) {{{ GFX_DIMENSIONS_FROM_LEFT_EDGE(0), SCREEN_HEIGHT, 0 }, 0, { 0, 0 }, { 0x00, 0x00, 0x00, 0xFF }}};
     omm_render_create_dl_ortho_matrix();
     gDPSetEnvColor(gDisplayListHead++, 0, 0, 0, alpha);
     gSPClearGeometryMode(gDisplayListHead++, G_LIGHTING);
     gDPSetCombineLERP(gDisplayListHead++, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0);
     gDPSetRenderMode(gDisplayListHead++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
-    gSPVertex(gDisplayListHead++, sBlackScreenVtx, 4, 0);
+    gSPVertex(gDisplayListHead++, vtx, 4, 0);
     gSP2Triangles(gDisplayListHead++, 0, 1, 2, 0, 0, 2, 3, 0);
-#if OMM_CODE_TIME_TRIALS
-    gTimeTableDisplayListHead = gDisplayListHead;
-#endif
 }
 
 void omm_render_texrect(s16 x, s16 y, s16 w, s16 h, s16 texw, s16 texh, u8 red, u8 green, u8 blue, u8 alpha, const void *texture, bool shadow) {
@@ -599,8 +598,22 @@ void omm_render_texrect(s16 x, s16 y, s16 w, s16 h, s16 texw, s16 texh, u8 red, 
     gSPTexture(gDisplayListHead++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
 }
 
+void omm_render_rect_window_coords(f32 x, f32 y, f32 w, f32 h, u8 red, u8 green, u8 blue, u8 alpha) {
+    Vtx *vtx = omm_alloc_vtx(4);
+    omm_render_create_dl_ortho_matrix();
+    gSPClearGeometryMode(gDisplayListHead++, G_LIGHTING);
+    gDPSetCombineLERP(gDisplayListHead++, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE);
+    gSPVertex(gDisplayListHead++, vtx, 4, 0);
+    gSP2Triangles(gDisplayListHead++, 0, 1, 2, 0, 0, 2, 3, 0);
+    gSPSetGeometryMode(gDisplayListHead++, G_LIGHTING);
+    vtx[0] = (Vtx) {{{ X_WINDOW_TO_SCREEN(x),     Y_WINDOW_TO_SCREEN(y),     0 }, 0, { 0, 0 }, { red, green, blue, alpha }}};
+    vtx[1] = (Vtx) {{{ X_WINDOW_TO_SCREEN(x + w), Y_WINDOW_TO_SCREEN(y),     0 }, 0, { 0, 0 }, { red, green, blue, alpha }}};
+    vtx[2] = (Vtx) {{{ X_WINDOW_TO_SCREEN(x + w), Y_WINDOW_TO_SCREEN(y + h), 0 }, 0, { 0, 0 }, { red, green, blue, alpha }}};
+    vtx[3] = (Vtx) {{{ X_WINDOW_TO_SCREEN(x),     Y_WINDOW_TO_SCREEN(y + h), 0 }, 0, { 0, 0 }, { red, green, blue, alpha }}};
+}
+
 void omm_render_number(s16 x, s16 y, s16 w, s16 h, s16 xStep, u8 alpha, s32 number, s32 digits, bool makeZerosTransparent, bool shadow) {
-    static const char *sOmmNumberGlyphs[] = {
+    static const char *OMM_HUD_NUMBER_GLYPHS[] = {
         OMM_TEXTURE_HUD_0,
         OMM_TEXTURE_HUD_1,
         OMM_TEXTURE_HUD_2,
@@ -624,20 +637,42 @@ void omm_render_number(s16 x, s16 y, s16 w, s16 h, s16 xStep, u8 alpha, s32 numb
         n = glyphs[i - 1];
         j = max_s(j, n);
         a = (alpha * (0xFF - 0xAA * (makeZerosTransparent && ((digits == 1) || (i > 1)) && (j == 0)))) / 0xFF;
-        omm_render_texrect(x, y, w, h, 16, 16, 0xFF, 0xFF, 0xFF, a, sOmmNumberGlyphs[n], shadow);
+        omm_render_texrect(x, y, w, h, 16, 16, 0xFF, 0xFF, 0xFF, a, OMM_HUD_NUMBER_GLYPHS[n], shadow);
+    }
+}
+
+static void omm_render_string_char(u8 c, s16 x, s16 y, s16 w, s16 h, u8 red, u8 green, u8 blue, u8 alpha, bool useDialogFontForMissingChars) {
+    f32 wRatio = (f32) w / 8.f;
+    f32 hRatio = (f32) h / 8.f;
+    const char *tex = gOmmFontText[c];
+    if (tex == FONT_TEXT_MISSING && useDialogFontForMissingChars) {
+        tex = ((const char **) main_font_lut)[c];
+        gSPDisplayList(gDisplayListHead++, dl_ia_text_begin);
+        gDPSetEnvColor(gDisplayListHead++, red, green, blue, alpha);
+        create_dl_translation_matrix(MENU_MTX_PUSH, x + wRatio, y - 3 * hRatio, 0);
+        create_dl_scale_matrix(MENU_MTX_NOPUSH, wRatio, hRatio, 1.f);
+        gDPPipeSync(gDisplayListHead++);
+        gDPSetTextureImage(gDisplayListHead++, G_IM_FMT_IA, G_IM_SIZ_16b, 1, tex);
+        gSPDisplayList(gDisplayListHead++, dl_ia_text_tex_settings);
+        gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
+        gSPDisplayList(gDisplayListHead++, dl_ia_text_end);
+        gSPDisplayList(gDisplayListHead++, dl_menu_ia8_text_begin);
+        gDPSetEnvColor(gDisplayListHead++, red, green, blue, alpha);
+    } else {
+        gDPLoadTextureBlock(gDisplayListHead++, tex, G_IM_FMT_IA, G_IM_SIZ_8b, 8, 8, 0, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0);
+        gSPTextureRectangle(gDisplayListHead++, x << 2, (SCREEN_HEIGHT - h - y) << 2, (x + w) << 2, (SCREEN_HEIGHT - y) << 2, G_TX_RENDERTILE, 0, 0, (s32) ((1 << 10) / wRatio), (s32) ((1 << 10) / hRatio));
     }
 }
 
 void omm_render_string(s16 x, s16 y, u8 red, u8 green, u8 blue, u8 alpha, const u8 *str64, bool shadow) {
     if (shadow) omm_render_string(x + 1, y - 1, 0, 0, 0, alpha, str64, false);
     omm_render_create_dl_ortho_matrix();
-    u8 *temp = omm_text_capitalize(omm_text_copy(str64, false));
+    u8 *temp = omm_text_capitalize(omm_text_duplicate(str64, false));
     gSPDisplayList(gDisplayListHead++, dl_menu_ia8_text_begin);
     gDPSetEnvColor(gDisplayListHead++, red, green, blue, alpha);
     for (; *temp != DIALOG_CHAR_TERMINATOR; temp++) {
-        if (*temp != DIALOG_CHAR_SPACE) {
-            gDPLoadTextureBlock(gDisplayListHead++, gOmmFontText[*temp], G_IM_FMT_IA, G_IM_SIZ_8b, 8, 8, 0, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0);
-            gSPTextureRectangle(gDisplayListHead++, x << 2, (SCREEN_HEIGHT - 8 - y) << 2, (x + 8) << 2, (SCREEN_HEIGHT - y) << 2, G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
+        if (*temp != DIALOG_CHAR_SPACE && *temp != DIALOG_CHAR_STAR_COUNT) {
+            omm_render_string_char(*temp, x, y, 8, 8, red, green, blue, alpha, OMM_GAME_IS_R96X);
         }
         x += omm_render_get_char_width(*temp);
     }
@@ -649,15 +684,13 @@ void omm_render_string_sized(s16 x, s16 y, s16 w, s16 h, u8 red, u8 green, u8 bl
     if (w <= 0 || h <= 0) return;
     if (shadow) omm_render_string_sized(x + 1, y - 1, w, h, 0, 0, 0, alpha, str64, false);
     f32 wRatio = (f32) w / 8.f;
-    f32 hRatio = (f32) h / 8.f;
     omm_render_create_dl_ortho_matrix();
-    u8 *temp = omm_text_capitalize(omm_text_copy(str64, false));
+    u8 *temp = omm_text_capitalize(omm_text_duplicate(str64, false));
     gSPDisplayList(gDisplayListHead++, dl_menu_ia8_text_begin);
     gDPSetEnvColor(gDisplayListHead++, red, green, blue, alpha);
     for (; *temp != DIALOG_CHAR_TERMINATOR; temp++) {
-        if (*temp != DIALOG_CHAR_SPACE) {
-            gDPLoadTextureBlock(gDisplayListHead++, gOmmFontText[*temp], G_IM_FMT_IA, G_IM_SIZ_8b, 8, 8, 0, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0);
-            gSPTextureRectangle(gDisplayListHead++, x << 2, (SCREEN_HEIGHT - h - y) << 2, (x + w) << 2, (SCREEN_HEIGHT - y) << 2, G_TX_RENDERTILE, 0, 0, (s32) ((1 << 10) / wRatio), (s32) ((1 << 10) / hRatio));
+        if (*temp != DIALOG_CHAR_SPACE && *temp != DIALOG_CHAR_STAR_COUNT) {
+            omm_render_string_char(*temp, x, y, w, h, red, green, blue, alpha, OMM_GAME_IS_R96X);
         }
         x += (s16) ((f32) omm_render_get_char_width(*temp) * wRatio + 0.5f);
     }
@@ -670,7 +703,7 @@ void omm_render_string_hud(s16 x, s16 y, u8 red, u8 green, u8 blue, u8 alpha, co
     omm_render_create_dl_ortho_matrix();
     gSPDisplayList(gDisplayListHead++, dl_rgba16_text_begin);
     gDPSetEnvColor(gDisplayListHead++, red, green, blue, alpha);
-    for (; *str64 != GLOBAL_CHAR_TERMINATOR; str64++) {
+    for (; *str64 != 0xFF; str64++) {
         if (*str64 != GLOBAL_CHAR_SPACE) {
             gDPLoadTextureBlock(gDisplayListHead++, gOmmFontHud[*str64], G_IM_FMT_RGBA, G_IM_SIZ_16b, 16, 16, 0, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0);
             gSPTextureRectangle(gDisplayListHead++, x << 2, (SCREEN_HEIGHT - 16 - y) << 2, (x + 16) << 2, (SCREEN_HEIGHT - y) << 2, G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
@@ -705,6 +738,25 @@ s32 omm_render_get_string_width_hud(const u8 *str64) {
     return width;
 }
 
-u8 *omm_render_get_star_glyph(s32 index, bool colored) {
-    return (u8 *) gOmmFontHud[colored ? 0x80 + OMM_STAR_COLOR_[index + OMM_STAR_COLOR_OFFSET(OMM_GAME_MODE)] : GLYPH_STAR];
+const void *omm_render_get_star_glyph(s32 index, bool colored, bool collected) {
+    return (const void *) gOmmFontHud[colored ?
+        (collected ? 0x80 + OMM_STAR_COLOR_[index + OMM_STAR_COLOR_OFFSET(OMM_GAME_MODE)] : 0x7F) :
+        (collected ? GLYPH_STAR : 0x7E)
+    ];
+}
+
+OMM_AT_STARTUP static void omm_patch_dialog_char_widths() {
+    gDialogCharWidths[0x50] = 8; // up arrow
+    gDialogCharWidths[0x51] = 8; // down arrow
+    gDialogCharWidths[0x52] = 8; // left arrow
+    gDialogCharWidths[0x53] = 8; // right arrow
+    gDialogCharWidths[0x54] = 7; // A button
+    gDialogCharWidths[0x55] = 7; // B button
+    gDialogCharWidths[0x56] = 7; // C button
+    gDialogCharWidths[0x57] = 7; // Z button
+    gDialogCharWidths[0x58] = 7; // R button
+    gDialogCharWidths[0x59] = 6; // L button
+    gDialogCharWidths[0x5A] = 9; // X button
+    gDialogCharWidths[0x5B] = 7; // Y button
+    gDialogCharWidths[0x5C] = 7; // D button
 }

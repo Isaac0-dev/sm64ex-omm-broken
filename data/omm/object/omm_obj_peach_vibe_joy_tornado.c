@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -137,7 +138,7 @@ static void bhv_omm_peach_vibe_joy_tornado_update() {
 
     // Update gfx
     f32 t = invlerp_0_1_s(o->oTimer, 0, 15);
-    obj_set_pos(o, m->pos[0], m->pos[1], m->pos[2]);
+    obj_set_xyz(o, m->pos[0], m->pos[1], m->pos[2]);
     obj_set_angle(o, 0, o->oFaceAngleYaw + 0x1800, 0);
     obj_set_scale(o, 0.4f * m->marioObj->oScaleX, 0.3f * m->marioObj->oScaleY, 0.4f * m->marioObj->oScaleZ);
     obj_update_gfx(o);
@@ -149,7 +150,7 @@ static void bhv_omm_peach_vibe_joy_tornado_update() {
     if (o->oTimer % 6 == 0) {
         f32 height = lerp_f(random_float(), 0.f, 160.f);
         f32 radius = relerp_0_1_f(height, 0.f, 160.f, 150.f, 200.f);
-        omm_spawn_peach_vibe_joy_sparkle(
+        omm_obj_spawn_peach_vibe_joy_sparkle(
             m->marioObj,
             radius * m->marioObj->oScaleX,
             height * m->marioObj->oScaleY,
@@ -167,16 +168,16 @@ static void bhv_omm_peach_vibe_joy_tornado_update() {
 
 const BehaviorScript bhvOmmPeachVibeJoyTornado[] = {
     OBJ_TYPE_SPECIAL,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_peach_vibe_joy_tornado_update,
-    0x09000000,
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_peach_vibe_joy_tornado_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_peach_vibe_joy_tornado(struct Object *o) {
+struct Object *omm_obj_spawn_peach_vibe_joy_tornado(struct Object *o) {
     struct Object *tornado = obj_get_first_with_behavior(bhvOmmPeachVibeJoyTornado);
     if (!tornado) {
         tornado = obj_spawn_from_geo(o, omm_geo_peach_vibe_joy_tornado, bhvOmmPeachVibeJoyTornado);

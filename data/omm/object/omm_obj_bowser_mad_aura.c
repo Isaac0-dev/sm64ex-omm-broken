@@ -1,12 +1,14 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
 //
 
 static Vtx omm_bowser_mad_aura_vtx[256];
+
 static Gfx omm_bowser_mad_aura_tri[33];
 
 static void omm_bowser_mad_aura_make_cylinder(Vtx *vtx, Gfx *tri, s16 u0, s16 v0, s16 u1, s16 v1) {
@@ -126,8 +128,8 @@ const GeoLayout omm_geo_bowser_mad_aura[] = {
 
 const BehaviorScript bhvOmmBowserMadAura[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0F1A0001,
-    0x09000000
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_ADD_INT(oAnimState, 1),
+    BHV_END_LOOP()
 };

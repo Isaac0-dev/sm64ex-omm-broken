@@ -3595,13 +3595,13 @@ static const Collision omm_level_fish_collision[] = {
 //
 
 static void spawn_fish_group(struct Object *o, f32 x, f32 y, f32 z, s16 yaw) {
-    obj_set_pos(o, x, y, z);
+    obj_set_xyz(o, x, y, z);
     obj_set_angle(o, 0, yaw, 0);
     for (s32 i = 0; i != 15; ++i) {
         struct Object *fish = spawn_object_relative(0, 300, 0, -200, o, MODEL_FISH, bhvBlueFish);
         obj_translate_xyz_random(fish, 200);
     }
-    obj_set_pos(o, 0, 0, 0);
+    obj_set_xyz(o, 0, 0, 0);
     obj_set_angle(o, 0, 0, 0);
 }
 
@@ -3630,12 +3630,17 @@ static void bhv_omm_level_fish_update() {
     }
 
     // Hide the HUD
-    gHudDisplay.flags = HUD_DISPLAY_NONE;
+    gHudDisplay.flags = HUD_DISPLAY_FLAG_EFFECTS;
 
     // Make sure the player can't press the Start button
     gPlayer1Controller->buttonPressed &= ~START_BUTTON;
     gPlayer2Controller->buttonPressed &= ~START_BUTTON;
     gPlayer3Controller->buttonPressed &= ~START_BUTTON;
+
+    // Disable Cap modifier and Yoshi summon
+    gPlayer1Controller->buttonDown &= ~L_TRIG;
+    gPlayer2Controller->buttonDown &= ~L_TRIG;
+    gPlayer3Controller->buttonDown &= ~L_TRIG;
 
     // Change the anti-cheat messages
     gOmmSparklyCheats->introId = OMM_DIALOG_SPARKLY_ANTI_CHEAT_INTRO;

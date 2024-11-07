@@ -3,11 +3,11 @@
 #undef OMM_ALL_HEADERS
 #include <tinfl.h>
 
-#define ZIP_BUFSIZE         0x00004000
-#define ZIP_EOCD_BUFSIZE    0x0001002A
-#define ZIP_LFH_SIG         0x04034B50
-#define ZIP_CDH_SIG         0x02014B50
-#define ZIP_EOCD_SIG        0x06054B50
+#define ZIP_BUFSIZE         (0x00004000)
+#define ZIP_EOCD_BUFSIZE    (0x0001002A)
+#define ZIP_LFH_SIG         (0x04034B50)
+#define ZIP_CDH_SIG         (0x02014B50)
+#define ZIP_EOCD_SIG        (0x06054B50)
 
 typedef struct {
     fs_dirtree_t tree;          // this should always be first, so this could be used as a dirtree root
@@ -39,13 +39,13 @@ typedef struct {
 } zip_file_t;
 
 static s64 zip_find_eocd(FILE *f, s64 *outlen) {
-    fseek(f, 0, SEEK_END);
-    const s64 fsize = ftell(f);
+    fseeko(f, 0, SEEK_END);
+    const s64 fsize = ftello(f);
     if (OMM_LIKELY(fsize > 16)) {
         u8 buf[ZIP_EOCD_BUFSIZE];
         const s64 rx = (fsize < ZIP_EOCD_BUFSIZE ? fsize : ZIP_EOCD_BUFSIZE);
-        fseek(f, fsize - rx, SEEK_SET);
-        if (OMM_LIKELY(fread(buf, rx, 1, f))) {
+        fseeko(f, fsize - rx, SEEK_SET);
+        if (OMM_LIKELY(fread(buf, 1, rx, f))) {
             for (s64 i = rx - 8; i >= 0; --i) {
                 if (buf[i + 0] == 0x50 &&
                     buf[i + 1] == 0x4B &&
@@ -76,7 +76,7 @@ static bool zip_parse_eocd(FILE *f, u64 *cdir_ofs, u64 *data_ofs, u64 *count) {
     s64 fsize = 0;
     s64 pos = zip_find_eocd(f, &fsize);
     if (OMM_LIKELY(pos >= 0)) {
-        fseek(f, pos, SEEK_SET);
+        fseeko(f, pos, SEEK_SET);
         if (OMM_LIKELY(fread(&eocd, sizeof(eocd), 1, f) && LE_TO_HOST32(eocd.sig) == ZIP_EOCD_SIG && !eocd.this_disk && !eocd.cdir_disk && eocd.disk_entry_count == eocd.total_entry_count)) {
             *count = LE_TO_HOST16(eocd.total_entry_count);
             *cdir_ofs = LE_TO_HOST32(eocd.cdir_ofs);
@@ -109,7 +109,7 @@ static bool zip_fixup_offset(zip_file_t *zipfile) {
     struct lfh_s lfh;
 
     zip_entry_t *ent = zipfile->entry;
-    fseek(zipfile->fstream, ent->ofs, SEEK_SET);
+    fseeko(zipfile->fstream, ent->ofs, SEEK_SET);
     if (OMM_LIKELY(fread(&lfh, sizeof(lfh), 1, zipfile->fstream))) {
         lfh.fname_len = LE_TO_HOST16(lfh.fname_len);
         lfh.extra_len = LE_TO_HOST16(lfh.extra_len);
@@ -156,8 +156,8 @@ static zip_entry_t *zip_load_entry(FILE *f, fs_dirtree_t *tree, const u64 data_o
         cdh.fname_len = LE_TO_HOST16(cdh.fname_len);
         cdh.comment_len = LE_TO_HOST16(cdh.comment_len);
         cdh.extra_len = LE_TO_HOST16(cdh.extra_len);
-        char name[SYS_MAX_PATH];
-        if (OMM_LIKELY(fread(name, min(SYS_MAX_PATH - 1, cdh.fname_len), 1, f))) {
+        sys_path_t name;
+        if (OMM_LIKELY(fread(name, 1, min(sizeof(sys_path_t) - 1, cdh.fname_len), f))) {
             bool is_dir = (name[cdh.fname_len - 1] == '/' || name[cdh.fname_len - 1] == '\\');
             name[cdh.fname_len - is_dir] = 0;
             zip_entry_t *retent = (zip_entry_t *) fs_dirtree_add(tree, name, is_dir);
@@ -165,7 +165,7 @@ static zip_entry_t *zip_load_entry(FILE *f, fs_dirtree_t *tree, const u64 data_o
                 zipent.tree = retent->tree;
                 memcpy(retent, &zipent, sizeof(zipent));
                 retent->ofs += data_ofs;
-                fseek(f, cdh.extra_len + cdh.comment_len, SEEK_CUR);
+                fseeko(f, cdh.extra_len + cdh.comment_len, SEEK_CUR);
                 return retent;
             }
         }
@@ -174,7 +174,7 @@ static zip_entry_t *zip_load_entry(FILE *f, fs_dirtree_t *tree, const u64 data_o
 }
 
 static bool zip_load_entries(FILE *f, fs_dirtree_t *tree, const u64 cdir_ofs, const u64 data_ofs, const u64 count) {
-    fseek(f, cdir_ofs, SEEK_SET);
+    fseeko(f, cdir_ofs, SEEK_SET);
     for (u64 i = 0; i != count; ++i) {
         if (!zip_load_entry(f, tree, data_ofs)) {
             return false;
@@ -263,7 +263,7 @@ static fs_file_t *fs_packtype_zip_open(void *pack, const char *vpath) {
                     if (OMM_LIKELY(fsfile != NULL)) {
                         fsfile->handle = zipfile;
                         fsfile->parent = NULL;
-                        fseek(zipfile->fstream, ent->ofs, SEEK_SET);
+                        fseeko(zipfile->fstream, ent->ofs, SEEK_SET);
                         return fsfile;
                     }
                 }
@@ -322,7 +322,7 @@ static bool fs_packtype_zip_seek(UNUSED void *pack, fs_file_t *file, const s64 o
     zip_entry_t *ent = zipfile->entry;
     if (ofs <= (s64) ent->uncomp_size) {
         if (!ent->comp_type) {
-            if (fseek(zipfile->fstream, ofs + ent->ofs, SEEK_SET) == 0) {
+            if (fseeko(zipfile->fstream, ofs + ent->ofs, SEEK_SET) == 0) {
                 zipfile->uncomp_pos = ofs;
             }
         } else {
@@ -330,7 +330,7 @@ static bool fs_packtype_zip_seek(UNUSED void *pack, fs_file_t *file, const s64 o
                 z_stream zstream;
                 memset(&zstream, 0, sizeof(zstream));
                 if (inflateInit2(&zstream, -MAX_WBITS) != Z_OK) return false;
-                if (fseek(zipfile->fstream, ent->ofs, SEEK_SET) != 0) return false;
+                if (fseeko(zipfile->fstream, ent->ofs, SEEK_SET) != 0) return false;
                 inflateEnd(&zipfile->zstream);
                 memcpy(&zipfile->zstream, &zstream, sizeof(zstream));
                 zipfile->uncomp_pos = zipfile->comp_pos = 0;
@@ -361,18 +361,28 @@ static bool fs_packtype_zip_eof(UNUSED void *pack, fs_file_t *file) {
     return zipfile->uncomp_pos >= zipfile->entry->uncomp_size;
 }
 
+static s64 fs_packtype_zip_fsize(void *pack, const char *vpath) {
+    zip_pack_t *zip = (zip_pack_t *) pack;
+    zip_entry_t *ent = (zip_entry_t *) fs_dirtree_find((fs_dirtree_t *) zip, vpath);
+    if (OMM_LIKELY(ent && !ent->tree.is_dir)) {
+        return (s64) ent->uncomp_size;
+    }
+    return -1;
+}
+
 fs_packtype_t fs_packtype_zip = {
-    "zip",
-    fs_packtype_zip_mount,
-    fs_packtype_zip_unmount,
-    fs_dirtree_walk,
-    fs_packtype_zip_is_file,
-    fs_packtype_zip_is_dir,
-    fs_packtype_zip_open,
-    fs_packtype_zip_read,
-    fs_packtype_zip_seek,
-    fs_packtype_zip_tell,
-    fs_packtype_zip_size,
-    fs_packtype_zip_eof,
-    fs_packtype_zip_close,
+    .extension = "zip",
+    .mount     = fs_packtype_zip_mount,
+    .unmount   = fs_packtype_zip_unmount,
+    .walk      = fs_dirtree_walk,
+    .is_file   = fs_packtype_zip_is_file,
+    .is_dir    = fs_packtype_zip_is_dir,
+    .open      = fs_packtype_zip_open,
+    .read      = fs_packtype_zip_read,
+    .seek      = fs_packtype_zip_seek,
+    .tell      = fs_packtype_zip_tell,
+    .size      = fs_packtype_zip_size,
+    .eof       = fs_packtype_zip_eof,
+    .close     = fs_packtype_zip_close,
+    .fsize     = fs_packtype_zip_fsize,
 };

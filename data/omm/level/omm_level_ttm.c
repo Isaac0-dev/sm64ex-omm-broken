@@ -4,7 +4,7 @@
 #if OMM_GAME_IS_SM64
 #include "levels/ttm/header.h"
 #include "level_commands.h"
-#define OMM_TTM_SLIDE_OFFSET_Y 14000
+#define OMM_TTM_SLIDE_OFFSET_Y (14000)
 
 //
 // Geo layouts

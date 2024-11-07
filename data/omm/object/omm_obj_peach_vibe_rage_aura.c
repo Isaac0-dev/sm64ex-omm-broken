@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 #define OMM_PEACH_VIBE_RAGE_AURA_POINTS_PER_SEGMENT   30
 #define OMM_PEACH_VIBE_RAGE_AURA_NUM_SEGMENTS         30
@@ -22,7 +23,7 @@ static const Gfx omm_peach_vibe_rage_aura_gfx[] = {
     gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
     gsDPLoadTextureBlock(OMM_TEXTURE_EFFECT_VIBE_RAGE_AURA, G_IM_FMT_RGBA, G_IM_SIZ_32b, 256, 256, 0, 0, 0, 0, 0, 0, 0),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsSPDisplayList(null),
+    gsSPDisplayList(NULL),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
     gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
     gsSPEndDisplayList(),
@@ -33,10 +34,15 @@ static const Gfx omm_peach_vibe_rage_aura_gfx[] = {
 //
 
 typedef struct {
+    Gfx *displayLists[1];
     Gfx gfx[array_length(omm_peach_vibe_rage_aura_gfx)];
     Gfx tri[(OMM_PEACH_VIBE_RAGE_AURA_NUM_SEGMENTS + 0) * (OMM_PEACH_VIBE_RAGE_AURA_POINTS_PER_SEGMENT + 1) + 1];
     Vtx vtx[(OMM_PEACH_VIBE_RAGE_AURA_NUM_SEGMENTS + 1) * (OMM_PEACH_VIBE_RAGE_AURA_POINTS_PER_SEGMENT + 1)];
 } OmmPeachVibeRageAuraGeoData;
+
+static const u32 sOmmPeachVibeRageAuraGeoDataDisplayListsOffsets[] = {
+    offsetof(OmmPeachVibeRageAuraGeoData, gfx),
+};
 
 //
 // Geo layout
@@ -70,7 +76,11 @@ static f32 oscillate_min_mid_max(f32 t,
 
 static void bhv_omm_peach_vibe_rage_aura_update() {
     struct Object *o = gCurrentObject;
-    OmmPeachVibeRageAuraGeoData *data = geo_get_geo_data(o, sizeof(OmmPeachVibeRageAuraGeoData), omm_peach_vibe_rage_aura_gfx, sizeof(omm_peach_vibe_rage_aura_gfx));
+    OmmPeachVibeRageAuraGeoData *data = geo_get_geo_data(o,
+        sizeof(OmmPeachVibeRageAuraGeoData),
+        sOmmPeachVibeRageAuraGeoDataDisplayListsOffsets,
+        array_length(sOmmPeachVibeRageAuraGeoDataDisplayListsOffsets)
+    );
 
     // Global state
     s32 isRage = omm_peach_vibe_is_rage();
@@ -122,7 +132,8 @@ static void bhv_omm_peach_vibe_rage_aura_update() {
             vtx++;
         }
     }
-    gSPEndDisplayList(tri);
+    gSPEndDisplayList(tri++);
+    gfx_copy_and_fill_null(data->gfx, omm_peach_vibe_rage_aura_gfx, sizeof(omm_peach_vibe_rage_aura_gfx), data->tri);
 
     // Unload after deactivation
     if (!isRage && alpha == 0.f) {
@@ -132,7 +143,7 @@ static void bhv_omm_peach_vibe_rage_aura_update() {
 
     // Update object
     f32 *marioRootPos = geo_get_marios_root_pos();
-    obj_set_pos(o, marioRootPos[0], marioRootPos[1], marioRootPos[2]);
+    obj_set_xyz(o, marioRootPos[0], marioRootPos[1], marioRootPos[2]);
     obj_set_home(o, marioRootPos[0], marioRootPos[1], marioRootPos[2]);
     obj_set_angle(o, 0, 0, 0);
     obj_set_scale(o, 1.f, 1.f, 1.f);
@@ -145,17 +156,17 @@ static void bhv_omm_peach_vibe_rage_aura_update() {
 
 const BehaviorScript bhvOmmPeachVibeRageAura[] = {
     OBJ_TYPE_SPECIAL,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_peach_vibe_rage_aura_update,
-    0x09000000
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_peach_vibe_rage_aura_update),
+    BHV_END_LOOP()
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_peach_vibe_rage_aura(struct Object *o) {
+struct Object *omm_obj_spawn_peach_vibe_rage_aura(struct Object *o) {
     struct Object *aura = obj_get_first_with_behavior(bhvOmmPeachVibeRageAura);
     if (!aura) {
         aura = obj_spawn_from_geo(o, omm_geo_peach_vibe_rage_aura, bhvOmmPeachVibeRageAura);

@@ -18,36 +18,63 @@
 #define DEFINE_TOGGLE_SC(option, v)             DEFINE_TOGGLE(option, v); DEFINE_KBINDS(option##Shortcuts, VK_INVALID, VK_INVALID, VK_INVALID)
 #define DEFINE_CHOICE_SC(option, v, count)      DEFINE_CHOICE(option, v, count); DEFINE_KBINDS(option##Shortcuts, VK_INVALID, VK_INVALID, VK_INVALID)
 
-#define READ_KBINDS(option)                     if (strcmp(token.args[0], #option) == 0) { sscanf(token.args[1], "%X", &option[0]); sscanf(token.args[2], "%X", &option[1]); sscanf(token.args[3], "%X", &option[2]); continue; }
-#define READ_TOGGLE(option)                     if (strcmp(token.args[0], #option) == 0) { option = (token.args[1][0] == '1'); continue; }
-#define READ_CHOICE(option)                     if (strcmp(token.args[0], #option) == 0) { if (sscanf(token.args[1], "%u", &option)) { option *= (option < option##Count); } continue; }
+// !!!!!!!!!!!!!!!!!!!! TODO: Backwards compatibility, remove this in a future update !!!!!!!!!!!!!!!!!!!!
+#define READ_KBINDS(option)                     if (strcmp(tokens.args[0], #option) == 0) { sscanf(tokens.args[1], "%X", &option[0]); sscanf(tokens.args[2], "%X", &option[1]); sscanf(tokens.args[3], "%X", &option[2]); continue; }
+#define READ_TOGGLE(option)                     if (strcmp(tokens.args[0], #option) == 0) { option = (tokens.args[1][0] == '1'); continue; }
+#define READ_CHOICE(option)                     if (strcmp(tokens.args[0], #option) == 0) { if (sscanf(tokens.args[1], "%u", &option)) { option *= (option < option##Count); } continue; }
 #define READ_TOGGLE_SC(option)                  READ_TOGGLE(option); READ_KBINDS(option##Shortcuts)
 #define READ_CHOICE_SC(option)                  READ_CHOICE(option); READ_KBINDS(option##Shortcuts)
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-#define WRITE_KBINDS(option)                    write("%s = %04hX %04hX %04hX\n", #option, (u16) option[0], (u16) option[1], (u16) option[2])
-#define WRITE_TOGGLE(option)                    write("%s = %u\n", #option, (option ? 1 : 0))
-#define WRITE_CHOICE(option)                    write("%s = %u\n", #option, option)
-#define WRITE_TOGGLE_SC(option)                 WRITE_TOGGLE(option); WRITE_KBINDS(option##Shortcuts)
-#define WRITE_CHOICE_SC(option)                 WRITE_CHOICE(option); WRITE_KBINDS(option##Shortcuts)
+#define CONFIG_KBINDS(config, option)           { .name = config, .type = CONFIG_TYPE_BIND, .uintValue = option }
+#define CONFIG_TOGGLE(config, option)           { .name = config, .type = CONFIG_TYPE_BOOL, .boolValue = &option }
+#define CONFIG_CHOICE(config, option)           { .name = config, .type = CONFIG_TYPE_UINT, .uintValue = &option }
+#define CONFIG_TOGGLE_SC(config, option)        { .name = config, .type = CONFIG_TYPE_BOOL, .boolValue = &option }, \
+                                                { .name = config "_shortcuts", .type = CONFIG_TYPE_BIND, .uintValue = option##Shortcuts }
+#define CONFIG_CHOICE_SC(config, option)        { .name = config, .type = CONFIG_TYPE_UINT, .uintValue = &option }, \
+                                                { .name = config "_shortcuts", .type = CONFIG_TYPE_BIND, .uintValue = option##Shortcuts }
 
+#define NO_SHORTCUT(option)                     (option##Shortcuts[0] == VK_INVALID && option##Shortcuts[1] == VK_INVALID && option##Shortcuts[2] == VK_INVALID)
+#define SHORTCUT_PRESSED(option)                (gKeyPressed != VK_INVALID && (gKeyPressed == option##Shortcuts[0] || gKeyPressed == option##Shortcuts[1] || gKeyPressed == option##Shortcuts[2]))
+
+#define OPT_TYPE(x)                             (((x) & 0x0F) >> 0)
+#define OPT_STATE(x)                            (((x) & 0xF0) >> 4)
+#define OPT_TYPE_STATE(type, state)             (((type) << 0) | ((state) << 4))
+
+#if OMM_GAME_IS_R96X
+#define omm_opt_text(str)                       (const u8 *) str
+#define omm_opt_text_length(str)                (s32) strlen((const char *) str)
+#else
+#define omm_opt_text(str)                       omm_text_convert(str, true)
+#define omm_opt_text_length(str)                omm_text_length(str)
+#endif
+
+struct Option;
 typedef struct { const u8 *label; void *subMenu; } OmmOptMenu;
 extern OmmOptMenu gOmmOptMenu;
+extern OmmOptMenu gOmmOptModels;
+extern OmmOptMenu gOmmOptTimeTrials;
+extern OmmOptMenu gOmmOptWarpToLevel;
+extern OmmOptMenu gOmmOptWarpToCastle;
 extern OmmOptMenu gOmmOptControls;
 #if !OMM_GAME_IS_R96X
 extern OmmOptMenu gOmmOptCheats;
 #endif
-#if !OMM_CODE_DYNOS
-extern OmmOptMenu gOmmOptWarpToLevel;
-extern OmmOptMenu gOmmOptReturnToMainMenu;
-extern OmmOptMenu gOmmOptModels;
-extern bool **gOmmOptModelsEnabled;
-#endif
+extern OmmOptMenu gOmmOptChangeGame;
+extern OmmOptMenu gOmmOptExitGame;
+extern u32 gOmmOptYesFunc[1];
 
-enum OmmFps { OMM_FPS_30, OMM_FPS_60, OMM_FPS_AUTO, OMM_FPS_INF };
+enum OmmFps            { OMM_FPS_30, OMM_FPS_60, OMM_FPS_AUTO, OMM_FPS_INF };
 enum OmmTextureCaching { OMM_TEXTURE_CACHING_DISABLED, OMM_TEXTURE_CACHING_AT_START_UP, OMM_TEXTURE_CACHING_PERMANENT };
+enum OmmHudMode        { OMM_HUD_MODE_ALWAYS, OMM_HUD_MODE_VANISHING, OMM_HUD_MODE_PRO, OMM_HUD_MODE_NONE };
+enum OmmCameraInvert   { OMM_CAMERA_INVERT_NONE, OMM_CAMERA_INVERT_X, OMM_CAMERA_INVERT_Y, OMM_CAMERA_INVERT_BOTH };
 DECLARE_CHOICE(gOmmFrameRate);
 DECLARE_TOGGLE(gOmmShowFPS);
 DECLARE_CHOICE(gOmmTextureCaching);
+DECLARE_TOGGLE(gOmmModelPackCaching);
+DECLARE_CHOICE(gOmmHudMode);
+DECLARE_CHOICE(gOmmCameraInvert1stPerson);
+DECLARE_CHOICE(gOmmCameraInvert3rdPerson);
 DECLARE_KBINDS(gOmmControlsButtonA);
 DECLARE_KBINDS(gOmmControlsButtonB);
 DECLARE_KBINDS(gOmmControlsButtonX);
@@ -86,6 +113,12 @@ DECLARE_TOGGLE(gOmmCheatWalkOnSlope);
 DECLARE_TOGGLE(gOmmCheatWalkOnDeathBarrier);
 DECLARE_TOGGLE(gOmmCheatBljAnywhere);
 #endif
+DECLARE_TOGGLE(gOmmTimeTrialsEnabled);
+DECLARE_TOGGLE(gOmmTimeTrialsShowStarGhosts);
+DECLARE_TOGGLE(gOmmTimeTrialsShowBowserGhosts);
+DECLARE_TOGGLE(gOmmTimeTrialsShowSlideGhosts);
+DECLARE_TOGGLE(gOmmTimeTrialsShowCoinsGhosts);
+DECLARE_TOGGLE(gOmmTimeTrialsShowAllStarsGhosts);
 DECLARE_CHOICE_SC(gOmmCharacter);
 DECLARE_CHOICE_SC(gOmmMovesetType);
 DECLARE_CHOICE_SC(gOmmCapType);
@@ -94,6 +127,8 @@ DECLARE_CHOICE_SC(gOmmPowerUpsType);
 DECLARE_CHOICE_SC(gOmmCameraMode);
 DECLARE_CHOICE_SC(gOmmSparklyStarsMode);
 DECLARE_CHOICE_SC(gOmmSparklyStarsHintAtLevelEntry);
+DECLARE_CHOICE_SC(gOmmSparklyStarsCompletionReward);
+DECLARE_TOGGLE_SC(gOmmSparklyStarsPerryCharge);
 DECLARE_TOGGLE(gOmmCheatUnlimitedCappyBounces);
 DECLARE_TOGGLE(gOmmCheatCappyStaysForever);
 DECLARE_TOGGLE(gOmmCheatHomingAttackGlobalRange);
@@ -102,17 +137,15 @@ DECLARE_TOGGLE(gOmmCheatCappyCanCollectStars);
 DECLARE_TOGGLE(gOmmCheatPlayAsCappy);
 DECLARE_TOGGLE(gOmmCheatPeachEndlessVibeGauge);
 DECLARE_TOGGLE(gOmmCheatShadowMario);
-DECLARE_CHOICE(gOmmExtrasMarioColors);
-DECLARE_CHOICE(gOmmExtrasPeachColors);
+DECLARE_CHOICE_SC(gOmmExtrasMarioColors);
+DECLARE_CHOICE_SC(gOmmExtrasPeachColors);
+DECLARE_CHOICE_SC(gOmmExtrasObjectsRadar);
 DECLARE_TOGGLE_SC(gOmmExtrasSMOAnimations);
 DECLARE_TOGGLE_SC(gOmmExtrasCappyAndTiara);
 DECLARE_TOGGLE_SC(gOmmExtrasColoredStars);
-DECLARE_TOGGLE_SC(gOmmExtrasVanishingHUD);
 DECLARE_TOGGLE_SC(gOmmExtrasRevealSecrets);
-DECLARE_TOGGLE_SC(gOmmExtrasRedCoinsRadar);
 DECLARE_TOGGLE_SC(gOmmExtrasShowStarNumber);
 DECLARE_TOGGLE_SC(gOmmExtrasInvisibleMode);
-DECLARE_CHOICE_SC(gOmmExtrasSparklyStarsReward);
 #if OMM_CODE_DEBUG
 DECLARE_TOGGLE_SC(gOmmDebugHitbox);
 DECLARE_TOGGLE_SC(gOmmDebugHurtbox);
@@ -126,17 +159,25 @@ DECLARE_TOGGLE_SC(gOmmDebugCappy);
 #endif
 
 #if OMM_GAME_IS_SM74
-void omm_opt_sm74_change_mode(UNUSED void *opt, s32 arg);
+void omm_opt_sm74_change_mode(UNUSED struct Option *opt, s32 arg);
 #endif
-void omm_opt_return_to_main_menu(UNUSED void *opt, s32 arg);
-void omm_opt_reset_binds(u32 *binds);
-bool omm_mario_colors_read(const char **tokens);
-void omm_mario_colors_write(char **buffer);
+void omm_opt_return_to_previous_menu(UNUSED struct Option *opt, s32 arg);
+void omm_opt_return_to_main_menu(UNUSED struct Option *opt, s32 arg);
+void omm_opt_camera_enter_snapshot_mode(UNUSED struct Option *opt, s32 arg);
+void omm_opt_change_game(struct Option *opt, s32 arg);
+void omm_opt_exit_game(UNUSED struct Option *opt, s32 arg);
+void omm_opt_update_binds();
+u32 omm_opt_get_state();
+bool omm_mario_colors_read(const char *name, const char *value, bool *invalid);
+void omm_mario_colors_write();
 const char **omm_mario_colors_choices(bool peach);
 s32 omm_mario_colors_count();
 s32 omm_mario_colors_lights_count(bool peach);
+s32 omm_mario_colors_light_groups_count(bool peach);
 u32 *omm_mario_colors_get_light(bool peach, s32 palette, s32 index);
 const char *omm_mario_colors_get_light_name(bool peach, s32 index);
+const char *omm_mario_colors_get_light_group_name(bool peach, s32 index);
+const void *omm_mario_colors_part_to_light(s32 part);
 
 #define omm_opt_select_available(option, zero, count, cond) \
 { static u32 s##option = (u32) (-1); \

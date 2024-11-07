@@ -5,57 +5,64 @@
 // Patches
 //
 
-#if defined(DYNOS) || defined(R96X)
-#define OMM_CODE_DYNOS 1
-#else
-#define OMM_CODE_DYNOS 0
+#if defined(DYNOS) && !defined(r96x)
+#error "Standalone DynOS is not compatible with OMM."
+#endif
+
+#if defined(CHEATER) && !defined(r96x)
+#error "Standalone Cheater is not compatible with OMM."
 #endif
 
 #if defined(TIME_TRIALS)
-#ifdef OMM_ALL_HEADERS
-#include "game/time_trials.h"
+#error "Time Trials is not compatible with OMM."
 #endif
-#define OMM_CODE_TIME_TRIALS 1
-#else
-#define OMM_CODE_TIME_TRIALS 0
-#define time_trials_enabled() false
-#define time_trials_render_star_select_time(...)
-#define time_trials_render_time_table(...) false
+
+#if defined(RAPI_RT64)
+#error "RT64 is not compatible with OMM."
+#endif
+
+#if defined(ACT_SPINDASH) || defined(ACT_TRANSFORM)
+#error "Sonic Edition is not compatible with OMM."
+#endif
+
+#if defined(ANGLE_QUEUE_SIZE) || defined(ACT_LEDGE_PARKOUR) || defined(ACT_WATER_GROUND_POUND_STROKE)
+#error "Extended Moveset is not compatible with OMM."
 #endif
 
 //
 // Code patches
 //
 
+#define omm_patch__find_in_bounds_yaw_wdw_bob_thi__return_yaw                   return yaw;
+#define omm_patch__common_anchor_mario_behavior__obj_update_held_mario          return obj_update_held_mario(gCurrentObject, sp28, sp2C);
 #define omm_patch__play_sound__play_character_sound                             OMM_RETURN_IF_TRUE(omm_sound_play_character_sound_n64(soundBits, pos),,);
 #define omm_patch__stop_background_music__fix_boss_music                        stop_background_music_fix_boss_music();
-#define omm_patch__find_in_bounds_yaw_wdw_bob_thi__return_yaw                   return yaw;
 #define omm_patch__render_dialog_entries__fix_dialog_box_text_lower_bound       fix_dialog_box_text_lower_bound();
 #define omm_patch__check_death_barrier__cheat_walk_on_death_barrier             OMM_RETURN_IF_TRUE(OMM_CHEAT_WALK_ON_DEATH_BARRIER,,);
 #define omm_patch__check_lava_boost__cheat_walk_on_lava                         OMM_RETURN_IF_TRUE(OMM_CHEAT_WALK_ON_LAVA,,);
 #define omm_patch__level_trigger_warp__check_death_warp                         OMM_RETURN_IF_TRUE(omm_mario_check_death_warp(m, warpOp), 0,);
+#define omm_patch__mario_get_floor_class__cheat_walk_on_slope                   OMM_RETURN_IF_TRUE(OMM_CHEAT_WALK_ON_SLOPE, SURFACE_CLASS_NOT_SLIPPERY,);
+#define omm_patch__mario_floor_is_slippery__cheat_walk_on_slope                 OMM_RETURN_IF_TRUE(OMM_CHEAT_WALK_ON_SLOPE, FALSE,);
+#define omm_patch__set_water_plunge_action__check_flooded                       OMM_RETURN_IF_TRUE(omm_mario_check_flooded(m), TRUE,);
 #define omm_patch__update_air_with_turn__update_air_with_turn                   OMM_RETURN_IF_TRUE(OMM_LIKELY(omm_mario_update_air_with_turn(m)),,);
 #define omm_patch__update_air_without_turn__update_air_without_turn             OMM_RETURN_IF_TRUE(OMM_LIKELY(omm_mario_update_air_without_turn(m)),,);
-#define omm_patch__common_air_action_step__wall_slide_check                     OMM_RETURN_IF_TRUE(omm_mario_try_to_perform_wall_slide(m), AIR_STEP_NONE, set_mario_animation(m, animation););
-#define omm_patch__set_mario_npc_dialog__skip_if_capture                        OMM_RETURN_IF_TRUE(omm_mario_is_capture(gMarioState), 2, gDialogResponse = 1; gCamera->cutscene = 0; extern u8 sObjectCutscene; sObjectCutscene = 0; extern u8 sCutsceneDialogResponse; sCutsceneDialogResponse = 1; gRecentCutscene = CUTSCENE_DIALOG;);
+#define omm_patch__common_air_action_step__check_wall_slide                     OMM_RETURN_IF_TRUE(omm_mario_try_to_perform_wall_slide(m), AIR_STEP_NONE, set_mario_animation(m, animation););
+#define omm_patch__act_lava_boost__cheat_walk_on_lava                           && !OMM_CHEAT_WALK_ON_LAVA
+#define omm_patch__set_mario_npc_dialog__check_npc_dialog                       OMM_RETURN_IF_TRUE(omm_mario_check_npc_dialog(gMarioState, actionArg, &dialogState), dialogState);
 #define omm_patch__check_for_instant_quicksand__fix_downwarp                    OMM_RETURN_IF_TRUE(OMM_MOVESET_ODYSSEY, (find_floor_height(m->pos[0], m->pos[1], m->pos[2]) >= m->pos[1]) && mario_update_quicksand(m, 0.f),);
 #define omm_patch__apply_slope_accel__not_peach_vibe_gloom                      if (!omm_peach_vibe_is_gloom())
 #define omm_patch__update_walking_speed__update_walking_speed                   OMM_RETURN_IF_TRUE(OMM_LIKELY(omm_mario_update_walking_speed(m)),,);
-#define omm_patch__mario_get_floor_class__cheat_walk_on_slope                   OMM_RETURN_IF_TRUE(OMM_CHEAT_WALK_ON_SLOPE, SURFACE_CLASS_NOT_SLIPPERY,);
-#define omm_patch__mario_floor_is_slippery__cheat_walk_on_slope                 OMM_RETURN_IF_TRUE(OMM_CHEAT_WALK_ON_SLOPE, FALSE,);
-#define omm_patch__cur_obj_update_dialog__skip_if_capture                       OMM_RETURN_IF_TRUE(omm_mario_is_capture(gMarioState), TRUE, gDialogLineIndex = 1; handle_special_dialog_text(dialogID); o->oDialogResponse = TRUE;);
-#define omm_patch__cur_obj_update_dialog_with_cutscene__skip_if_capture         OMM_RETURN_IF_TRUE(omm_mario_is_capture(gMarioState), TRUE, gDialogLineIndex = 1; handle_special_dialog_text(dialogID); o->oDialogResponse = TRUE;);
+#define omm_patch__cheats_play_as__disable                                      return FALSE;
+#define omm_patch__obj_resolve_object_collisions__ignore_capture_goomba_stack   && otherObject != gOmmCapture && (!omm_obj_is_goomba_stack(otherObject) || otherObject->oGoombaStackParent != o)
+#define omm_patch__obj_set_hitbox__obj_fix_hitbox                               obj_fix_hitbox(obj);
+#define omm_patch__cur_obj_update_dialog__skip_if_capture                       OMM_RETURN_IF_TRUE(omm_mario_is_capture(gMarioState), TRUE, gDialogLineNum = 1; handle_special_dialog_text(dialogID); o->oDialogResponse = 1;);
+#define omm_patch__cur_obj_update_dialog_with_cutscene__skip_if_capture         OMM_RETURN_IF_TRUE(omm_mario_is_capture(gMarioState), TRUE, gDialogLineNum = 1; handle_special_dialog_text(dialogID); o->oDialogResponse = 1;);
+#define omm_patch__cur_obj_has_model__check_georef                              if (o->oGraphNode && gLoadedGraphNodes[modelID] && o->oGraphNode->georef == gLoadedGraphNodes[modelID]->georef) { return TRUE; } else
+#define omm_patch__unload_objects_from_area__keep_held_ridden_capture_alive     obj_keep_held_ridden_capture_alive();
+#define omm_patch__load_level_init_text__skip_entry_dialog_if_non_stop          && OMM_STARS_CLASSIC
 #define omm_patch__render_painting__interpolate_painting                        extern void gfx_interpolate_painting(Vtx *, s32); gfx_interpolate_painting(verts, numVtx);
 #define omm_patch__geo_painting_update__fix_floor_pointer                       geo_painting_update_fix_floor();
 #define omm_patch__r96_get_intended_level_music__bowser_4_music                 OMM_RETURN_IF_TRUE(omm_sparkly_is_bowser_4_battle(), R96_LEVEL_BOWSER_3,);
-#define omm_patch__cheats_play_as__disable                                      return FALSE;
-#define omm_patch__dynos_sound_play__play_character_sound                       OMM_RETURN_IF_TRUE(omm_sound_play_character_sound_r96(name, pos),,);
-#define omm_patch__memory__main_pool_state                                      u8 *gMainPoolStatePtr = (u8 *) &gMainPoolState;
-#if defined(DYNOS)
-#define omm_patch__cur_obj_has_model__check_georef
-#else
-#define omm_patch__cur_obj_has_model__check_georef                              if (o->oGraphNode && gLoadedGraphNodes[modelID] && o->oGraphNode->georef == gLoadedGraphNodes[modelID]->georef) { return TRUE; } else
-#endif
 
 //
 // Some preprocessor magic
@@ -107,6 +114,16 @@
 #define mario_ready_to_speak_1 mario_ready_to_speak()
 #define mario_ready_to_speak(...) CAT(mario_ready_to_speak_, N_ARGS(__VA_ARGS__))
 
+// update_mario_platform is replaced by omm_mario_update_platform
+#define update_mario_platform_0 omm_mario_update_platform(gMarioState)
+#define update_mario_platform_1 update_mario_platform()
+#define update_mario_platform(...) CAT(update_mario_platform_, N_ARGS(__VA_ARGS__))
+
+// find_unimportant_object is redefined in omm_object_helpers.c
+#define find_unimportant_object_0 find_unimportant_object()
+#define find_unimportant_object_1 find_unimportant_object_unused()
+#define find_unimportant_object(...) CAT(find_unimportant_object_, N_ARGS(__VA_ARGS__))
+
 // cur_obj_within_12k_bounds always returns TRUE
 #define cur_obj_within_12k_bounds_0 TRUE
 #define cur_obj_within_12k_bounds_1 cur_obj_within_12k_bounds_unused()
@@ -138,23 +155,6 @@ omm_stats_update_defeated_enemies() { \
 #define print_hard_mode_strings(...) CAT(print_hard_mode_strings_, N_ARGS(__VA_ARGS__))
 #endif
 
-// DynOS init makes a call to omm_opt_init before initializing itself
-#define DynOS_Init \
-DynOS_Init_Startup_() { extern void DynOS_Init_Omm_(); DynOS_Init_Omm_(); } \
-extern "C" { extern void omm_opt_init(); } \
-void DynOS_Init_Omm_() { extern void DynOS_Init_(); omm_opt_init(); DynOS_Init_(); } \
-void DynOS_Init_
-
-// Redefine the play_sequence function if it was replaced by the static seq_player_play_sequence
-#if music_play_sequence_define
-#define unused_8031E4F0 \
-placeholder_func() {} \
-static void seq_player_play_sequence(u8 player, u8 seqId, u16 arg2); \
-void play_sequence(u8 player, u8 seqId, u16 arg2) { \
-    seq_player_play_sequence(player, seqId, arg2); \
-} void unused_8031E4F0
-#endif
-
 // If the boss sequence is missing, the level music is not going to restart...
 // So, add the boss music in the queue to force the stop_background_music
 // function to remove it from the queue and restart the level music.
@@ -162,8 +162,8 @@ void play_sequence(u8 player, u8 seqId, u16 arg2) { \
 if ((seqId & 0xFF) == SEQ_EVENT_BOSS) { \
     for (u8 i = 0; i <= sBackgroundMusicQueueSize; ++i) { \
         if (i == sBackgroundMusicQueueSize) { \
-            sBackgroundMusicQueueSize = min_s(sBackgroundMusicQueueSize + 1, MUSIC_QUEUE_MAX_SIZE); \
-            mem_mov(sBackgroundMusicQueue + 1, sBackgroundMusicQueue, sizeof(sBackgroundMusicQueue[0]) * (MUSIC_QUEUE_MAX_SIZE - 1)); \
+            sBackgroundMusicQueueSize = min_s(sBackgroundMusicQueueSize + 1, MAX_BG_MUSIC_QUEUE_SIZE); \
+            mem_mov(sBackgroundMusicQueue + 1, sBackgroundMusicQueue, sizeof(sBackgroundMusicQueue[0]) * (MAX_BG_MUSIC_QUEUE_SIZE - 1)); \
             sBackgroundMusicQueue[0].seqId = SEQ_EVENT_BOSS; \
             sBackgroundMusicQueue[0].priority = 4; \
             break; \
@@ -178,10 +178,30 @@ if ((seqId & 0xFF) == SEQ_EVENT_BOSS) { \
 lowerBound = (gDialogScrollOffsetY / 16) + 1; \
 if (gDialogScrollOffsetY >= dialog->linesPerBox * DIAG_VAL1) { \
     gDialogTextPos = gLastDialogPageStrPos; \
-    gDialogBoxState = DIALOG_STATE_VERTICAL; \
+    gDialogBoxState = 1; \
     gDialogScrollOffsetY = 0; \
 } \
 break
+
+// Keep heldObj, riddenObj, capture and their children alive when unloading the area
+#define obj_keep_held_ridden_capture_alive() \
+for (bool ok = false; !ok;) { ok = true; \
+    for (s32 objList = 0; objList != NUM_OBJ_LISTS; ++objList) { \
+        for_each_object_in_list(obj, objList) { \
+            if (!(obj->oFlags & OBJ_FLAG_UPDATE_AREA_INDEX) && ( \
+                obj == gMarioState->riddenObj || \
+                obj == gMarioState->heldObj || \
+                obj == gOmmCapture || \
+                obj == gOmmObject->state.heldObj || \
+                (obj->parentObj && (obj->parentObj->oFlags & OBJ_FLAG_UPDATE_AREA_INDEX))) \
+            ) { \
+                obj->oActiveAreaIndex = areaIndex - 1; \
+                obj->oFlags |= OBJ_FLAG_UPDATE_AREA_INDEX; \
+                ok = false; \
+            } \
+        } \
+    } \
+}
 
 // Fix annoying crashes that can occur in rooms with paintings
 #define geo_painting_update_fix_floor() \
@@ -205,9 +225,12 @@ return NULL;
 #ifdef INCLUDED_FROM_CAMERA_C
 #define update_camera \
 update_camera(struct Camera *c) { \
-    OMM_RETURN_IF_TRUE(omm_camera_update(c, gMarioState), , ); \
-    extern void update_camera_(struct Camera *c); \
-    update_camera_(c); \
+    gOmmGlobals->cameraUpdate = true; \
+    if (!omm_camera_update(c, gMarioState)) { \
+        extern void update_camera_(struct Camera *c); \
+        update_camera_(c); \
+    } \
+    gOmmGlobals->cameraUpdate = false; \
 } \
 void update_camera_
 #endif

@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -344,30 +345,30 @@ static void bhv_omm_bowser_fireball_loop(void) {
         obj_set_params(o, INTERACT_FLAME, 1, 99, 0, true);
         obj_reset_hitbox(o, 50, 100, 0, 0, 0, 50);
         if (o->oTimer & 1) {
-            omm_spawn_bowser_fireball_flame(o, 30);
+            omm_obj_spawn_bowser_fireball_flame(o, 30);
         }
     } else {
-        obj_spawn_white_puff(o, -1);
+        obj_spawn_white_puff(o, NO_SOUND);
         obj_mark_for_deletion(o);
     }
 }
 
 const BehaviorScript bhvOmmBowserFireball[] = {
     OBJ_TYPE_GENACTOR,
-    0x11010001,
-    0x08000000,
-    0x0F1A0001,
-    0x0C000000, (uintptr_t) bhv_omm_bowser_fireball_loop,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_ADD_INT(oAnimState, 1),
+        BHV_CALL_NATIVE(bhv_omm_bowser_fireball_loop),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_bowser_fireball(struct Object *o, f32 x, f32 y, f32 z, f32 forwardVel, f32 maxDistance, s16 angle) {
+struct Object *omm_obj_spawn_bowser_fireball(struct Object *o, f32 x, f32 y, f32 z, f32 forwardVel, f32 maxDistance, s16 angle) {
     struct Object *fireball = obj_spawn_from_geo(o, omm_geo_bowser_fireball, bhvOmmBowserFireball);
-    obj_set_pos(fireball, x, y, z);
+    obj_set_xyz(fireball, x, y, z);
     obj_set_angle(fireball, 0, angle, 0);
     obj_set_forward_vel(fireball, angle, 1.f, forwardVel);
     obj_scale(fireball, 0);

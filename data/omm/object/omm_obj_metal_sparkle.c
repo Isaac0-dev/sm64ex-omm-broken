@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -149,19 +150,19 @@ const GeoLayout omm_geo_metal_sparkle[] = {
 
 const BehaviorScript bhvOmmMetalSparkle[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x111AFFFF,
-    0x05000010,
-    0x0F1A0001,
-    0x06000000,
-    0x1D000000
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_SET_INT(oAnimState, -1),
+    BHV_BEGIN_REPEAT(16),
+        BHV_ADD_INT(oAnimState, 1),
+    BHV_END_REPEAT(),
+    BHV_DEACTIVATE(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_metal_sparkle(struct Object *o) {
+struct Object *omm_obj_spawn_metal_sparkle(struct Object *o) {
     struct Object *sparkle = obj_spawn_from_geo(o, omm_geo_metal_sparkle, bhvOmmMetalSparkle);
     sparkle->activeFlags  |= ACTIVE_FLAG_INITIATED_TIME_STOP;
     sparkle->oPosX         = o->oPosX;

@@ -1,21 +1,30 @@
-# OMM TAS Tools
-Fork of [PeachyPeachSM64/sm64ex-omm](https://github.com/PeachyPeachSM64/sm64ex-omm) with TAS tools built in. 
+# sm64ex
+Fork of [sm64-port/sm64-port](https://github.com/sm64-port/sm64-port) with additional features. 
 
 Feel free to report bugs and contribute, but remember, there must be **no upload of any copyrighted asset**. 
 Run `./extract_assets.py --clean && make clean` or `make distclean` to remove ROM-originated content.
 
-## About
-You can build this with the [usual build method](https://github.com/sm64pc/sm64ex/wiki).
-Unfortunately save states are not are not implemented currently.
+Please contribute **first** to the [nightly branch](https://github.com/sm64pc/sm64ex/tree/nightly/). New functionality will be merged to master once they're considered to be well-tested.
 
-## How to use
+*Read this in other languages: [Español](README_es_ES.md), [Português](README_pt_BR.md), [简体中文](README_zh_CN.md) or [Bahasa Melayu](README_ms_MY.md).*
 
-### Frame Advancing
-Frame advancing is available. Press Enter on your keyboard to pause rendering frames, and tap Tab on your keyboard to advance 1 frame.
+## New features
 
-### Recording a TAS
-You can record your TAS, but be aware that you cannot just open the game using your default method, you need to open your game using the terminal. This [guide](https://www.groovypost.com/howto/open-command-window-terminal-window-specific-folder-windows-mac-linux/) may be helpful. For an example, type `sm64.us.f3dex2e --tas 1 1` to open the game with TAS recording keyboard inputs starting as soon as the game opens. The first number is which controller to use. Set it to 1 for keyboard, 2 for controller, 0 for none (don't record anything). The second number is for whether or not you want the TAS to start when the game starts (useful for full game runs), or when you press Backspace on your keyboard (useful for single star runs). When you have finished recording your TAS, simply closing the game will save your TAS to `write.m64`, in the same folder as your game executable.
+ * Options menu with various settings, including button remapping.
+ * Optional external data loading (so far only textures and assembled soundbanks), providing support for custom texture packs.
+ * Optional analog camera and mouse look (using [Puppycam](https://github.com/FazanaJ/puppycam)).
+ * Optional OpenGL1.3-based renderer for older machines, as well as the original GL2.1, D3D11 and D3D12 renderers from Emill's [n64-fast3d-engine](https://github.com/Emill/n64-fast3d-engine/).
+ * Option to disable drawing distances.
+ * Optional model and texture fixes (e.g. the smoke texture).
+ * Skip introductory Peach & Lakitu cutscenes with the `--skip-intro` CLI option
+ * Cheats menu in Options (activate with `--cheats` or by pressing L thrice in the pause menu).
+ * Support for both little-endian and big-endian save files (meaning you can use save files from both sm64-port and most emulators), as well as an optional text-based save format.
 
-### Viewing a TAS
-In order to view a TAS, you must change the file name of the TAS from `write.m64` to depending on what type of TAS it is, one of these names. If it is a single star TAS (or a run that starts at a certain point in the game), change the name to `singleStar.m64`. If it is a full game run (or a run that starts when the game starts), change the name to `cont.m64`.
-For runs that start when the game starts, no command line parameters are needed to start the play back. To start a run that begun from a certain point (for example on star select), use the command `sm64.us.f3dex2e --tas 0 0`, manually get to the point in the game where the TAS started when recording and press Backspace on your keyboard.
+Recent changes in Nightly have moved the save and configuration file path to `%HOMEPATH%\AppData\Roaming\sm64ex` on Windows and `$HOME/.local/share/sm64ex` on Linux. This behaviour can be changed with the `--savepath` CLI option.
+For example `--savepath .` will read saves from the current directory (which not always matches the exe directory, but most of the time it does);
+   `--savepath '!'` will read saves from the executable directory.
+
+## Building
+For building instructions, please refer to the [wiki](https://github.com/sm64pc/sm64ex/wiki).
+
+**Make sure you have MXE first before attempting to compile for Windows on Linux and WSL. Follow the guide on the wiki.**

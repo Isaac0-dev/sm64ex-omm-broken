@@ -1,7 +1,22 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
-#define OMM_STAR_RAY_CYCLE 36
+
+#define OMM_STAR_GLOW_RADIUS_IN         (32)
+#define OMM_STAR_GLOW_RADIUS_OUT        (128)
+#define OMM_STAR_GLOW_ALPHA_IN          (0xDC)
+#define OMM_STAR_GLOW_ALPHA_OUT         (0x00)
+#define OMM_STAR_GLOW_NUM_POINTS        (16)
+
+#define OMM_STAR_NUM_RAYS               (6)
+#define OMM_STAR_RAY_RADIUS_MIN         (150)
+#define OMM_STAR_RAY_RADIUS_MAX         (240)
+#define OMM_STAR_RAY_DELTA_ANGLE_MIN    (0x0200)
+#define OMM_STAR_RAY_DELTA_ANGLE_MAX    (0x0800)
+#define OMM_STAR_RAY_ALPHA_MIN          (0x80)
+#define OMM_STAR_RAY_ALPHA_MAX          (0xFF)
+#define OMM_STAR_RAY_DURATION_MIN       (24)
+#define OMM_STAR_RAY_DURATION_MAX       (48)
 
 //
 // Gfx data
@@ -34,126 +49,16 @@ static const Vtx omm_star_body_vertices[] = {
 
 static const Gfx omm_star_body_triangles[] = {
     gsSPVertex(omm_star_body_vertices, 12, 0),
-    gsSP1Triangle(0, 7, 2, 0),
-    gsSP1Triangle(0, 3, 7, 0),
-    gsSP1Triangle(0, 8, 3, 0),
-    gsSP1Triangle(0, 4, 8, 0),
-    gsSP1Triangle(0, 9, 4, 0),
-    gsSP1Triangle(0, 5, 9, 0),
-    gsSP1Triangle(0, 10, 5, 0),
-    gsSP1Triangle(0, 6, 10, 0),
-    gsSP1Triangle(0, 11, 6, 0),
-    gsSP1Triangle(0, 2, 11, 0),
-    gsSP1Triangle(1, 2, 7, 0),
-    gsSP1Triangle(1, 7, 3, 0),
-    gsSP1Triangle(1, 3, 8, 0),
-    gsSP1Triangle(1, 8, 4, 0),
-    gsSP1Triangle(1, 4, 9, 0),
-    gsSP1Triangle(1, 9, 5, 0),
-    gsSP1Triangle(1, 5, 10, 0),
-    gsSP1Triangle(1, 10, 6, 0),
-    gsSP1Triangle(1, 6, 11, 0),
-    gsSP1Triangle(1, 11, 2, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_0_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_0, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_1_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_2_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_2, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_3_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_3, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_4_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_4, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_5_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_5, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_6_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_6, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_7_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_7, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_8_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_8, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_9_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_9, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_10_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_10, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_11_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_11, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_12_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_12, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_13_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_13, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_14_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_14, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_15_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_15, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_16_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_16, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_17_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_17, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_18_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_18, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_body_19_texture_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_19, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
+    gsSP2Triangles(0, 7, 2, 0, 0, 3, 7, 0),
+    gsSP2Triangles(0, 8, 3, 0, 0, 4, 8, 0),
+    gsSP2Triangles(0, 9, 4, 0, 0, 5, 9, 0),
+    gsSP2Triangles(0, 10, 5, 0, 0, 6, 10, 0),
+    gsSP2Triangles(0, 11, 6, 0, 0, 2, 11, 0),
+    gsSP2Triangles(1, 2, 7, 0, 1, 7, 3, 0),
+    gsSP2Triangles(1, 3, 8, 0, 1, 8, 4, 0),
+    gsSP2Triangles(1, 4, 9, 0, 1, 9, 5, 0),
+    gsSP2Triangles(1, 5, 10, 0, 1, 10, 6, 0),
+    gsSP2Triangles(1, 6, 11, 0, 1, 11, 2, 0),
     gsSPEndDisplayList(),
 };
 
@@ -187,6 +92,32 @@ static const Gfx omm_star_body_transparent_gfx[] = {
     gsSPEndDisplayList(),
 };
 
+#define omm_star_body_texture_gfx(x) \
+static const Gfx omm_star_body_##x##_texture_gfx[] = { \
+    gsDPLoadTextureBlock(OMM_TEXTURE_STAR_BODY_##x, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0), \
+    gsSPEndDisplayList(), \
+}
+omm_star_body_texture_gfx(0);
+omm_star_body_texture_gfx(1);
+omm_star_body_texture_gfx(2);
+omm_star_body_texture_gfx(3);
+omm_star_body_texture_gfx(4);
+omm_star_body_texture_gfx(5);
+omm_star_body_texture_gfx(6);
+omm_star_body_texture_gfx(7);
+omm_star_body_texture_gfx(8);
+omm_star_body_texture_gfx(9);
+omm_star_body_texture_gfx(10);
+omm_star_body_texture_gfx(11);
+omm_star_body_texture_gfx(12);
+omm_star_body_texture_gfx(13);
+omm_star_body_texture_gfx(14);
+omm_star_body_texture_gfx(15);
+omm_star_body_texture_gfx(16);
+omm_star_body_texture_gfx(17);
+omm_star_body_texture_gfx(18);
+omm_star_body_texture_gfx(19);
+
 //
 // Eyes
 //
@@ -210,16 +141,11 @@ static const Vtx omm_star_eyes_vertices[] = {
 
 static const Gfx omm_star_eyes_triangles[] = {
     gsSPVertex(omm_star_eyes_vertices, 13, 0),
-    gsSP1Triangle(0, 2, 1, 0),
-    gsSP1Triangle(0, 3, 2, 0),
-    gsSP1Triangle(0, 4, 3, 0),
-    gsSP1Triangle(0, 5, 4, 0),
-    gsSP1Triangle(0, 6, 5, 0),
-    gsSP1Triangle(0, 7, 8, 0),
-    gsSP1Triangle(0, 8, 9, 0),
-    gsSP1Triangle(0, 9, 10, 0),
-    gsSP1Triangle(0, 10, 11, 0),
-    gsSP1Triangle(0, 11, 12, 0),
+    gsSP2Triangles(0, 2, 1, 0, 0, 3, 2, 0),
+    gsSP2Triangles(0, 4, 3, 0, 0, 5, 4, 0),
+    gsSP2Triangles(0, 6, 5, 0, 0, 7, 8, 0),
+    gsSP2Triangles(0, 8, 9, 0, 0, 9, 10, 0),
+    gsSP2Triangles(0, 10, 11, 0, 0, 11, 12, 0),
     gsSPEndDisplayList(),
 };
 
@@ -259,87 +185,11 @@ static const Gfx omm_star_eyes_transparent_gfx[] = {
 // Glow
 //
 
-static const Vtx omm_star_glow_vertices[] = {
-    { { { 0.000000, 0.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { 128.000000, 0.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { 118.256577, 48.983479, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { 85.959549, 94.841743, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { 48.983479, 118.256577, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { 0.000000, 128.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { -48.983479, 118.256577, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { -90.509666, 90.509666, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { -118.256577, 48.983479, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { -128.000000, 0.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { -118.256577, -48.983479, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { -90.509666, -90.509666, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { -48.983479, -118.256577, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { 0.000000, -128.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { 48.983479, -118.256577, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { 90.509666, -90.509666, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { 118.256577, -48.983479, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xDC } } },
-    { { { 512.000000, 0.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 473.026306, 195.933914, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 362.038666, 362.038666, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 195.933914, 473.026306, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 0.000000, 512.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { -195.933914, 473.026306, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { -362.038666, 362.038666, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { -473.026306, 195.933914, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { -512.000000, 0.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { -473.026306, -195.933914, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { -362.038666, -362.038666, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { -195.933914, -473.026306, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 0.000000, -512.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 195.933914, -473.026306, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 362.038666, -362.038666, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 473.026306, -195.933914, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-};
-
-static const Gfx omm_star_glow_triangles[] = {
-    gsSPVertex(omm_star_glow_vertices, 33, 0),
-    gsSP1Triangle(0, 1, 2, 0),
-    gsSP1Triangle(0, 2, 3, 0),
-    gsSP1Triangle(0, 3, 4, 0),
-    gsSP1Triangle(0, 4, 5, 0),
-    gsSP1Triangle(0, 5, 6, 0),
-    gsSP1Triangle(0, 6, 7, 0),
-    gsSP1Triangle(0, 7, 8, 0),
-    gsSP1Triangle(0, 8, 9, 0),
-    gsSP1Triangle(0, 9, 10, 0),
-    gsSP1Triangle(0, 10, 11, 0),
-    gsSP1Triangle(0, 11, 12, 0),
-    gsSP1Triangle(0, 12, 13, 0),
-    gsSP1Triangle(0, 13, 14, 0),
-    gsSP1Triangle(0, 14, 15, 0),
-    gsSP1Triangle(0, 15, 16, 0),
-    gsSP1Triangle(0, 16, 1, 0),
-    gsSP2Triangles(1, 17, 2, 0, 2, 17, 18, 0),
-    gsSP2Triangles(2, 18, 3, 0, 3, 18, 19, 0),
-    gsSP2Triangles(3, 19, 4, 0, 4, 19, 20, 0),
-    gsSP2Triangles(4, 20, 5, 0, 5, 20, 21, 0),
-    gsSP2Triangles(5, 21, 6, 0, 6, 21, 22, 0),
-    gsSP2Triangles(6, 22, 7, 0, 7, 22, 23, 0),
-    gsSP2Triangles(7, 23, 8, 0, 8, 23, 24, 0),
-    gsSP2Triangles(8, 24, 9, 0, 9, 24, 25, 0),
-    gsSP2Triangles(9, 25, 10, 0, 10, 25, 26, 0),
-    gsSP2Triangles(10, 26, 11, 0, 11, 26, 27, 0),
-    gsSP2Triangles(11, 27, 12, 0, 12, 27, 28, 0),
-    gsSP2Triangles(12, 28, 13, 0, 13, 28, 29, 0),
-    gsSP2Triangles(13, 29, 14, 0, 14, 29, 30, 0),
-    gsSP2Triangles(14, 30, 15, 0, 15, 30, 31, 0),
-    gsSP2Triangles(15, 31, 16, 0, 16, 31, 32, 0),
-    gsSP2Triangles(16, 32, 1, 0, 1, 32, 17, 0),
-    gsSPEndDisplayList(),
-};
-
 static const Gfx omm_star_glow_gfx[] = {
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
     gsSPClearGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0),
-    gsSPDisplayList(omm_star_glow_triangles),
-    gsSPSetGeometryMode(G_LIGHTING),
     gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
+    gsSPDisplayList(NULL),
+    gsSPSetGeometryMode(G_LIGHTING),
     gsSPEndDisplayList(),
 };
 
@@ -347,132 +197,11 @@ static const Gfx omm_star_glow_gfx[] = {
 // Rays
 //
 
-static const Vtx omm_star_rays_vertices[] = {
-    { { { 0.000000, 0.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
-    { { { 1198.554565, 58.881210, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 1198.554565, -58.881210, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 0.000000, 0.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
-    { { { 1196.748535, 88.277481, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 1196.748535, -88.277481, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 0.000000, 0.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
-    { { { 1194.221680, 117.620567, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 1194.221680, -117.620567, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 0.000000, 0.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
-    { { { 1190.975464, 146.892807, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 1190.975464, -146.892807, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 0.000000, 0.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
-    { { { 1187.011841, 176.076569, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 1187.011841, -176.076569, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 0.000000, 0.000000, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
-    { { { 1182.333130, 205.154266, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-    { { { 1182.333130, -205.154266, 0.000000 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0x00 } } },
-};
-
-static const Gfx omm_star_ray_0_triangles[] = {
-    gsSPVertex(omm_star_rays_vertices + 0, 3, 0),
-    gsSP1Triangle(0, 1, 2, 0),
-    gsSP1Triangle(0, 2, 1, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_ray_1_triangles[] = {
-    gsSPVertex(omm_star_rays_vertices + 3, 3, 0),
-    gsSP1Triangle(0, 1, 2, 0),
-    gsSP1Triangle(0, 2, 1, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_ray_2_triangles[] = {
-    gsSPVertex(omm_star_rays_vertices + 6, 3, 0),
-    gsSP1Triangle(0, 1, 2, 0),
-    gsSP1Triangle(0, 2, 1, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_ray_3_triangles[] = {
-    gsSPVertex(omm_star_rays_vertices + 9, 3, 0),
-    gsSP1Triangle(0, 1, 2, 0),
-    gsSP1Triangle(0, 2, 1, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_ray_4_triangles[] = {
-    gsSPVertex(omm_star_rays_vertices + 12, 3, 0),
-    gsSP1Triangle(0, 1, 2, 0),
-    gsSP1Triangle(0, 2, 1, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_ray_5_triangles[] = {
-    gsSPVertex(omm_star_rays_vertices + 15, 3, 0),
-    gsSP1Triangle(0, 1, 2, 0),
-    gsSP1Triangle(0, 2, 1, 0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_ray_0_gfx[] = {
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
+static const Gfx omm_star_rays_gfx[] = {
     gsSPClearGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0),
-    gsSPDisplayList(omm_star_ray_0_triangles),
-    gsSPSetGeometryMode(G_LIGHTING),
     gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_ray_1_gfx[] = {
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0),
-    gsSPDisplayList(omm_star_ray_1_triangles),
+    gsSPDisplayList(NULL),
     gsSPSetGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_ray_2_gfx[] = {
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0),
-    gsSPDisplayList(omm_star_ray_2_triangles),
-    gsSPSetGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_ray_3_gfx[] = {
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0),
-    gsSPDisplayList(omm_star_ray_3_triangles),
-    gsSPSetGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_ray_4_gfx[] = {
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0),
-    gsSPDisplayList(omm_star_ray_4_triangles),
-    gsSPSetGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_star_ray_5_gfx[] = {
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0),
-    gsSPDisplayList(omm_star_ray_5_triangles),
-    gsSPSetGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
     gsSPEndDisplayList(),
 };
 
@@ -481,90 +210,56 @@ static const Gfx omm_star_ray_5_gfx[] = {
 //
 
 typedef struct {
-    s32 prevTimer;
-    s32 counter;
-    const char *texture;
-    struct {
-        u8 r;
-        u8 g;
-        u8 b;
-        u8 a;
-    } color;
+    Gfx *displayLists[2];
     struct {
         Gfx gfx[array_length(omm_star_glow_gfx)];
+        Gfx tri[(OMM_STAR_GLOW_NUM_POINTS / 2) * 4 + 1];
+        Vtx vtx[(OMM_STAR_GLOW_NUM_POINTS / 2) * 7];
     } glow;
     struct {
-        Gfx gfx[array_length(omm_star_ray_0_gfx)];
-        f32 scale;
-        s16 angle;
-        u8 alpha;
-    } rays[6];
+        Gfx gfx[array_length(omm_star_rays_gfx)];
+        Gfx tri[OMM_STAR_NUM_RAYS * 2 + 1];
+        Vtx vtx[OMM_STAR_NUM_RAYS * 3];
+        struct {
+            s32 radius;
+            s32 angle;
+            s32 delta;
+            s32 alpha;
+            s32 duration;
+            s32 timer;
+        } ray[OMM_STAR_NUM_RAYS];
+    } rays;
+    struct {
+        const char *texture;
+        u8 r, g, b;
+    } star;
 } OmmStarGeoData;
 
-static OmmStarGeoData *omm_geo_star_get_data(struct Object *o) {
-    if (!o->oGeoData) {
-        OmmStarGeoData *data = omm_memory_new(gOmmMemoryPoolGeoData, sizeof(OmmStarGeoData), o);
-
-        // Init display lists
-        mem_cpy(data->glow.gfx, omm_star_glow_gfx, sizeof(omm_star_glow_gfx));
-        mem_cpy(data->rays[0].gfx, omm_star_ray_0_gfx, sizeof(omm_star_ray_0_gfx));
-        mem_cpy(data->rays[1].gfx, omm_star_ray_1_gfx, sizeof(omm_star_ray_1_gfx));
-        mem_cpy(data->rays[2].gfx, omm_star_ray_2_gfx, sizeof(omm_star_ray_2_gfx));
-        mem_cpy(data->rays[3].gfx, omm_star_ray_3_gfx, sizeof(omm_star_ray_3_gfx));
-        mem_cpy(data->rays[4].gfx, omm_star_ray_4_gfx, sizeof(omm_star_ray_4_gfx));
-        mem_cpy(data->rays[5].gfx, omm_star_ray_5_gfx, sizeof(omm_star_ray_5_gfx));
-
-        // Init rays
-        for (s32 i = 0; i != 6; ++i) {
-            data->rays[i].scale = 0.5f + (0.3f * random_float());
-            data->rays[i].angle = random_u16();
-            data->rays[i].alpha = 0x80 + (random_u16() & 0x7F);
-        }
-
-        // Init data
-        data->prevTimer = 0;
-        data->counter = 0;
-        data->texture = NULL;
-        data->color.r = 0;
-        data->color.g = 0;
-        data->color.b = 0;
-        data->color.a = 0;
-        o->oGeoData = (void *) data;
-    }
-    return (OmmStarGeoData *) o->oGeoData;
-}
-
-static void omm_geo_star_set_env_color(Gfx *displayList, u32 r, u32 g, u32 b, u32 a) {
-    displayList->words.w1 = (uintptr_t) (((r & 0xFF) << 24llu) | ((g & 0xFF) << 16llu) | ((b & 0xFF) << 8llu) | ((a & 0xFF) << 0llu));
-}
-
-static struct GraphNode *omm_geo_star_get_child(struct GraphNode *node, s16 type) {
-    node = node->children;
-    while (node->type != type) { node = node->next; }
-    return node;
-}
+static const u32 sOmmStarGeoDataDisplayListsOffsets[] = {
+    offsetof(OmmStarGeoData, glow.gfx),
+    offsetof(OmmStarGeoData, rays.gfx),
+};
 
 //
-// Geo functions
+// Update
 //
 
 static void omm_geo_star_compute_color(OmmStarGeoData *data, const char *texture) {
     static OmmMap sOmmStarTexColors = omm_map_zero;
-    data->color.a = 0xFF;
-    data->texture = texture;
 
     // Retrieve the color from the texture
     omm_map_for_each(sOmmStarTexColors, tex, color) {
         if (strcmp(tex->as_ptr, texture) == 0) {
-            data->color.r = (color->as_u32 >> 16) & 0xFF;
-            data->color.g = (color->as_u32 >>  8) & 0xFF;
-            data->color.b = (color->as_u32 >>  0) & 0xFF;
+            data->star.r = (color->as_u32 >> 16) & 0xFF;
+            data->star.g = (color->as_u32 >>  8) & 0xFF;
+            data->star.b = (color->as_u32 >>  0) & 0xFF;
             return;
         }
     }
-    
+
     // Not found, compute new color and register it
-    str_cat_sa(filename, 256, "gfx/", texture, ".png");
+    sys_path_t filename;
+    str_cat(filename, sizeof(filename), FS_TEXTUREDIR "/", texture, ".png");
     s32 w, h;
     u8 *p = fs_load_png(filename, &w, &h);
     if (p) {
@@ -576,81 +271,98 @@ static void omm_geo_star_compute_color(OmmStarGeoData *data, const char *texture
             g += (u32) p[4 * i + 1];
             b += (u32) p[4 * i + 2];
         }
-        data->color.r = (u8) (r / (w * h));
-        data->color.g = (u8) (g / (w * h));
-        data->color.b = (u8) (b / (w * h));
+        data->star.r = (u8) (r / (w * h));
+        data->star.g = (u8) (g / (w * h));
+        data->star.b = (u8) (b / (w * h));
         stbi_image_free(p);
-        omm_map_add(sOmmStarTexColors, ptr, mem_dup(texture, strlen(texture) + 1), u32, (data->color.r << 16) | (data->color.g << 8) | (data->color.b << 0));
+        omm_map_add(sOmmStarTexColors, ptr, mem_dup(texture, strlen(texture) + 1), u32, (data->star.r << 16) | (data->star.g << 8) | (data->star.b << 0));
     }
 }
 
-static Gfx *omm_geo_star_update_color(s32 callContext, struct GraphNode *node, UNUSED void *context) {
+static Gfx *omm_geo_star_update(s32 callContext, struct GraphNode *node, UNUSED void *context) {
     if (gCurrGraphNodeObject && callContext == GEO_CONTEXT_RENDER) {
-        OmmStarGeoData *data = omm_geo_star_get_data(gCurrGraphNodeObject);
+        struct Object *o = gCurrGraphNodeObject;
+        OmmStarGeoData *data = geo_get_geo_data(o,
+            sizeof(OmmStarGeoData),
+            sOmmStarGeoDataDisplayListsOffsets,
+            array_length(sOmmStarGeoDataDisplayListsOffsets)
+        );
+        bool isStarSelectScreen = obj_get_first_with_behavior(bhvOmmActSelectStar) != NULL;
+
+        // Update rays
+        if (!isStarSelectScreen && !omm_is_game_paused() && !omm_is_main_menu()) {
+            for (s32 i = 0; i != OMM_STAR_NUM_RAYS; ++i) {
+                if (data->rays.ray[i].timer-- == 0) {
+                    bool offset = (data->rays.ray[i].duration == 0);
+                    data->rays.ray[i].radius = lerp_s(random_float(), OMM_STAR_RAY_RADIUS_MIN, OMM_STAR_RAY_RADIUS_MAX + 1);
+                    data->rays.ray[i].angle = random_u16();
+                    data->rays.ray[i].delta = lerp_s(random_float(), OMM_STAR_RAY_DELTA_ANGLE_MIN, OMM_STAR_RAY_DELTA_ANGLE_MAX + 1);
+                    data->rays.ray[i].alpha = lerp_s(random_float(), OMM_STAR_RAY_ALPHA_MIN, OMM_STAR_RAY_ALPHA_MAX + 1);
+                    data->rays.ray[i].duration = lerp_s(random_float(), OMM_STAR_RAY_DURATION_MIN, OMM_STAR_RAY_DURATION_MAX + 1);
+                    data->rays.ray[i].timer = data->rays.ray[i].duration - offset * i * OMM_STAR_RAY_DURATION_MIN / OMM_STAR_NUM_RAYS;
+                }
+            }
+        }
+
+        // Update star color
         const char *texture = (const char *) ((const Gfx *) ((struct GraphNodeDisplayList *) node->next)->displayList)->words.w1;
-        if (texture != data->texture) {
+        if (texture != data->star.texture) {
             omm_geo_star_compute_color(data, texture);
-        }
-    }
-    return NULL;
-}
-
-static Gfx *omm_geo_star_enable_effects(s32 callContext, struct GraphNode *node, UNUSED void *context) {
-    if (callContext == GEO_CONTEXT_RENDER) {
-        struct GraphNodeScale *scaleNode = (struct GraphNodeScale *) node->next;
-        scaleNode->scale = 1.f * !obj_get_first_with_behavior(bhvOmmActSelectStar);
-    }
-    return NULL;
-}
-
-static Gfx *omm_geo_star_update_glow(s32 callContext, struct GraphNode *node, UNUSED void *context) {
-    if (gCurrGraphNodeObject && callContext == GEO_CONTEXT_RENDER) {
-        OmmStarGeoData *data = omm_geo_star_get_data(gCurrGraphNodeObject);
-
-        // Translate
-        struct GraphNodeTranslation *translationNode = (struct GraphNodeTranslation *) node->next;
-        geo_move_from_camera(gCurGraphNodeObject, translationNode, 240.f * gCurrGraphNodeObject->oScaleY);
-
-        // Update env color
-        omm_geo_star_set_env_color(data->glow.gfx, data->color.r, data->color.g, data->color.b, 0xFF);
-        struct GraphNodeDisplayList *displayListNode = (struct GraphNodeDisplayList *) omm_geo_star_get_child(&translationNode->node, GRAPH_NODE_TYPE_DISPLAY_LIST);
-        displayListNode->displayList = data->glow.gfx;
-    }
-    return NULL;
-}
-
-static Gfx *omm_geo_star_update_ray(s32 callContext, struct GraphNode *node, UNUSED void *context) {
-    if (gCurrGraphNodeObject && callContext == GEO_CONTEXT_RENDER) {
-        OmmStarGeoData *data = omm_geo_star_get_data(gCurrGraphNodeObject);
-        data->counter += (data->prevTimer != gCurrGraphNodeObject->oTimer);
-        data->prevTimer = gCurrGraphNodeObject->oTimer;
-
-        // If current tick == 0 (<=> alpha == 0), pick new random values
-        struct GraphNodeGenerated *asGenerated = (struct GraphNodeGenerated *) node;
-        s32 i = asGenerated->parameter;
-        s32 t = (data->counter + ((OMM_STAR_RAY_CYCLE / 6) * i)) % OMM_STAR_RAY_CYCLE;
-        if (t == 0) {
-            data->rays[i].scale = 0.5f + (0.3f * random_float());
-            data->rays[i].angle = random_u16();
-            data->rays[i].alpha = 0x80 + (random_u16() & 0x7F);
+            data->star.texture = texture;
         }
 
-        // Update scale
-        struct GraphNodeScale *scaleNode = (struct GraphNodeScale *) node->next;
-        scaleNode->scale = data->rays[i].scale;
+        // Glow gfx
+        Vtx *glowVtx = data->glow.vtx;
+        Gfx *glowTri = data->glow.tri;
+        for (s32 i = 0; !isStarSelectScreen && i != OMM_STAR_GLOW_NUM_POINTS; i += 2) {
+            u16 a0 = ((i + 0) * 0x10000) / OMM_STAR_GLOW_NUM_POINTS;
+            u16 a1 = ((i + 1) * 0x10000) / OMM_STAR_GLOW_NUM_POINTS;
+            u16 a2 = ((i + 2) * 0x10000) / OMM_STAR_GLOW_NUM_POINTS;
 
-        // Update angle
-        struct GraphNodeRotation *rotationNode = (struct GraphNodeRotation *) omm_geo_star_get_child(&scaleNode->node, GRAPH_NODE_TYPE_ROTATION);
-        rotationNode->rotation[2] = data->rays[i].angle;
+            // Triangles
+            gSPVertex(glowTri++, glowVtx, 7, 0);
+            gSP2Triangles(glowTri++, 0, 2, 1, 0, 0, 3, 2, 0);
+            gSP2Triangles(glowTri++, 1, 5, 4, 0, 2, 5, 1, 0);
+            gSP2Triangles(glowTri++, 2, 6, 5, 0, 3, 6, 2, 0);
 
-        // Update env color (rays color is slightly brighter)
-        u32 r = ((data->color.r * 4) + 0xFF) / 5;
-        u32 g = ((data->color.g * 4) + 0xFF) / 5;
-        u32 b = ((data->color.b * 4) + 0xFF) / 5;
-        s32 a = data->rays[i].alpha * ((coss(0x8000 + ((0x10000 * t) / OMM_STAR_RAY_CYCLE)) + 1.f) / 2.f);
-        omm_geo_star_set_env_color(data->rays[i].gfx, r, g, b, a);
-        struct GraphNodeDisplayList *displayListNode = (struct GraphNodeDisplayList *) omm_geo_star_get_child(&rotationNode->node, GRAPH_NODE_TYPE_DISPLAY_LIST);
-        displayListNode->displayList = data->rays[i].gfx;
+            // Vertices
+            *(glowVtx++) = (Vtx) { { {                                   0,                                   0, 0 }, 0, { 0, 0 }, { data->star.r, data->star.g, data->star.b, OMM_STAR_GLOW_ALPHA_IN  } } };
+            *(glowVtx++) = (Vtx) { { { OMM_STAR_GLOW_RADIUS_IN  * sins(a0), OMM_STAR_GLOW_RADIUS_IN  * coss(a0), 0 }, 0, { 0, 0 }, { data->star.r, data->star.g, data->star.b, OMM_STAR_GLOW_ALPHA_IN  } } };
+            *(glowVtx++) = (Vtx) { { { OMM_STAR_GLOW_RADIUS_IN  * sins(a1), OMM_STAR_GLOW_RADIUS_IN  * coss(a1), 0 }, 0, { 0, 0 }, { data->star.r, data->star.g, data->star.b, OMM_STAR_GLOW_ALPHA_IN  } } };
+            *(glowVtx++) = (Vtx) { { { OMM_STAR_GLOW_RADIUS_IN  * sins(a2), OMM_STAR_GLOW_RADIUS_IN  * coss(a2), 0 }, 0, { 0, 0 }, { data->star.r, data->star.g, data->star.b, OMM_STAR_GLOW_ALPHA_IN  } } };
+            *(glowVtx++) = (Vtx) { { { OMM_STAR_GLOW_RADIUS_OUT * sins(a0), OMM_STAR_GLOW_RADIUS_OUT * coss(a0), 0 }, 0, { 0, 0 }, { data->star.r, data->star.g, data->star.b, OMM_STAR_GLOW_ALPHA_OUT } } };
+            *(glowVtx++) = (Vtx) { { { OMM_STAR_GLOW_RADIUS_OUT * sins(a1), OMM_STAR_GLOW_RADIUS_OUT * coss(a1), 0 }, 0, { 0, 0 }, { data->star.r, data->star.g, data->star.b, OMM_STAR_GLOW_ALPHA_OUT } } };
+            *(glowVtx++) = (Vtx) { { { OMM_STAR_GLOW_RADIUS_OUT * sins(a2), OMM_STAR_GLOW_RADIUS_OUT * coss(a2), 0 }, 0, { 0, 0 }, { data->star.r, data->star.g, data->star.b, OMM_STAR_GLOW_ALPHA_OUT } } };
+        }
+        gSPEndDisplayList(glowTri++);
+        gfx_copy_and_fill_null(data->glow.gfx, omm_star_glow_gfx, sizeof(omm_star_glow_gfx), data->glow.tri);
+
+        // Rays gfx
+        Vtx *raysVtx = data->rays.vtx;
+        Gfx *raysTri = data->rays.tri;
+        for (s32 i = 0; !isStarSelectScreen && i != OMM_STAR_NUM_RAYS; ++i) {
+            if (data->rays.ray[i].duration != 0) {
+                f32 t = invlerp_0_1_s(data->rays.ray[i].timer, data->rays.ray[i].duration, 0);
+                s32 rad = data->rays.ray[i].radius;
+                u16 a0 = data->rays.ray[i].angle - data->rays.ray[i].delta;
+                u16 a1 = data->rays.ray[i].angle + data->rays.ray[i].delta;
+                s32 r = ((data->star.r * 4) + 0xFF) / 5;
+                s32 g = ((data->star.g * 4) + 0xFF) / 5;
+                s32 b = ((data->star.b * 4) + 0xFF) / 5;
+                s32 a = data->rays.ray[i].alpha * sins(0x8000 * t);
+
+                // Triangles
+                gSPVertex(raysTri++, raysVtx, 3, 0);
+                gSP1Triangle(raysTri++, 0, 2, 1, 0);
+
+                // Vertices
+                *(raysVtx++) = (Vtx) { { {              0,              0, 0 }, 0, { 0, 0 }, { r, g, b, a } } };
+                *(raysVtx++) = (Vtx) { { { rad * sins(a0), rad * coss(a0), 0 }, 0, { 0, 0 }, { r, g, b, 0 } } };
+                *(raysVtx++) = (Vtx) { { { rad * sins(a1), rad * coss(a1), 0 }, 0, { 0, 0 }, { r, g, b, 0 } } };
+            }
+        }
+        gSPEndDisplayList(raysTri++);
+        gfx_copy_and_fill_null(data->rays.gfx, omm_star_rays_gfx, sizeof(omm_star_rays_gfx), data->rays.tri);
     }
     return NULL;
 }
@@ -659,700 +371,82 @@ static Gfx *omm_geo_star_update_ray(s32 callContext, struct GraphNode *node, UNU
 // Geo layouts
 //
 
-static const GeoLayout omm_geo_star_effects[] = {
-    GEO_ASM(0, omm_geo_star_enable_effects),
-    GEO_SCALE(0, 0x10000),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_OPEN_NODE(),
-                GEO_ASM(0, omm_geo_star_update_glow),
-                GEO_TRANSLATE_NODE(0, 0, 0, 0),
-                GEO_OPEN_NODE(),
-                    GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_glow_gfx),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-            GEO_OPEN_NODE(),
-                GEO_ASM(0, omm_geo_star_update_ray),
-                GEO_SCALE(0, 0x10000),
-                GEO_OPEN_NODE(),
-                    GEO_ROTATION_NODE(0, 0, 0, 0),
-                    GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_ray_0_gfx),
-                    GEO_CLOSE_NODE(),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-            GEO_OPEN_NODE(),
-                GEO_ASM(1, omm_geo_star_update_ray),
-                GEO_SCALE(0, 0x10000),
-                GEO_OPEN_NODE(),
-                    GEO_ROTATION_NODE(0, 0, 0, 0),
-                    GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_ray_1_gfx),
-                    GEO_CLOSE_NODE(),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-            GEO_OPEN_NODE(),
-                GEO_ASM(2, omm_geo_star_update_ray),
-                GEO_SCALE(0, 0x10000),
-                GEO_OPEN_NODE(),
-                    GEO_ROTATION_NODE(0, 0, 0, 0),
-                    GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_ray_2_gfx),
-                    GEO_CLOSE_NODE(),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-            GEO_OPEN_NODE(),
-                GEO_ASM(3, omm_geo_star_update_ray),
-                GEO_SCALE(0, 0x10000),
-                GEO_OPEN_NODE(),
-                    GEO_ROTATION_NODE(0, 0, 0, 0),
-                    GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_ray_3_gfx),
-                    GEO_CLOSE_NODE(),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-            GEO_OPEN_NODE(),
-                GEO_ASM(4, omm_geo_star_update_ray),
-                GEO_SCALE(0, 0x10000),
-                GEO_OPEN_NODE(),
-                    GEO_ROTATION_NODE(0, 0, 0, 0),
-                    GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_ray_4_gfx),
-                    GEO_CLOSE_NODE(),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-            GEO_OPEN_NODE(),
-                GEO_ASM(5, omm_geo_star_update_ray),
-                GEO_SCALE(0, 0x10000),
-                GEO_OPEN_NODE(),
-                    GEO_ROTATION_NODE(0, 0, 0, 0),
-                    GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_ray_5_gfx),
-                    GEO_CLOSE_NODE(),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_RETURN(),
-};
+#define omm_geo_star_opaque(x) \
+const GeoLayout omm_geo_star_##x##_opaque[] = { \
+    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100), \
+    GEO_OPEN_NODE(), \
+        GEO_SCALE(0, 0x4000), \
+        GEO_OPEN_NODE(), \
+            GEO_ASM(0, omm_geo_star_update), \
+            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_##x##_texture_gfx), \
+            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx), \
+            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx), \
+        GEO_CLOSE_NODE(), \
+        GEO_BILLBOARD(), \
+        GEO_OPEN_NODE(), \
+            GEO_ASM(60, geo_move_from_camera), \
+            GEO_TRANSLATE_NODE(0, 0, 0, 0), \
+            GEO_OPEN_NODE(), \
+                GEO_ASM(0, geo_link_geo_data), \
+                GEO_DISPLAY_LIST(LAYER_TRANSPARENT, NULL), \
+            GEO_CLOSE_NODE(), \
+            GEO_ASM(1, geo_link_geo_data), \
+            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, NULL), \
+        GEO_CLOSE_NODE(), \
+    GEO_CLOSE_NODE(), \
+    GEO_END(), \
+}
+omm_geo_star_opaque(0);
+omm_geo_star_opaque(1);
+omm_geo_star_opaque(2);
+omm_geo_star_opaque(3);
+omm_geo_star_opaque(4);
+omm_geo_star_opaque(5);
+omm_geo_star_opaque(6);
+omm_geo_star_opaque(7);
+omm_geo_star_opaque(8);
+omm_geo_star_opaque(9);
+omm_geo_star_opaque(10);
+omm_geo_star_opaque(11);
+omm_geo_star_opaque(12);
+omm_geo_star_opaque(13);
+omm_geo_star_opaque(14);
+omm_geo_star_opaque(15);
+omm_geo_star_opaque(16);
+omm_geo_star_opaque(17);
+omm_geo_star_opaque(18);
+omm_geo_star_opaque(19);
 
-const GeoLayout omm_geo_star_0_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_0_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_1_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_1_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_2_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_2_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_3_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_3_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_4_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_4_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_5_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_5_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_6_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_6_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_7_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_7_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_8_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_8_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_9_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_9_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_10_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_10_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_11_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_11_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_12_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_12_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_13_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_13_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_14_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_14_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_15_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_15_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_16_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_16_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_17_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_17_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_18_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_18_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_19_opaque[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_ASM(0, omm_geo_star_update_color),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_19_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_star_body_opaque_gfx),
-            GEO_DISPLAY_LIST(LAYER_ALPHA, omm_star_eyes_opaque_gfx),
-        GEO_CLOSE_NODE(),
-        GEO_BILLBOARD(),
-        GEO_OPEN_NODE(),
-            GEO_BRANCH(1, omm_geo_star_effects),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_0_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_0_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_1_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_1_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_2_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_2_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_3_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_3_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_4_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_4_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_5_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_5_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_6_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_6_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_7_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_7_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_8_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_8_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_9_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_9_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_10_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_10_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_11_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_11_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_12_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_12_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_13_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_13_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_14_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_14_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_15_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_15_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_16_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_16_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_17_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_17_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_18_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_18_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-const GeoLayout omm_geo_star_19_transparent[] = {
-    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0, 0x4000),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_19_texture_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
+#define omm_geo_star_transparent(x) \
+const GeoLayout omm_geo_star_##x##_transparent[] = { \
+    GEO_SHADOW(SHADOW_CIRCLE_4_VERTS, 0x9B, 100), \
+    GEO_OPEN_NODE(), \
+        GEO_SCALE(0, 0x4000), \
+        GEO_OPEN_NODE(), \
+            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_##x##_texture_gfx), \
+            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_body_transparent_gfx), \
+            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_star_eyes_transparent_gfx), \
+        GEO_CLOSE_NODE(), \
+    GEO_CLOSE_NODE(), \
+    GEO_END(), \
+}
+omm_geo_star_transparent(0);
+omm_geo_star_transparent(1);
+omm_geo_star_transparent(2);
+omm_geo_star_transparent(3);
+omm_geo_star_transparent(4);
+omm_geo_star_transparent(5);
+omm_geo_star_transparent(6);
+omm_geo_star_transparent(7);
+omm_geo_star_transparent(8);
+omm_geo_star_transparent(9);
+omm_geo_star_transparent(10);
+omm_geo_star_transparent(11);
+omm_geo_star_transparent(12);
+omm_geo_star_transparent(13);
+omm_geo_star_transparent(14);
+omm_geo_star_transparent(15);
+omm_geo_star_transparent(16);
+omm_geo_star_transparent(17);
+omm_geo_star_transparent(18);
+omm_geo_star_transparent(19);

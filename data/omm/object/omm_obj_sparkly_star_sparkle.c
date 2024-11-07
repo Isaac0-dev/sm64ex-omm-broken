@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -154,27 +155,27 @@ static void bhv_omm_sparkly_star_sparkle_update() {
 
 const BehaviorScript bhvOmmSparklyStarSparkle[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x05000020,
-    0x0C000000, (uintptr_t) bhv_omm_sparkly_star_sparkle_update,
-    0x06000000,
-    0x1D000000
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_REPEAT(32),
+        BHV_CALL_NATIVE(bhv_omm_sparkly_star_sparkle_update),
+    BHV_END_REPEAT(),
+    BHV_DEACTIVATE(),
 };
 
 const BehaviorScript bhvOmmSparklyStarSparkleMario[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x05000020,
-    0x0C000000, (uintptr_t) bhv_omm_sparkly_star_sparkle_update,
-    0x06000000,
-    0x1D000000
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_REPEAT(32),
+        BHV_CALL_NATIVE(bhv_omm_sparkly_star_sparkle_update),
+    BHV_END_REPEAT(),
+    BHV_DEACTIVATE(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_sparkly_star_sparkle(struct Object *o, s32 sparklyMode, f32 yOffset, f32 vel, f32 scale, f32 offset) {
+struct Object *omm_obj_spawn_sparkly_star_sparkle(struct Object *o, s32 sparklyMode, f32 yOffset, f32 vel, f32 scale, f32 offset) {
     struct Object *sparkle = obj_spawn_from_geo(o, OMM_SPARKLY_SPARKLE_GEO[sparklyMode], bhvOmmSparklyStarSparkle);
     f32 vx = vel * (random_float() - 0.5f);
     f32 vy = vel * (random_float() - 0.5f);
@@ -196,8 +197,8 @@ struct Object *omm_spawn_sparkly_star_sparkle(struct Object *o, s32 sparklyMode,
     return sparkle;
 }
 
-struct Object* omm_spawn_sparkly_star_sparkle_mario(struct Object* o, s32 sparklyMode, f32 yOffset, f32 vel, f32 scale, f32 offset) {
-    struct Object *sparkle = omm_spawn_sparkly_star_sparkle(o, sparklyMode, yOffset, vel, scale, offset);
+struct Object* omm_obj_spawn_sparkly_star_sparkle_mario(struct Object* o, s32 sparklyMode, f32 yOffset, f32 vel, f32 scale, f32 offset) {
+    struct Object *sparkle = omm_obj_spawn_sparkly_star_sparkle(o, sparklyMode, yOffset, vel, scale, offset);
     sparkle->behavior = bhvOmmSparklyStarSparkleMario;
     return sparkle;
 }

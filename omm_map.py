@@ -1,7 +1,12 @@
-def main():
-    with open("build/us_pc/res/omm.map", "r") as f:
+#!/usr/bin/env python3
+
+import sys
+
+if __name__ == "__main__":
+    omm_map_fn = sys.argv[1]
+    with open(omm_map_fn, "r", newline="\n", encoding="utf-8") as f:
         lines = f.readlines()
-    with open("build/us_pc/res/omm.map", "w") as f:
+    with open(omm_map_fn, "w", newline="\n", encoding="utf-8") as f:
         for line in lines:
             line = line.replace(" ", "")
             i0 = line.find("(sec1)(fl0x00)(ty20)(scl2)(nx0)0x")
@@ -11,6 +16,3 @@ def main():
                 addr = line[i2:i2 + 16]
                 name = line[i2 + 16:].strip()
                 f.write(addr + " " + name + "\n")
-
-if __name__ == "__main__":
-    main()

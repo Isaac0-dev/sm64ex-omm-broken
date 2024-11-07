@@ -20,26 +20,10 @@ typedef struct { unsigned int ts; float v[3]; } Vec3f_ts;
 typedef struct { unsigned int ts; short v[3]; } Vec3s_ts;
 typedef struct { unsigned int ts; float v[4][4]; } Mat4_ts;
 typedef struct { unsigned int ts; void *v; } ptr_ts;
-typedef struct {
-    bool  _oGfxInited;
-    int   _oTransparency;
-    void *_oGeoData;
-    void *_oBhvPointer;
-    void *_oBhvCommand;
-    int   _oBhvStackIndex;
-    int   _oBhvTypes;
-    bool  _oSafeStepInited;
-    bool  _oSafeStepIgnore;
-    int   _oSafeStepIndex;
-    float _oSafeStepHeight;
-    float _oSafeStepCoords[3];
-} ObjFields;
 
-#if defined(R96X)
+#if defined(r96x)
 #define omm_GraphNode_extra_fields \
 bool noBillboard;
-#elif defined(DYNOS)
-#define omm_GraphNode_extra_fields
 #else
 #define omm_GraphNode_extra_fields \
 const void *georef; \
@@ -47,12 +31,12 @@ bool noBillboard;
 #endif
 
 #define omm_AnimInfo_extra_fields \
+s16 animFlags; \
 s16_ts _animID; \
 ptr_ts _curAnim; \
 s16_ts _animFrame;
 
 #define omm_GraphNodeObject_extra_fields \
-ObjFields _oFields; \
 Vec3s_ts _angle; \
 Vec3f_ts _pos; \
 Vec3f_ts _scale; \
@@ -61,76 +45,55 @@ Vec3f_ts _shadowPos; \
 f32_ts _shadowScale; \
 Mat4_ts _throwMatrix;
 
-#define omm_patch__dynos__dynos_cpp_to_c \
-extern "C" { \
-void *dynos_opt_get_action(const char *funcName) { \
-    return (void *) DynOS_Opt_GetAction(String(funcName)); \
-} \
-void dynos_opt_set_action(const char *funcName, void *funcPtr) { \
-    return DynOS_Opt_AddAction(String(funcName), (DynosActionFunction) funcPtr, true); \
-} \
-s32 dynos_gfx_get_mario_model_pack_index() { \
-    extern const GeoLayout mario_geo[]; \
-    return DynOS_Gfx_GetActorList()[DynOS_Geo_GetActorIndex(mario_geo)].mPackIndex; \
-} \
-}
-
 //
 // Games (auto-detected by omm.mk)
-// SMEX : sm64ex-nightly
-// XALO : sm64ex-alo
-// R96X : Render96
-// SMMS : Super Mario 64 Moonshine
-// SM74 : Super Mario 74
-// SMSR : Super Mario Star Road
-// SMGS : Super Mario 64: The Green Stars
+// smex : sm64ex-nightly
+// r96x : Render96
+// smms : Super Mario 64 Moonshine
+// sm74 : Super Mario 74
+// smsr : Super Mario Star Road
+// smgs : Super Mario 64: The Green Stars
 //
 
 #define OMM_GAME_SM64 0
 #define OMM_GAME_SMEX 0
-#define OMM_GAME_XALO 1
-#define OMM_GAME_R96X 2
-#define OMM_GAME_SMMS 3
-#define OMM_GAME_SM74 4
-#define OMM_GAME_SMSR 5
-#define OMM_GAME_SMGS 6
-#define OMM_GAME_COUNT 7
-#if   defined(SMEX)
+#define OMM_GAME_R96X 1
+#define OMM_GAME_SMMS 2
+#define OMM_GAME_SM74 3
+#define OMM_GAME_SMSR 4
+#define OMM_GAME_SMGS 5
+#include "omm_games.inl"
+#if   defined(smex)
 #include "omm_macros_smex.h"
-#elif defined(SMMS)
+#elif defined(smms)
 #include "omm_macros_smms.h"
-#elif defined(R96X)
+#elif defined(r96x)
 #include "omm_macros_r96x.h"
-#elif defined(XALO)
-#include "omm_macros_xalo.h"
-#elif defined(SM74)
+#elif defined(sm74)
 #include "omm_macros_sm74.h"
-#elif defined(SMSR)
+#elif defined(smsr)
 #include "omm_macros_smsr.h"
-#elif defined(SMGS)
+#elif defined(smgs)
 #include "omm_macros_smgs.h"
 #endif
 #define OMM_GAME_IS_SMEX (OMM_GAME_SAVE == OMM_GAME_SMEX)
-#define OMM_GAME_IS_XALO (OMM_GAME_SAVE == OMM_GAME_XALO)
 #define OMM_GAME_IS_R96X (OMM_GAME_SAVE == OMM_GAME_R96X)
 #define OMM_GAME_IS_SMMS (OMM_GAME_SAVE == OMM_GAME_SMMS)
 #define OMM_GAME_IS_SM74 (OMM_GAME_SAVE == OMM_GAME_SM74)
 #define OMM_GAME_IS_SMSR (OMM_GAME_SAVE == OMM_GAME_SMSR)
 #define OMM_GAME_IS_SMGS (OMM_GAME_SAVE == OMM_GAME_SMGS)
 #define OMM_GAME_IS_SM64 (OMM_GAME_TYPE == OMM_GAME_SM64) // Vanilla Super Mario 64
-#define OMM_GAME_IS_RF14 (OMM_GAME_IS_XALO || OMM_GAME_IS_SM74 || OMM_GAME_IS_SMSR) // Refresh 14+ code
+#define OMM_GAME_IS_RF14 (OMM_GAME_RF14) // Refresh 14+ code
+#if !OMM_GAME_IS_SM74
+#define MODE_INDEX UNUSED
+#else
+#define MODE_INDEX
+#endif
 
 // Buttons
 #define X_BUTTON 0x0040
 #define Y_BUTTON 0x0080
 #define SPIN_BUTTON 0x100000
-
-// OMM_BOWSER | Replaces Vanilla Bowser with OMM Bowser
-#if defined(OMM_BOWSER)
-#define OMM_CODE_BOWSER OMM_BOWSER
-#else
-#define OMM_CODE_BOWSER OMM_GAME_IS_SM64
-#endif
 
 // OMM_DEBUG | Enables some debug stuff
 #if defined(OMM_DEBUG)
@@ -172,13 +135,13 @@ s32 dynos_gfx_get_mario_model_pack_index() { \
 #define WINDOWS_BUILD 0
 #endif
 
-//
-// DynOS defines
-// OMM has new models that must be added to DynOS actors list
-//
-
-#if defined(DYNOS) && defined(DYNOS_CPP_H)
-#include "object/omm_object_data.h"
+// Optimization
+#ifdef __clang__
+#define OMM_OPTIMIZE
+#elif __GNUC__
+#define OMM_OPTIMIZE __attribute__((optimize("Ofast")))
+#else
+#define OMM_OPTIMIZE
 #endif
 
 //

@@ -4,7 +4,7 @@
 
 const OmmPerryModifiers gOmmPerryModifiers[5] = {
     { { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x40, 0xFF, 0xB0, 0x40 }, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 0, 0, 0 },
-    { { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x60, 0xFF, 0xC0, 0x60 }, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 0, OBJ_INT_ATTRACT_COINS_WEAK | OBJ_INT_ATTRACT_COINS_RANGE(400), OBJ_INT_ATTRACT_COINS_STRONG | OBJ_INT_ATTRACT_COINS_RANGE(500) },
+    { { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x60, 0xFF, 0xC0, 0x60 }, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 0, OBJ_INT_ATTRACT_COINS_WEAK | OBJ_INT_ATTRACT_COINS_RANGE(400), OBJ_INT_ATTRACT_COINS_STRONG | OBJ_INT_ATTRACT_COINS_RANGE(600) },
     { { 0xFF, 0xFF, 0xFF, 0xFF, 0xC0, 0x30, 0xC0, 0x00, 0x00 }, 1.00f, 1.15f, 1.15f, 0.90f, 1.15f, OBJ_INT_ATTACK_STRONG, OBJ_INT_ATTACK_STRONG, OBJ_INT_ATTACK_ONE_HIT | OBJ_INT_ATTACK_DESTRUCTIBLE },
     { { 0xFF, 0xFF, 0xFF, 0x00, 0xC0, 0xFF, 0x00, 0x00, 0xC0 }, 1.00f, 0.90f, 0.90f, 1.15f, 0.90f, OBJ_INT_ATTACK_FLAMES, OBJ_INT_ATTACK_FLAMES | OBJ_INT_NOT_INTERACTED, OBJ_INT_ATTACK_FLAMES | OBJ_INT_NOT_INTERACTED },
     { { 0xFF, 0xFF, 0xFF, 0xC0, 0xFF, 0x00, 0x00, 0x80, 0x00 }, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, OBJ_INT_HEAL_MARIO, OBJ_INT_HEAL_MARIO, OBJ_INT_HEAL_MARIO },
@@ -76,20 +76,20 @@ void omm_perry_update_graphics(struct MarioState *m, Mat4 transform, Vec3f trans
 
             // Attack (ground)
             case ACT_OMM_PEACH_ATTACK_GROUND: {
-                perryScale = clamp_f((m->actionTimer - 2) / 4.f, 0.01f, 1.f);
+                perryScale = 1.f;
                 perryFlags = OBJ_INT_PERRY_SWORD | OMM_PERRY_SWORD_INT_FLAGS | (OBJ_INT_GRAB_OBJECTS * (m->actionArg < 4)) | (OBJ_INT_PERRY_TRAIL * (m->actionState == 2));
             } break;
 
             // Attack (fast)
             case ACT_OMM_PEACH_ATTACK_FAST: {
-                perryScale = clamp_f((m->actionTimer - 2) / 4.f, 0.01f, 1.f);
+                perryScale = 1.f;
                 perryFlags = OBJ_INT_PERRY_SWORD | OMM_PERRY_SWORD_INT_FLAGS | OBJ_INT_PERRY_TRAIL;
             } break;
 
             // Attack (air)
             case ACT_OMM_PEACH_ATTACK_AIR: {
-                if (m->flags & MARIO_KICKING) {
-                    perryScale = clamp_f((m->actionTimer - 2) / 4.f, 0.01f, 1.f);
+                if (m->actionArg) {
+                    perryScale = 1.f;
                     perryFlags = OBJ_INT_PERRY_SWORD | OMM_PERRY_SWORD_INT_FLAGS | OBJ_INT_PERRY_TRAIL;
                 }
             } break;
@@ -131,7 +131,7 @@ void omm_perry_update_graphics(struct MarioState *m, Mat4 transform, Vec3f trans
             vec3f_normalize(armVec);
             vec3f_mul(armVec, 8.f * m->marioObj->oScaleX);
             vec3f_add(handPos, armVec);
-            obj_set_pos(o, handPos[0], handPos[1], handPos[2]);
+            obj_set_xyz(o, handPos[0], handPos[1], handPos[2]);
         }
         obj_set_angle(o, armRot[0], armRot[1], armRot[2]);
         obj_scale_xyz(o, perryScale * m->marioObj->oScaleX, perryScale * m->marioObj->oScaleY, perryScale * m->marioObj->oScaleZ);

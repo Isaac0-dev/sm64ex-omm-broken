@@ -2,18 +2,10 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 
-static void omm_peach_vibe_increase(s32 inc) {
-    gOmmPeach->vibeGauge = !OMM_CHEAT_PEACH_ENDLESS_VIBE_GAUGE * clamp_s(gOmmPeach->vibeGauge - inc, 0, OMM_PEACH_VIBE_GAUGE_MAX);
-}
-
-static void omm_peach_vibe_decrease(s32 dec) {
-    gOmmPeach->vibeGauge = !OMM_CHEAT_PEACH_ENDLESS_VIBE_GAUGE * clamp_s(gOmmPeach->vibeGauge + dec, 0, OMM_PEACH_VIBE_GAUGE_MAX);
-}
-
 static bool omm_peach_vibe_check_type(struct MarioState *m, s32 vibeType) {
     switch (vibeType) {
 
-        // Joy: not in Joy action, or underwater
+        // Joy: deactivate if not in Joy action, or underwater
         case OMM_PEACH_VIBE_TYPE_JOY: {
             if (gOmmPeach->vibeType == OMM_PEACH_VIBE_TYPE_JOY) {
                 if (m->action != ACT_OMM_PEACH_VIBE_JOY_MOVE &&
@@ -22,28 +14,37 @@ static bool omm_peach_vibe_check_type(struct MarioState *m, s32 vibeType) {
                     return false;
                 }
             }
-            if ((m->action & ACT_FLAG_SWIMMING) || (m->action & ACT_FLAG_METAL_WATER)) {
+            if (m->action & (ACT_FLAG_SWIMMING | ACT_FLAG_METAL_WATER)) {
                 return false;
             }
         } break;
 
-        // Rage: underwater
+        // Rage: deactivate if underwater
         case OMM_PEACH_VIBE_TYPE_RAGE: {
-            if ((m->action & ACT_FLAG_SWIMMING) || (m->action & ACT_FLAG_METAL_WATER)) {
+            if (m->action & (ACT_FLAG_SWIMMING | ACT_FLAG_METAL_WATER)) {
                 return false;
             }
         } break;
 
-        // Gloom: underwater
+        // Gloom: deactivate if underwater
         case OMM_PEACH_VIBE_TYPE_GLOOM: {
-            if ((m->action & ACT_FLAG_SWIMMING) || (m->action & ACT_FLAG_METAL_WATER)) {
+            if (m->action & (ACT_FLAG_SWIMMING | ACT_FLAG_METAL_WATER)) {
                 return false;
             }
         } break;
 
-        // Calm: at max health/O2 and not in cold water
+        // Calm: deactivate at max health/breath and not in (cold) water/poison gas
         case OMM_PEACH_VIBE_TYPE_CALM: {
-            if (omm_health_is_at_max(m) && (gOmmMario->state.o2 == 0 || OMM_MOVESET_CLASSIC) && (!omm_world_is_cold() || (m->action & ACT_GROUP_MASK) != ACT_GROUP_SUBMERGED)) {
+            if (OMM_CHEAT_GOD_MODE) {
+                return false;
+            }
+            if (m->input & INPUT_IN_POISON_GAS) {
+                return true;
+            }
+            if ((m->action & ACT_GROUP_MASK) == ACT_GROUP_SUBMERGED && (omm_world_is_flooded() || omm_world_is_cold() || m->pos[1] < m->waterLevel - OMM_MARIO_WATER_BREATH_RECOVERY_OFFSET)) {
+                return true;
+            }
+            if (omm_health_is_at_max(m) && (gOmmMario->state.breath == 0 || OMM_MOVESET_CLASSIC)) {
                 return false;
             }
         } break;
@@ -52,6 +53,11 @@ static bool omm_peach_vibe_check_type(struct MarioState *m, s32 vibeType) {
 }
 
 static bool omm_peach_vibe_check(struct MarioState *m) {
+
+    // Bowser 4 battle
+    if (!OMM_SPARKLY_ALLOW_VIBES) {
+        return false;
+    }
 
     // Per vibe
     if (!omm_peach_vibe_check_type(m, gOmmPeach->vibeType)) {
@@ -103,7 +109,7 @@ static void omm_peach_vibe_update_gauge(struct MarioState *m) {
     if (!(gTimeStopState & TIME_STOP_ENABLED)) {
         for_each_object_with_behavior(obj, bhvRecoveryHeart) {
             s32 recovery = max_s(0, obj->oAngleVelYaw - 400) / 200;
-            omm_peach_vibe_increase(recovery);
+            omm_peach_vibe_increase(m, recovery);
         }
     }
 
@@ -114,9 +120,9 @@ static void omm_peach_vibe_update_gauge(struct MarioState *m) {
         case OMM_PEACH_VIBE_TYPE_NONE: {
             if (!omm_sparkly_context_get_data(OMM_SPARKLY_DATA_NO_VIBE_AUTO_REFILL) || !OMM_SPARKLY_STATE_IS_OK) {
                 if (omm_mario_is_idling(m)) {
-                    omm_peach_vibe_increase(OMM_PEACH_VIBE_GAUGE_IDLE_INC);
+                    omm_peach_vibe_increase(m, OMM_PEACH_VIBE_GAUGE_IDLE_INC);
                 } else {
-                    omm_peach_vibe_increase(OMM_PEACH_VIBE_GAUGE_INC);
+                    omm_peach_vibe_increase(m, OMM_PEACH_VIBE_GAUGE_INC);
                 }
             }
         } break;
@@ -124,23 +130,23 @@ static void omm_peach_vibe_update_gauge(struct MarioState *m) {
         // Joy: drains the vibe gauge when flying
         case OMM_PEACH_VIBE_TYPE_JOY: {
             switch (m->action) {
-                case ACT_OMM_PEACH_VIBE_JOY_MOVE:   omm_peach_vibe_decrease(OMM_PEACH_VIBE_GAUGE_JOY_MOVE_DEC);   break;
-                case ACT_OMM_PEACH_VIBE_JOY_FLY:    omm_peach_vibe_decrease(OMM_PEACH_VIBE_GAUGE_JOY_FLY_DEC);    break;
-                case ACT_OMM_PEACH_VIBE_JOY_ATTACK: omm_peach_vibe_decrease(OMM_PEACH_VIBE_GAUGE_JOY_ATTACK_DEC); break;
+                case ACT_OMM_PEACH_VIBE_JOY_MOVE:   omm_peach_vibe_decrease(m, OMM_PEACH_VIBE_GAUGE_JOY_MOVE_DEC);   break;
+                case ACT_OMM_PEACH_VIBE_JOY_FLY:    omm_peach_vibe_decrease(m, OMM_PEACH_VIBE_GAUGE_JOY_FLY_DEC);    break;
+                case ACT_OMM_PEACH_VIBE_JOY_ATTACK: omm_peach_vibe_decrease(m, OMM_PEACH_VIBE_GAUGE_JOY_ATTACK_DEC); break;
             }
         } break;
 
         // Rage
         case OMM_PEACH_VIBE_TYPE_RAGE: {
-            omm_peach_vibe_decrease(OMM_PEACH_VIBE_GAUGE_RAGE_DEC);
+            omm_peach_vibe_decrease(m, OMM_PEACH_VIBE_GAUGE_RAGE_DEC);
         } break;
 
         // Gloom
         case OMM_PEACH_VIBE_TYPE_GLOOM: {
-            omm_peach_vibe_decrease(OMM_PEACH_VIBE_GAUGE_GLOOM_DEC);
+            omm_peach_vibe_decrease(m, OMM_PEACH_VIBE_GAUGE_GLOOM_DEC);
         } break;
 
-        // Calm: drains the vibe gauge to restore health and O2
+        // Calm: drains the vibe gauge to restore health and breath
         // Also prevents the effect of frozen water
         case OMM_PEACH_VIBE_TYPE_CALM: {
             if (OMM_MOVESET_ODYSSEY) {
@@ -148,46 +154,42 @@ static void omm_peach_vibe_update_gauge(struct MarioState *m) {
                 // Health
                 if (!omm_health_is_at_max(m)) {
                     if ((gOmmPeach->vibeTimer % 60) == 0) {
-                        omm_health_heal_mario(m);
+                        omm_health_heal_mario(m, true);
                     }
-                    omm_peach_vibe_decrease(OMM_PEACH_VIBE_GAUGE_CALM_HEALTH_DEC);
+                    omm_peach_vibe_decrease(m, OMM_PEACH_VIBE_GAUGE_CALM_HEALTH_DEC);
                 }
 
-                // Air (if the value is near 0, set it to 0 without draining the Vibe gauge)
-                if (gOmmMario->state.o2 != 0) {
-                    if (gOmmMario->state.o2 < 8) {
-                        gOmmMario->state.o2 = 0;
-                    } else {
-                        gOmmMario->state.o2 -= 6;
-                        omm_peach_vibe_decrease(OMM_PEACH_VIBE_GAUGE_CALM_O2_DEC);
-                    }
+                // Breath
+                if (gOmmMario->state.breath != 0) {
+                    s32 recovery = min_s(6, gOmmMario->state.breath);
+                    gOmmMario->state.breath -= recovery;
+                    omm_peach_vibe_decrease(m, OMM_PEACH_VIBE_GAUGE_CALM_BREATH_DEC * relerp_0_1_f(recovery, 1, 6, 0.5f, 1.f));
                 }
-            } else {
 
-                // Health (if the value is near 0x880, set it to 0x880 without draining the Vibe gauge)
-                if (!omm_health_is_at_max(m)) {
-                    if (m->health >= 0x878) {
-                        m->health = 0x880;
-                    } else {
-                        m->health += 6;
-                        omm_peach_vibe_decrease(OMM_PEACH_VIBE_GAUGE_CALM_HEALTH_DEC);
-                    }
+            } else if (!omm_health_is_at_max(m)) {
 
-                    // Air (if the value is near 0x880, set it to 0x880 without draining the Vibe gauge)
-                    if (m->health < 0x880 && ((m->action & ACT_FLAG_SWIMMING) || (m->input & INPUT_IN_POISON_GAS))) {
-                        if (m->health >= 0x878) {
-                            m->health = 0x880;
-                        } else {
-                            m->health += 4;
-                            omm_peach_vibe_decrease(OMM_PEACH_VIBE_GAUGE_CALM_O2_DEC);
-                        }
-                    }
+                // Health
+                if (m->health < OMM_HEALTH_CLASSIC_MAX - 6) {
+                    m->health += 6;
+                    omm_peach_vibe_decrease(m, OMM_PEACH_VIBE_GAUGE_CALM_HEALTH_DEC);
+                }
+
+                // Breath in water/poison gas
+                else if ((m->action & ACT_FLAG_SWIMMING) || (m->input & INPUT_IN_POISON_GAS)) {
+                    s32 recovery = OMM_HEALTH_CLASSIC_MAX - m->health;
+                    m->health = OMM_HEALTH_CLASSIC_MAX;
+                    omm_peach_vibe_decrease(m, OMM_PEACH_VIBE_GAUGE_CALM_BREATH_DEC * relerp_0_1_f(recovery, 1, 6, 0.5f, 1.f));
+                }
+
+                // Max health
+                else {
+                    m->health = OMM_HEALTH_CLASSIC_MAX;
                 }
             }
 
             // Cold water
             if (omm_world_is_cold() && (m->action & ACT_GROUP_MASK) == ACT_GROUP_SUBMERGED) {
-                omm_peach_vibe_decrease(OMM_PEACH_VIBE_GAUGE_CALM_FREEZE_DEC);
+                omm_peach_vibe_decrease(m, OMM_PEACH_VIBE_GAUGE_CALM_FREEZE_DEC);
             }
         } break;
     }
@@ -214,6 +216,7 @@ static bool omm_peach_vibe_toggle(struct MarioState *m, s32 vibeAction) {
     if (vibeAction > 0 && gOmmPeach->vibeType != vibeAction && omm_peach_vibe_check_type(m, vibeAction)) {
         gOmmPeach->vibeType = vibeAction;
         gOmmPeach->vibeTimer = 0;
+        gOmmPeach->vibeGfxTimer = gGlobalTimer;
         omm_sound_play(OMM_SOUND_EFFECT_PEACH_VIBE, gGlobalSoundArgs);
         switch (vibeAction) {
             case OMM_PEACH_VIBE_TYPE_JOY: {
@@ -242,8 +245,12 @@ static bool omm_peach_vibe_toggle(struct MarioState *m, s32 vibeAction) {
 
     // Deactivation
     if (vibeAction < 0 && gOmmPeach->vibeType != OMM_PEACH_VIBE_TYPE_NONE) {
+        if (m->action == ACT_START_SLEEPING || m->action == ACT_SLEEPING) {
+            omm_mario_set_action(m, ACT_WAKING_UP, 0, 0);
+        }
         gOmmPeach->vibeType = OMM_PEACH_VIBE_TYPE_NONE;
         gOmmPeach->vibeTimer = 0;
+        gOmmPeach->vibeGfxTimer = gGlobalTimer;
         return true;
     }
     return false;
@@ -254,12 +261,12 @@ static void omm_peach_vibe_update_effects(struct MarioState *m) {
 
         // Joy
         case OMM_PEACH_VIBE_TYPE_JOY: {
-            omm_spawn_peach_vibe_joy_tornado(m->marioObj);
+            omm_obj_spawn_peach_vibe_joy_tornado(m->marioObj);
         } break;
 
         // Rage
         case OMM_PEACH_VIBE_TYPE_RAGE: {
-            omm_spawn_peach_vibe_rage_aura(m->marioObj);
+            omm_obj_spawn_peach_vibe_rage_aura(m->marioObj);
             if (omm_mario_is_ground_pound_landing(m)) {
 
                 // If Peach lands on an object...
@@ -284,9 +291,9 @@ static void omm_peach_vibe_update_effects(struct MarioState *m) {
 
                 // Release a fire shockwave, but drains the Vibe gauge
                 if (m->actionTimer == 0) {
-                    omm_spawn_peach_vibe_rage_shockwave(m->marioObj);
+                    omm_obj_spawn_peach_vibe_rage_shockwave(m->marioObj)->oPosY = m->pos[1];
                     set_environmental_camera_shake(SHAKE_ENV_BOWSER_THROW_BOUNCE);
-                    omm_peach_vibe_decrease(OMM_PEACH_VIBE_GAUGE_RAGE_SHOCKWAVE_DEC);
+                    omm_peach_vibe_decrease(m, OMM_PEACH_VIBE_GAUGE_RAGE_SHOCKWAVE_DEC);
                     m->actionTimer = 1;
                 }
             }
@@ -294,13 +301,13 @@ static void omm_peach_vibe_update_effects(struct MarioState *m) {
 
         // Gloom
         case OMM_PEACH_VIBE_TYPE_GLOOM: {
-            omm_spawn_peach_vibe_gloom_aura(m->marioObj);
-            omm_spawn_peach_vibe_gloom_tear(m->marioObj);
+            omm_obj_spawn_peach_vibe_gloom_aura(m->marioObj);
+            omm_obj_spawn_peach_vibe_gloom_tear(m->marioObj);
         } break;
 
         // Calm
         case OMM_PEACH_VIBE_TYPE_CALM: {
-            omm_spawn_peach_vibe_calm_aura(m->marioObj);
+            omm_obj_spawn_peach_vibe_calm_aura(m->marioObj);
         } break;
     }
 }
@@ -337,6 +344,25 @@ bool omm_peach_vibe_deactivate(struct MarioState *m) {
     return omm_peach_vibe_toggle(m, -1);
 }
 
+void omm_peach_vibe_increase(struct MarioState *m, u32 inc) {
+    if (OMM_CHEAT_PEACH_ENDLESS_VIBE_GAUGE) {
+        gOmmPeach->vibeGauge = 0;
+    } else if (gOmmPeach->vibeGauge > 0) {
+        gOmmPeach->vibeGauge = clamp_s(gOmmPeach->vibeGauge - (s32) inc, 0, OMM_PEACH_VIBE_GAUGE_MAX);
+        if (!omm_peach_vibe_is_active() && gOmmPeach->vibeGauge == 0) {
+            omm_obj_spawn_peach_vibe_aura(m->marioObj, true);
+        }
+    }
+}
+
+void omm_peach_vibe_decrease(UNUSED struct MarioState *m, u32 dec) {
+    if (OMM_CHEAT_PEACH_ENDLESS_VIBE_GAUGE) {
+        gOmmPeach->vibeGauge = 0;
+    } else if (gOmmPeach->vibeGauge < OMM_PEACH_VIBE_GAUGE_MAX) {
+        gOmmPeach->vibeGauge = clamp_s(gOmmPeach->vibeGauge + (s32) dec, 0, OMM_PEACH_VIBE_GAUGE_MAX);
+    }
+}
+
 void omm_peach_vibe_update(struct MarioState *m) {
     gOmmPeach->vibeTimer++;
     omm_peach_vibe_update_gauge(m);
@@ -354,44 +380,72 @@ void omm_peach_vibe_update(struct MarioState *m) {
 
 #if !OMM_GAME_IS_R96X
 
-static void update_sequence_channel(struct SequenceChannel *channel) {
-    static f32 sSeqChannelInfoBuffer[0x80][OMM_PEACH_VIBE_TYPE_COUNT][2];
-    static s32 sSeqChannelInfoIndex = 0;
+static const struct { f32 freq; f32 volume; } OMM_PEACH_VIBE_MUSIC_MODIFIERS[2][OMM_PEACH_VIBE_TYPE_COUNT] = {
+    {   // Seq audio
+        [OMM_PEACH_VIBE_TYPE_NONE]  = { .freq = OMM_PEACH_VIBE_MUSIC_SEQ_FREQ_MOD_NONE,   .volume = OMM_PEACH_VIBE_MUSIC_SEQ_VOLUME_MOD_NONE   },
+        [OMM_PEACH_VIBE_TYPE_JOY]   = { .freq = OMM_PEACH_VIBE_MUSIC_SEQ_FREQ_MOD_JOY,    .volume = OMM_PEACH_VIBE_MUSIC_SEQ_VOLUME_MOD_JOY    },
+        [OMM_PEACH_VIBE_TYPE_RAGE]  = { .freq = OMM_PEACH_VIBE_MUSIC_SEQ_FREQ_MOD_RAGE,   .volume = OMM_PEACH_VIBE_MUSIC_SEQ_VOLUME_MOD_RAGE   },
+        [OMM_PEACH_VIBE_TYPE_GLOOM] = { .freq = OMM_PEACH_VIBE_MUSIC_SEQ_FREQ_MOD_GLOOM,  .volume = OMM_PEACH_VIBE_MUSIC_SEQ_VOLUME_MOD_GLOOM  },
+        [OMM_PEACH_VIBE_TYPE_CALM]  = { .freq = OMM_PEACH_VIBE_MUSIC_SEQ_FREQ_MOD_CALM,   .volume = OMM_PEACH_VIBE_MUSIC_SEQ_VOLUME_MOD_CALM   },
+    },
+    {   // Streamed audio
+        [OMM_PEACH_VIBE_TYPE_NONE]  = { .freq = OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_NONE,  .volume = OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_NONE  },
+        [OMM_PEACH_VIBE_TYPE_JOY]   = { .freq = OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_JOY,   .volume = OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_JOY   },
+        [OMM_PEACH_VIBE_TYPE_RAGE]  = { .freq = OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_RAGE,  .volume = OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_RAGE  },
+        [OMM_PEACH_VIBE_TYPE_GLOOM] = { .freq = OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_GLOOM, .volume = OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_GLOOM },
+        [OMM_PEACH_VIBE_TYPE_CALM]  = { .freq = OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_CALM,  .volume = OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_CALM  },
+    },
+};
+
+static void omm_peach_vibe_update_sequence_channel(struct SequenceChannel *channel) {
+    static struct {
+        struct {
+            f32 freq;
+            f32 volume;
+            s32 vibeType;
+        } buffer[0x80][1];
+        s32 index;
+    } sOmmPeachVibeSeqChannelInfo[1];
+
+    s32 index = (channel->updatesPerFrameUnused & 0x7F);
+    bool streamed = (channel->bankId >= 0x26);
 
     // Init sequence channel info
     if (!(channel->updatesPerFrameUnused & 0x80)) {
-        f32 f = channel->freqScale;
-        f32 v = channel->volumeScale;
-        if (channel->bankId >= 0x26) { // Streamed audio
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_NONE ][0] = f;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_NONE ][1] = v;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_JOY  ][0] = f * OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_JOY;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_JOY  ][1] = v * OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_JOY;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_RAGE ][0] = f * OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_RAGE;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_RAGE ][1] = v * OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_RAGE;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_GLOOM][0] = f * OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_GLOOM;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_GLOOM][1] = v * OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_GLOOM;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_CALM ][0] = f * OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_CALM;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_CALM ][1] = v * OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_CALM;
-        } else {
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_NONE ][0] = f;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_NONE ][1] = v;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_JOY  ][0] = f * OMM_PEACH_VIBE_MUSIC_FREQ_MOD_JOY;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_JOY  ][1] = v * OMM_PEACH_VIBE_MUSIC_VOLUME_MOD_JOY;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_RAGE ][0] = f * OMM_PEACH_VIBE_MUSIC_FREQ_MOD_RAGE;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_RAGE ][1] = v * OMM_PEACH_VIBE_MUSIC_VOLUME_MOD_RAGE;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_GLOOM][0] = f * OMM_PEACH_VIBE_MUSIC_FREQ_MOD_GLOOM;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_GLOOM][1] = v * OMM_PEACH_VIBE_MUSIC_VOLUME_MOD_GLOOM;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_CALM ][0] = f * OMM_PEACH_VIBE_MUSIC_FREQ_MOD_CALM;
-            sSeqChannelInfoBuffer[sSeqChannelInfoIndex][OMM_PEACH_VIBE_TYPE_CALM ][1] = v * OMM_PEACH_VIBE_MUSIC_VOLUME_MOD_CALM;
-        }
-        channel->updatesPerFrameUnused = (u8) (sSeqChannelInfoIndex | 0x80);
-        sSeqChannelInfoIndex = (sSeqChannelInfoIndex + 1) & 0x7F;
+        index = sOmmPeachVibeSeqChannelInfo->index = (sOmmPeachVibeSeqChannelInfo->index + 1) & 0x7F;
+        sOmmPeachVibeSeqChannelInfo->buffer[index]->freq = channel->freqScale;
+        sOmmPeachVibeSeqChannelInfo->buffer[index]->volume = channel->volumeScale;
+        sOmmPeachVibeSeqChannelInfo->buffer[index]->vibeType = OMM_PEACH_VIBE_TYPE_NONE;
+        channel->updatesPerFrameUnused = (u8) (index | 0x80);
+        // omm_debug_log("Sequence channel inited - INDEX: %02X | ADDR: %016llX\n",, (u8) index, (uintptr_t) channel);
     }
 
-    // Update sequence channel values
-    channel->freqScale   = sSeqChannelInfoBuffer[(s32) (channel->updatesPerFrameUnused & 0x7F)][gOmmPeach->vibeType][0];
-    channel->volumeScale = sSeqChannelInfoBuffer[(s32) (channel->updatesPerFrameUnused & 0x7F)][gOmmPeach->vibeType][1];
+    // If freq changed, re-apply modifier
+    if (channel->freqScale != sOmmPeachVibeSeqChannelInfo->buffer[index]->freq) {
+        channel->freqScale *= OMM_PEACH_VIBE_MUSIC_MODIFIERS[streamed][gOmmPeach->vibeType].freq;
+        // omm_debug_log("Freq scale changed - INDEX: %02X | OLD: %.4f | NEW: %.4f\n",, (u8) index, sOmmPeachVibeSeqChannelInfo->buffer[index]->freq, channel->freqScale);
+        sOmmPeachVibeSeqChannelInfo->buffer[index]->freq = channel->freqScale;
+    }
+
+    // If volume changed, re-apply modifier
+    if (channel->volumeScale != sOmmPeachVibeSeqChannelInfo->buffer[index]->volume) {
+        channel->volumeScale *= OMM_PEACH_VIBE_MUSIC_MODIFIERS[streamed][gOmmPeach->vibeType].volume;
+        // omm_debug_log("Volume scale changed - INDEX: %02X | OLD: %.4f | NEW: %.4f\n",, (u8) index, sOmmPeachVibeSeqChannelInfo->buffer[index]->volume, channel->volumeScale);
+        sOmmPeachVibeSeqChannelInfo->buffer[index]->volume = channel->volumeScale;
+    }
+
+    // If vibe type changed, revert old modifiers, apply new modifiers
+    s32 prevVibeType = sOmmPeachVibeSeqChannelInfo->buffer[index]->vibeType;
+    if (gOmmPeach->vibeType != prevVibeType) {
+        channel->freqScale /= OMM_PEACH_VIBE_MUSIC_MODIFIERS[streamed][prevVibeType].freq;
+        channel->freqScale *= OMM_PEACH_VIBE_MUSIC_MODIFIERS[streamed][gOmmPeach->vibeType].freq;
+        channel->volumeScale /= OMM_PEACH_VIBE_MUSIC_MODIFIERS[streamed][prevVibeType].volume;
+        channel->volumeScale *= OMM_PEACH_VIBE_MUSIC_MODIFIERS[streamed][gOmmPeach->vibeType].volume;
+        sOmmPeachVibeSeqChannelInfo->buffer[index]->freq = channel->freqScale;
+        sOmmPeachVibeSeqChannelInfo->buffer[index]->volume = channel->volumeScale;
+        sOmmPeachVibeSeqChannelInfo->buffer[index]->vibeType = gOmmPeach->vibeType;
+        // omm_debug_log("Vibe type changed - INDEX: %02X | OLD: %d | NEW: %d\n",, (u8) index, prevVibeType, gOmmPeach->vibeType);
+    }
 }
 
 static bool is_sequence_in_list(struct SequenceChannel *channel, s32 *seqList) {
@@ -411,7 +465,7 @@ static void omm_peach_vibe_update_sequences(s32 seqPlayer, s32 *seqList) {
     for (s32 i = 0; i != CHANNELS_MAX; ++i) {
         struct SequenceChannel *channel = gSequencePlayers[seqPlayer].channels[i];
         if (channel && channel != &gSequenceChannelNone && is_sequence_in_list(channel, seqList)) {
-            update_sequence_channel(channel);
+            omm_peach_vibe_update_sequence_channel(channel);
         }
     }
 }

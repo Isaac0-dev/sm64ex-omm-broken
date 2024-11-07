@@ -11,11 +11,11 @@ bool omm_cappy_snowmans_body_init(struct Object *o) {
         return false;
     }
 
-    gOmmObject->state.actionState = (o->oAction == 0 ?  0 : 3);
-    gOmmObject->state.actionTimer = (o->oAction == 0 ? 15 : 0);
-    gOmmObject->state.initialPos[0] = o->oHomeX;
-    gOmmObject->state.initialPos[1] = o->oHomeY;
-    gOmmObject->state.initialPos[2] = o->oHomeZ;
+    if (o->oAction != 0) {
+        gOmmObject->state.actionState = 3;
+    } else {
+        gOmmObject->state.actionTimer = 15;
+    }
     gOmmObject->snowmans_body.peakHeight = o->oPosY;
     gOmmObject->snowmans_body.headFound = false;
     return true;
@@ -29,16 +29,18 @@ void omm_cappy_snowmans_body_end(struct Object *o) {
     }
 
     // Explode and respawn
-    o->oHomeX = gOmmObject->state.initialPos[0];
-    o->oHomeY = gOmmObject->state.initialPos[1];
-    o->oHomeZ = gOmmObject->state.initialPos[2];
+    pobj_reset_home();
     f32 scale = o->oScaleX;
     obj_spawn_particles(o, 16, MODEL_WHITE_PARTICLE, 200 * scale, 0, 60 * scale, -30 * scale, 90 * scale, -4.f * scale, 3.f * scale, 1.f * scale);
     obj_destroy(o);
 }
 
+u64 omm_cappy_snowmans_body_get_type(UNUSED struct Object *o) {
+    return OMM_CAPTURE_SNOWMAN;
+}
+
 f32 omm_cappy_snowmans_body_get_top(struct Object *o) {
-    return 360.f * o->oScaleY;
+    return omm_capture_get_hitbox_height(o);
 }
 
 //
@@ -54,14 +56,15 @@ s32 omm_cappy_snowmans_body_update(struct Object *o) {
     // Hitbox
     o->hitboxRadius = omm_capture_get_hitbox_radius(o);
     o->hitboxHeight = omm_capture_get_hitbox_height(o);
-    o->hitboxDownOffset = omm_capture_get_hitbox_down_offset(o);
     o->oWallHitboxRadius = omm_capture_get_wall_hitbox_radius(o) * (distToHead < 500.f ? 0.1f : 1.f);
 
     // Properties
     POBJ_SET_ABOVE_WATER;
     POBJ_SET_INVULNERABLE;
-    POBJ_SET_IMMUNE_TO_WIND;
-    POBJ_SET_ATTACKING;
+    POBJ_SET_IMMUNE_TO_STRONG_WINDS;
+    POBJ_SET_ATTACKING_BREAKABLE;
+    POBJ_SET_GROUND_POUNDING;
+    POBJ_SET_TALKING * (gOmmObject->state.actionState >= 0 && gOmmObject->state.actionState <= 2);
 
     // States
     if (gOmmObject->state.actionTimer == 0) {
@@ -89,7 +92,7 @@ s32 omm_cappy_snowmans_body_update(struct Object *o) {
         }
 
         // Inputs
-        else if (!omm_mario_is_locked(gMarioState)) {
+        else if (pobj_process_inputs(o)) {
             pobj_move(o, false, false, false);
         }
 
@@ -99,10 +102,11 @@ s32 omm_cappy_snowmans_body_update(struct Object *o) {
 
     // Movement
     perform_object_step(o, POBJ_STEP_FLAGS);
-    pobj_decelerate(o, 0.80f, 0.95f);
+    pobj_decelerate(o);
     pobj_apply_gravity(o, 1.f);
     pobj_handle_special_floors(o);
     pobj_stop_if_unpossessed();
+    o->oFaceAnglePitch += (o->oForwardVel / o->oScaleX) * 0x40;
 
     // Peak height
     if (obj_is_on_ground(o)) {
@@ -110,8 +114,8 @@ s32 omm_cappy_snowmans_body_update(struct Object *o) {
         gOmmObject->snowmans_body.peakHeight = o->oPosY;
 
         // Break the snowman if fell from too high
-        if (diff > 1000.f) {
-            omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, false, 6);
+        if (diff > 1000.f && !POBJ_IS_TALKING) {
+            omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, 6);
             pobj_return_unpossess;
         }
     }
@@ -123,41 +127,39 @@ s32 omm_cappy_snowmans_body_update(struct Object *o) {
     // Snowman's head
     // Distance must be computed again after movement
     distToHead = (snowmansHead ? obj_get_distance(o, snowmansHead) : (LEVEL_BOUNDARY_MAX * 2.f));
-    if (distToHead < 285.f && o->oScaleX == 1.f && obj_is_on_ground(o)) {
+    if (distToHead < 280.f && o->oScaleX == 1.f && obj_is_on_ground(o)) {
         gOmmObject->snowmans_body.headFound = true;
-        omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, true, 6);
+        omm_mario_unpossess_object_with_yaw(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, 6, obj_get_object1_angle_yaw_to_object2(snowmansHead, o));
         gMarioState->invincTimer = 30;
         pobj_return_unpossess;
     }
 
     // Scale
     if (obj_is_on_ground(o)) {
-        f32 scaleInc = (o->oForwardVel / (omm_capture_get_walk_speed(o))) * 0.002f;
-        o->oScaleX = min_f(o->oScaleX + scaleInc, 1.f);
-        o->oScaleY = o->oScaleX;
-        o->oScaleZ = o->oScaleX;
-    }
-    f32 scale = o->oScaleX;
-
-    // Gfx
-    o->oFaceAnglePitch += (o->oForwardVel / scale) * 0x40;
-    o->oMoveAnglePitch = o->oFaceAnglePitch;
-    o->oGraphYOffset = scale * 180.f;
-    obj_update_gfx(o);
-    if (obj_is_on_ground(o)) {
-        f32 walkDistance = gOmmObject->state.walkDistance;
-        obj_make_step_sound_and_particle(o, &gOmmObject->state.walkDistance, 400.f, o->oForwardVel, SOUND_OBJ_SNOW_SAND1, OBJ_PARTICLE_NONE);
-        if (gOmmObject->state.walkDistance < walkDistance) {
-            obj_spawn_particles(o, 8, MODEL_WHITE_PARTICLE, 0, 10 * scale, 5 * scale, 20 * scale, 10 * scale, -2 * sqrtf(scale), 0.5f * scale, 0.25f * scale);
-        }
+        f32 scaleInc = 0.002f * POBJ_ABS_FORWARD_VEL / pobj_get_walk_speed(o);
+        obj_scale(o, min_f(o->oScaleX + scaleInc, 1.f));
     }
 
-    // Cappy values
-    gOmmObject->cappy.offset[1] = +360.f * coss(o->oFaceAnglePitch);
-    gOmmObject->cappy.offset[2] = -360.f * sins(o->oFaceAnglePitch);
-    gOmmObject->cappy.angle[0]  = -o->oFaceAnglePitch;
-    gOmmObject->cappy.scale     = 2.f;
+    // Animation, sound and particles
+    if (obj_is_on_ground(o) && obj_make_step_sound_and_particle(o, &gOmmObject->state.walkDistance, 400.f, POBJ_ABS_FORWARD_VEL, POBJ_SOUND_WALKING_SNOW_SAND, OBJ_PARTICLE_NONE)) {
+        f32 scale = o->oScaleX;
+        obj_spawn_particles(o, 8, MODEL_WHITE_PARTICLE, 0, 10 * scale, 5 * scale, 20 * scale, 10 * scale, -2 * sqrtf(scale), 0.5f * scale, 0.25f * scale);
+    }
 
     // OK
     pobj_return_ok;
+}
+
+void omm_cappy_snowmans_body_update_gfx(struct Object *o) {
+
+    // Gfx
+    o->oMoveAnglePitch = o->oFaceAnglePitch;
+    o->oGraphYOffset = o->oScaleX * 180.f;
+    obj_update_gfx(o);
+
+    // Cappy transform
+    gOmmObject->cappy.tra_y = +360.f * coss(o->oFaceAnglePitch);
+    gOmmObject->cappy.tra_z = -360.f * sins(o->oFaceAnglePitch);
+    gOmmObject->cappy.rot_x = -o->oFaceAnglePitch;
+    gOmmObject->cappy.scale = 2.f;
 }

@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 void bhv_chain_chomp_update_chain_parts(struct Object *o, bool isFreed) {
     struct Object *pivot = o->parentObj;
@@ -112,7 +113,8 @@ void bhv_chain_chomp_update_chain_parts(struct Object *o, bool isFreed) {
 
 static void bhv_omm_chain_chomp_free_init() {
     struct Object *o = gCurrentObject;
-    o->oFlags = (OBJ_FLAG_COMPUTE_ANGLE_TO_MARIO | OBJ_FLAG_ACTIVE_FROM_AFAR | OBJ_FLAG_COMPUTE_DIST_TO_MARIO | OBJ_FLAG_SET_FACE_YAW_TO_MOVE_YAW | OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE);
+    o->oFlags &= (OBJ_FLAG_GFX_INITED | OBJ_FLAG_UPDATE_AREA_INDEX | OBJ_FLAG_MONEYBAG_COIN_INTERACTED | OBJ_FLAG_SPARKLY_NOT_ENEMY);
+    o->oFlags |= (OBJ_FLAG_COMPUTE_ANGLE_TO_MARIO | OBJ_FLAG_ACTIVE_FROM_AFAR | OBJ_FLAG_COMPUTE_DIST_TO_MARIO | OBJ_FLAG_SET_FACE_YAW_TO_MOVE_YAW | OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE);
     o->oGraphYOffset = 240.f;
     o->oWallHitboxRadius = 120.f;
     o->oGravity = -4.f;
@@ -126,6 +128,31 @@ static void bhv_omm_chain_chomp_free_init() {
     obj_scale(o, 2.f);
     cur_obj_set_pos_to_home();
     obj_set_params(o, INTERACT_DAMAGE, 4, 99, 0, true);
+
+    // Spawn the chain parts if they don't exist yet
+    if (!o->oChainChompSegments) {
+        struct ChainSegment *segments = mem_pool_alloc(gObjectMemoryPool, 5 * sizeof(struct ChainSegment));
+        if (segments != NULL) {
+
+            // Init segments
+            o->oChainChompSegments = segments;
+            for (s32 i = 0; i != 5; ++i) {
+                chain_segment_init(&segments[i]);
+            }
+
+            // Spawn the pivot
+            o->parentObj = spawn_object(o, MODEL_NONE, bhvChainChompChainPart);
+            if (o->parentObj) {
+
+                // Spawn the other chain parts
+                for (s32 i = 1; i != 5; ++i) {
+                    spawn_object_relative(i, 0, 0, 0, o, MODEL_METALLIC_BALL, bhvChainChompChainPart);
+                }
+                return;
+            }
+        }
+        obj_mark_for_deletion(o);
+    }
 }
 
 static void bhv_omm_chain_chomp_free_wander(struct Object* o) {
@@ -215,12 +242,12 @@ static void bhv_omm_chain_chomp_free_update() {
 
 const BehaviorScript bhvOmmChainChompFree[] = {
     OBJ_TYPE_GENACTOR,
-    0x1E000000,
-    0x27260000, (uintptr_t) chain_chomp_seg6_anims_06025178,
-    0x28000000,
-    0x2D000000,
-    0x0C000000, (uintptr_t) bhv_omm_chain_chomp_free_init,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_chain_chomp_free_update,
-    0x09000000,
+    BHV_DROP_TO_FLOOR(),
+    BHV_LOAD_ANIMATIONS(oAnimations, chain_chomp_seg6_anims_06025178),
+    BHV_ANIMATE(0),
+    BHV_SET_HOME(),
+    BHV_CALL_NATIVE(bhv_omm_chain_chomp_free_init),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_chain_chomp_free_update),
+    BHV_END_LOOP(),
 };

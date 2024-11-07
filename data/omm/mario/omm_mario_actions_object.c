@@ -14,8 +14,8 @@ static s32 omm_act_punching(struct MarioState *m) {
 
 static s32 omm_act_stomach_slide_stop(struct MarioState *m) {
     if (!m->heldObj && !(m->input & INPUT_ABOVE_SLIDE)) {
-        action_a_pressed(OMM_MOVESET_ODYSSEY, m->forwardVel > 0 ? ACT_FORWARD_ROLLOUT : ACT_BACKWARD_ROLLOUT, 0, RETURN_CANCEL);
-        action_b_pressed(OMM_MOVESET_ODYSSEY, m->forwardVel > 0 ? ACT_FORWARD_ROLLOUT : ACT_BACKWARD_ROLLOUT, 0, RETURN_CANCEL);
+        action_a_pressed(OMM_MOVESET_ODYSSEY, m->forwardVel >= 0 ? ACT_FORWARD_ROLLOUT : ACT_BACKWARD_ROLLOUT, 0, RETURN_CANCEL);
+        action_b_pressed(OMM_MOVESET_ODYSSEY, m->forwardVel >= 0 ? ACT_FORWARD_ROLLOUT : ACT_BACKWARD_ROLLOUT, 0, RETURN_CANCEL);
     }
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }

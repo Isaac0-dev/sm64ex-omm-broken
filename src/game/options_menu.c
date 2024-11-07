@@ -317,6 +317,7 @@ static s32 optmenu_option_timer = 0;
 static u8 optmenu_hold_count = 0;
 
 static struct SubMenu *currentMenu = &menuMain;
+#include "data/omm/system/omm_options_menu.inl"
 
 static inline s32 wrap_add(s32 a, const s32 b, const s32 min, const s32 max) {
     a += b;

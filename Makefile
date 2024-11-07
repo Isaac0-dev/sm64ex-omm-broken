@@ -112,26 +112,25 @@ endif
 # macOS overrides
 ifeq ($(HOST_OS),Darwin)
   OSX_BUILD := 1
+  # Using Homebrew?
+  ifeq ($(shell which brew >/dev/null 2>&1 && echo y),y)
+	PLATFORM := $(shell uname -m)
+	OSX_GCC_VER = $(shell find `brew --prefix`/bin/gcc* | grep -oE '[[:digit:]]+' | sort -n | uniq | tail -1)
+	CC := gcc-$(OSX_GCC_VER)
+	CXX := g++-$(OSX_GCC_VER)
+	CPP := cpp-$(OSX_GCC_VER) -P
+	PLATFORM_CFLAGS := -I $(shell brew --prefix)/include
+	PLATFORM_LDFLAGS := -L $(shell brew --prefix)/lib
   # Using MacPorts?
-  ifeq ($(shell test -d /opt/local/lib && echo y),y)
-    OSX_GCC_VER = $(shell find /opt/local/bin/gcc* | grep -oE '[[:digit:]]+' | sort -n | uniq | tail -1)
-    CC := gcc-mp-$(OSX_GCC_VER)
-    CXX := g++-mp-$(OSX_GCC_VER)
-    CPP := cpp-mp-$(OSX_GCC_VER) -P
-    PLATFORM_CFLAGS := -I /opt/local/include
-    PLATFORM_LDFLAGS := -L /opt/local/lib
+  else ifeq ($(shell test -d /opt/local/lib && echo y),y)
+	OSX_GCC_VER = $(shell find /opt/local/bin/gcc* | grep -oE '[[:digit:]]+' | sort -n | uniq | tail -1)
+	CC := gcc-mp-$(OSX_GCC_VER)
+	CXX := g++-mp-$(OSX_GCC_VER)
+	CPP := cpp-mp-$(OSX_GCC_VER) -P
+	PLATFORM_CFLAGS := -I /opt/local/include
+	PLATFORM_LDFLAGS := -L /opt/local/lib
   else
-    # Using Homebrew?
-    ifeq ($(shell which brew >/dev/null 2>&1 && echo y),y)
-      OSX_GCC_VER = $(shell find `brew --prefix`/bin/gcc* | grep -oE '[[:digit:]]+' | sort -n | uniq | tail -1)
-      CC := gcc-$(OSX_GCC_VER)
-      CXX := g++-$(OSX_GCC_VER)
-      CPP := cpp-$(OSX_GCC_VER) -P
-      PLATFORM_CFLAGS := -I /usr/local/include
-      PLATFORM_LDFLAGS := -L /usr/local/lib
-    else
-      $(error No suitable macOS toolchain found, have you installed Homebrew?)
-    endif
+	$(error No suitable macOS toolchain found, have you installed Homebrew?)
   endif
 endif
 
@@ -209,7 +208,7 @@ endif
 endif
 endif
 
-GRUCODE_CFLAGS := -D$(GRUCODE_DEF) -fdiagnostics-color
+GRUCODE_CFLAGS := -D$(GRUCODE_DEF)
 GRUCODE_ASFLAGS := $(GRUCODE_ASFLAGS) --defsym $(GRUCODE_DEF)=1
 
 # Default build is for PC now
@@ -266,7 +265,7 @@ endif
 endif
 
 # Make tools if out of date
-DUMMY != CC=$(CC) CXX=$(CXX) $(MAKE) -C tools >&2 || echo FAIL
+DUMMY != CC=$(CC) CXX=$(CXX) $(MAKE) -C tools -j1 >&2 || echo FAIL
 ifeq ($(DUMMY),FAIL)
   $(error Failed to build tools)
 endif
@@ -321,8 +320,8 @@ ifeq ($(DISCORDRPC),1)
   SRC_DIRS += src/pc/discord
 endif
 
-BIN_DIRS := bin bin/$(VERSION)
 include omm.mk
+BIN_DIRS := bin bin/$(VERSION)
 
 ULTRA_SRC_DIRS := lib/src lib/src/math
 ULTRA_ASM_DIRS := lib/asm lib/data
@@ -469,7 +468,7 @@ AS := i686-w64-mingw32-as
 endif
 
 ifneq ($(TARGET_WEB),1) # As in, not-web PC port
-  CC ?= $(CROSS)gcc -fdiagnostics-color
+  CC ?= $(CROSS)gcc
   CXX ?= $(CROSS)g++
 else
   CC := emcc
@@ -504,7 +503,7 @@ else # Linux & other builds
 endif
 
 PYTHON := python3
-SDLCONFIG := $(CROSS)sdl2-config --prefix=/mingw64
+SDLCONFIG := $(CROSS)sdl2-config
 
 # configure backend flags
 
@@ -551,7 +550,7 @@ endif
 # SDL can be used by different systems, so we consolidate all of that shit into this
 
 ifeq ($(SDL2_USED),1)
-  SDLCONFIG := $(CROSS)sdl2-config --prefix=/mingw64
+  SDLCONFIG := $(CROSS)sdl2-config
   BACKEND_CFLAGS += -DHAVE_SDL2=1
 else ifeq ($(SDL1_USED),1)
   SDLCONFIG := $(CROSS)sdl-config
@@ -730,9 +729,6 @@ ifeq ($(EXTERNAL_DATA),1)
 BASEPACK_PATH := $(BUILD_DIR)/$(BASEDIR)/$(BASEPACK)
 BASEPACK_LST := $(BUILD_DIR)/basepack.lst
 
-# generate the base.zip only if it doesn't exist
-ifneq ($(or $(and $(wildcard $(BASEPACK_PATH)),1),0),1)
-
 # depend on resources as well
 all: $(BASEPACK_PATH)
 
@@ -743,20 +739,18 @@ res: $(BASEPACK_PATH)
 $(BASEPACK_LST): $(EXE)
 	@mkdir -p $(BUILD_DIR)/$(BASEDIR)
 	@touch $(BASEPACK_LST)
-	@echo "$(BUILD_DIR)/sound/bank_sets sound/bank_sets" >> $(BASEPACK_LST)
+	@echo "$(BUILD_DIR)/sound/bank_sets sound/bank_sets" > $(BASEPACK_LST)
 	@echo "$(BUILD_DIR)/sound/sequences.bin sound/sequences.bin" >> $(BASEPACK_LST)
 	@echo "$(BUILD_DIR)/sound/sound_data.ctl sound/sound_data.ctl" >> $(BASEPACK_LST)
 	@echo "$(BUILD_DIR)/sound/sound_data.tbl sound/sound_data.tbl" >> $(BASEPACK_LST)
-	@$(foreach f, $(wildcard $(SKYTILE_DIR)/*), echo $(f) gfx/$(f:$(BUILD_DIR)/%=%) >> $(BASEPACK_LST);)
+	@cd $(BUILD_DIR) ; find textures/skybox_tiles -name \*.png -exec echo "$(BUILD_DIR)/{} gfx/{}" >> basepack.lst \;
 	@find actors -name \*.png -exec echo "{} gfx/{}" >> $(BASEPACK_LST) \;
 	@find levels -name \*.png -exec echo "{} gfx/{}" >> $(BASEPACK_LST) \;
 	@find textures -name \*.png -exec echo "{} gfx/{}" >> $(BASEPACK_LST) \;
 
 # prepares the resource ZIP with base data
-$(BASEPACK_PATH): $(BASEPACK_LST)
+$(BASEPACK_PATH):
 	@$(PYTHON) $(TOOLS_DIR)/mkzip.py $(BASEPACK_LST) $(BASEPACK_PATH)
-
-endif
 
 endif
 
@@ -776,8 +770,12 @@ test: $(ROM)
 load: $(ROM)
 	$(LOADER) $(LOADER_FLAGS) $<
 
+ifneq ($(RPC_LIBS),)
+
 $(BUILD_DIR)/$(RPC_LIBS):
 	@$(CP) -f $(RPC_LIBS) $(BUILD_DIR)
+
+endif
 
 libultra: $(BUILD_DIR)/libultra.a
 
@@ -824,10 +822,10 @@ endif
 endif
 
 $(BUILD_DIR)/text/%/define_courses.inc.c: text/define_courses.inc.c text/%/courses.h
-	$(CPP) $(VERSION_CFLAGS) -fdiagnostics-color $< -o - -I text/$*/ | $(TEXTCONV) charmap.txt - $@
+	$(CPP) $(VERSION_CFLAGS) $< -o - -I text/$*/ | $(TEXTCONV) charmap.txt - $@
 
 $(BUILD_DIR)/text/%/define_text.inc.c: text/define_text.inc.c text/%/courses.h text/%/dialogs.h
-	$(CPP) $(VERSION_CFLAGS) -fdiagnostics-color $< -o - -I text/$*/ | $(TEXTCONV) charmap.txt - $@
+	$(CPP) $(VERSION_CFLAGS) $< -o - -I text/$*/ | $(TEXTCONV) charmap.txt - $@
 
 RSP_DIRS := $(BUILD_DIR)/rsp
 ALL_DIRS := $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(SRC_DIRS) $(ASM_DIRS) $(GODDARD_SRC_DIRS) $(ULTRA_SRC_DIRS) $(ULTRA_ASM_DIRS) $(ULTRA_BIN_DIRS) $(BIN_DIRS) $(TEXTURE_DIRS) $(TEXT_DIRS) $(SOUND_SAMPLE_DIRS) $(addprefix levels/,$(LEVEL_DIRS)) include) $(MIO0_DIR) $(addprefix $(MIO0_DIR)/,$(VERSION)) $(SOUND_BIN_DIR) $(SOUND_BIN_DIR)/sequences/$(VERSION) $(RSP_DIRS)
@@ -912,18 +910,18 @@ $(ENDIAN_BITWIDTH): tools/determine-endian-bitwidth.c
 	@rm $@.dummy1
 	@rm $@.dummy2
 
-$(SOUND_BIN_DIR)/sound_data.ctl: sound/sound_banks/ $(SOUND_BANK_FILES) $(SOUND_SAMPLE_AIFCS) $(ENDIAN_BITWIDTH)
-	$(PYTHON) tools/assemble_sound.py $(BUILD_DIR)/sound/samples/ sound/sound_banks/ $(SOUND_BIN_DIR)/sound_data.ctl $(SOUND_BIN_DIR)/sound_data.tbl $(VERSION_CFLAGS) $$(cat $(ENDIAN_BITWIDTH))
+$(SOUND_BIN_DIR)/sound_data.ctl: sound/sound_banks $(SOUND_BANK_FILES) $(SOUND_SAMPLE_AIFCS) $(ENDIAN_BITWIDTH)
+	$(PYTHON) tools/assemble_sound.py $(BUILD_DIR)/sound/samples sound/sound_banks $(SOUND_BIN_DIR)/sound_data.ctl $(SOUND_BIN_DIR)/sound_data.tbl $(VERSION_CFLAGS) $$(cat $(ENDIAN_BITWIDTH))
 
 $(SOUND_BIN_DIR)/sound_data.tbl: $(SOUND_BIN_DIR)/sound_data.ctl
 	@true
 
 ifeq ($(VERSION),sh)
-$(SOUND_BIN_DIR)/sequences.bin: $(SOUND_BANK_FILES) sound/sequences.json sound/sequences/ sound/sequences/jp/ $(SOUND_SEQUENCE_FILES) $(ENDIAN_BITWIDTH)
-	$(PYTHON) tools/assemble_sound.py --sequences $@ $(SOUND_BIN_DIR)/bank_sets sound/sound_banks/ sound/sequences.json $(SOUND_SEQUENCE_FILES) $(VERSION_CFLAGS) $$(cat $(ENDIAN_BITWIDTH))
+$(SOUND_BIN_DIR)/sequences.bin: $(SOUND_BANK_FILES) sound/sequences.json sound/sequences sound/sequences/jp $(SOUND_SEQUENCE_FILES) $(ENDIAN_BITWIDTH)
+	$(PYTHON) tools/assemble_sound.py --sequences $@ $(SOUND_BIN_DIR)/bank_sets sound/sound_banks sound/sequences.json $(SOUND_SEQUENCE_FILES) $(VERSION_CFLAGS) $$(cat $(ENDIAN_BITWIDTH))
 else
-$(SOUND_BIN_DIR)/sequences.bin: $(SOUND_BANK_FILES) sound/sequences.json sound/sequences/ sound/sequences/$(VERSION)/ $(SOUND_SEQUENCE_FILES) $(ENDIAN_BITWIDTH)
-	$(PYTHON) tools/assemble_sound.py --sequences $@ $(SOUND_BIN_DIR)/bank_sets sound/sound_banks/ sound/sequences.json $(SOUND_SEQUENCE_FILES) $(VERSION_CFLAGS) $$(cat $(ENDIAN_BITWIDTH))
+$(SOUND_BIN_DIR)/sequences.bin: $(SOUND_BANK_FILES) sound/sequences.json sound/sequences sound/sequences/$(VERSION) $(SOUND_SEQUENCE_FILES) $(ENDIAN_BITWIDTH)
+	$(PYTHON) tools/assemble_sound.py --sequences $@ $(SOUND_BIN_DIR)/bank_sets sound/sound_banks sound/sequences.json $(SOUND_SEQUENCE_FILES) $(VERSION_CFLAGS) $$(cat $(ENDIAN_BITWIDTH))
 endif
 
 $(SOUND_BIN_DIR)/bank_sets: $(SOUND_BIN_DIR)/sequences.bin
@@ -1033,7 +1031,7 @@ $(BUILD_DIR)/%.o: %.s
 
 
 
-$(EXE): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(BUILD_DIR)/$(RPC_LIBS)
+$(EXE): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(if $(RPC_LIBS),$(BUILD_DIR)/$(RPC_LIBS),)
 	$(LD) -L $(BUILD_DIR) -o $@ $(O_FILES) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(LDFLAGS)
 
 .PHONY: all clean distclean default diff test load libultra res

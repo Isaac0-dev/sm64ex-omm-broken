@@ -1,90 +1,71 @@
 #if OMM_GAME_IS_SM74
-#if !defined(OMM_OPTIONS_MENU_INL)
-// File included from omm_options.c
 
 //
 // Warp to level (init)
 //
 
-typedef struct { s32 levelNum; s32 actNum; } ActValues;
-static OmmArray sOmmWarpActValues[OMM_SM74_MODE_COUNT] = { omm_array_zero, omm_array_zero };
+#define OMM_SM74_NUM_WARPABLE_LEVELS (omm_level_get_count() - 4)
+#define OMM_SM74_NUM_WARPABLE_ACTS   (15 * OMM_NUM_ACTS_MAX_PER_COURSE + (OMM_SM74_NUM_WARPABLE_LEVELS - 15))
 
-static const u8 **sOmmWarpLevelChoices[OMM_SM74_MODE_COUNT] = { NULL, NULL };
-static const u8 **sOmmWarpActChoices[OMM_SM74_MODE_COUNT] = { NULL, NULL };
+static struct {
+    u32 prevLevel, currLevel;
+    u32 prevMode, currMode;
+    u32 prevAct, currAct;
+} sOmmWarp[1];
 
-struct Option *sOmmWarpLevelOpt = NULL;
-struct Option *sOmmWarpActOpt = NULL;
-
-static u32 sOmmWarpLevelNum = 0;
-static u32 sOmmWarpModeIndex = 0;
-static u32 sOmmWarpActNum = 0;
-#define sOmmWarpAreaIndex sOmmWarpModeIndex
+#define currArea currMode
 
 static void omm_opt_init_warp_to_level() {
-    for (s32 modeIndex = OMM_SM74_MODE_NORMAL; modeIndex <= OMM_SM74_MODE_EXTREME; ++modeIndex) {
-        for (s32 i = 0; i != omm_level_get_count(); ++i) {
-            s32 levelNum = omm_level_get_list()[i];
-            s32 stars = max_s(0x1, omm_stars_get_bits_total(levelNum, modeIndex));
-            for (s32 j = 0; j != OMM_NUM_ACTS_MAX_PER_COURSE; ++j) {
-                if ((stars >> j) & 1) {
-                    ActValues *actValues = mem_new(ActValues, 1);
-                    actValues->levelNum = levelNum;
-                    actValues->actNum = j + 1;
-                    omm_array_add(sOmmWarpActValues[modeIndex], ptr, actValues);
-                }
-            }
-        }
-    }
-
-    sOmmWarpLevelChoices[OMM_SM74_MODE_NORMAL] = mem_new(u8 *, omm_level_get_count() * OMM_SM74_MODE_COUNT);
-    sOmmWarpLevelChoices[OMM_SM74_MODE_EXTREME] = sOmmWarpLevelChoices[OMM_SM74_MODE_NORMAL] + omm_level_get_count();
-    for (s32 modeIndex = OMM_SM74_MODE_NORMAL; modeIndex <= OMM_SM74_MODE_EXTREME; ++modeIndex) {
-        for (s32 i = 0; i != omm_level_get_count(); ++i) {
-            const u8 *name = omm_level_get_course_name(omm_level_get_list()[i], modeIndex, true, true);
-            sOmmWarpLevelChoices[modeIndex][i] = mem_dup(name, omm_text_length(name) + 1);
-        }
-    }
-
-    sOmmWarpActChoices[OMM_SM74_MODE_NORMAL] = mem_new(u8 *, omm_array_count(sOmmWarpActValues[OMM_SM74_MODE_NORMAL]) + omm_array_count(sOmmWarpActValues[OMM_SM74_MODE_EXTREME]));
-    sOmmWarpActChoices[OMM_SM74_MODE_EXTREME] = sOmmWarpActChoices[OMM_SM74_MODE_NORMAL] + omm_array_count(sOmmWarpActValues[OMM_SM74_MODE_NORMAL]);
-    for (s32 modeIndex = OMM_SM74_MODE_NORMAL; modeIndex <= OMM_SM74_MODE_EXTREME; ++modeIndex) {
-        omm_array_for_each(sOmmWarpActValues[modeIndex], p) {
-            ActValues *actValues = (ActValues *) p->as_ptr;
-            const u8 *name = omm_level_get_act_name(actValues->levelNum, actValues->actNum, modeIndex, true, true);
-            sOmmWarpActChoices[modeIndex][i_p] = mem_dup(name, omm_text_length(name) + 1);
-        }
-    }
 }
 
 static struct Option omm_opt_make_choice_level(const char *label, u32 *value) {
-    struct Option opt = { 0 };
+    struct Option opt = {0};
     opt.type = OPT_CHOICE;
-    opt.label = omm_text_convert(label, true);
+    opt.label = omm_opt_text(label);
     opt.uval = value;
-    opt.choices = (const u8 **) 1;
-    opt.numChoices = 0;
+    opt.numChoices = OMM_SM74_NUM_WARPABLE_LEVELS * OMM_NUM_SAVE_MODES;
+    const u8 **choices = opt.choices = mem_new(const u8 *, opt.numChoices);
+    for (s32 modeIndex = OMM_SM74_MODE_NORMAL; modeIndex <= OMM_SM74_MODE_EXTREME; ++modeIndex) {
+        for (s32 levelValue = 0; levelValue != OMM_SM74_NUM_WARPABLE_LEVELS; ++levelValue) {
+            s32 levelNum = omm_level_get_list()[levelValue];
+            ustr_t levelName;
+            omm_level_get_course_name(levelName, levelNum, modeIndex, true, true);
+            *(choices++) = mem_dup(levelName, omm_opt_text_length(levelName) + 1);
+        }
+    }
     return opt;
 }
 
 static struct Option omm_opt_make_choice_area(UNUSED const char *label, u32 *value) {
-    struct Option opt = { 0 };
+    struct Option opt = {0};
     opt.type = OPT_CHOICE;
-    opt.label = omm_text_convert(OMM_TEXT_SM74_OPT_WARP_EDITION, true);
+    opt.label = omm_opt_text(OMM_TEXT_SM74_OPT_WARP_EDITION);
     opt.uval = value;
-    opt.choices = mem_new(u8 *, OMM_SM74_MODE_COUNT);
-    opt.numChoices = 2;
-    opt.choices[OMM_SM74_MODE_NORMAL] = omm_text_convert(OMM_TEXT_SM74_OPT_WARP_NORMAL, true);
-    opt.choices[OMM_SM74_MODE_EXTREME] = omm_text_convert(OMM_TEXT_SM74_OPT_WARP_EXTREME, true);
+    opt.numChoices = OMM_NUM_SAVE_MODES;
+    opt.choices = mem_new(const u8 *, opt.numChoices);
+    opt.choices[OMM_SM74_MODE_NORMAL] = omm_opt_text(OMM_TEXT_SM74_OPT_WARP_NORMAL);
+    opt.choices[OMM_SM74_MODE_EXTREME] = omm_opt_text(OMM_TEXT_SM74_OPT_WARP_EXTREME);
     return opt;
 }
 
 static struct Option omm_opt_make_choice_act(const char *label, u32 *value) {
-    struct Option opt = { 0 };
+    struct Option opt = {0};
     opt.type = OPT_CHOICE;
-    opt.label = omm_text_convert(label, true);
+    opt.label = omm_opt_text(label);
     opt.uval = value;
-    opt.choices = (const u8 **) 2;
-    opt.numChoices = 0;
+    opt.numChoices = OMM_SM74_NUM_WARPABLE_ACTS * OMM_NUM_SAVE_MODES;
+    const u8 **choices = opt.choices = mem_new(const u8 *, opt.numChoices);
+    for (s32 modeIndex = OMM_SM74_MODE_NORMAL; modeIndex <= OMM_SM74_MODE_EXTREME; ++modeIndex) {
+        for (s32 levelValue = 0; levelValue != OMM_SM74_NUM_WARPABLE_LEVELS; ++levelValue) {
+            bool isMainCourse = (levelValue < 15);
+            s32 levelNum = omm_level_get_list()[levelValue];
+            for (s32 actIndex = 0; actIndex != (isMainCourse ? OMM_NUM_ACTS_MAX_PER_COURSE : 1); ++actIndex) {
+                ustr_t actName;
+                omm_level_get_act_name(actName, levelNum, (isMainCourse ? actIndex + 1 : -1), modeIndex, true, true);
+                *(choices++) = mem_dup(actName, omm_opt_text_length(actName) + 1);
+            }
+        }
+    }
     return opt;
 }
 
@@ -92,76 +73,86 @@ static struct Option omm_opt_make_choice_act(const char *label, u32 *value) {
 // Warp to level (update)
 //
 
-static u32 omm_opt_get_level_index(s32 levelNum) {
-    for (s32 i = 0; i != omm_level_get_count(); ++i) {
-        if (omm_level_get_list()[i] == levelNum) {
-            return i;
-        }
-    }
-    return 0;
+static u32 omm_opt_get_level_value(u32 levelValue, u32 modeValue) {
+    return (levelValue % OMM_SM74_NUM_WARPABLE_LEVELS) + modeValue * OMM_SM74_NUM_WARPABLE_LEVELS;
 }
 
-static u32 omm_opt_get_first_act_index(s32 levelNum) {
-    omm_array_for_each(sOmmWarpActValues[sOmmWarpModeIndex], p) {
-        ActValues *actValues = (ActValues *) p->as_ptr;
-        if (actValues->levelNum == levelNum) {
-            return i_p;
-        }
-    }
-    return 0;
+static u32 omm_opt_get_act_value(u32 actValue, u32 modeValue) {
+    return (actValue % OMM_SM74_NUM_WARPABLE_ACTS) + modeValue * OMM_SM74_NUM_WARPABLE_ACTS;
+}
+
+static u32 omm_opt_get_first_act_value(u32 levelValue, u32 modeValue) {
+    levelValue %= OMM_SM74_NUM_WARPABLE_LEVELS;
+    if (levelValue < 15) return levelValue * OMM_NUM_ACTS_MAX_PER_COURSE + modeValue * OMM_SM74_NUM_WARPABLE_ACTS;
+    return 15 * OMM_NUM_ACTS_MAX_PER_COURSE + (levelValue - 15) + modeValue * OMM_SM74_NUM_WARPABLE_ACTS;
+}
+
+static u32 omm_opt_get_level_value_from_act_value(u32 actValue, u32 modeValue) {
+    actValue %= OMM_SM74_NUM_WARPABLE_ACTS;
+    if (actValue >= 15 * OMM_NUM_ACTS_MAX_PER_COURSE) return omm_opt_get_level_value(15 + actValue - 15 * OMM_NUM_ACTS_MAX_PER_COURSE, modeValue);
+    return omm_opt_get_level_value(actValue / OMM_NUM_ACTS_MAX_PER_COURSE, modeValue);
+}
+
+static s32 omm_opt_get_level_num(u32 levelValue) {
+    return omm_level_get_list()[levelValue % OMM_SM74_NUM_WARPABLE_LEVELS];
+}
+
+static s32 omm_opt_get_act_num(u32 actValue) {
+    actValue %= OMM_SM74_NUM_WARPABLE_ACTS;
+    if (actValue >= 15 * OMM_NUM_ACTS_MAX_PER_COURSE) return 1;
+    return (actValue % OMM_NUM_ACTS_MAX_PER_COURSE) + 1;
 }
 
 static void omm_opt_update_warp_to_level() {
-    static u32 sOmmWarpLevelNumPrev = (u32) -1;
-    static u32 sOmmWarpModeIndexPrev = (u32) -1;
-    static u32 sOmmWarpActNumPrev = (u32) -1;
-    if (OMM_UNLIKELY(!sOmmWarpLevelOpt || !sOmmWarpActOpt)) {
-        return;
-    }
 
     // Mode changed
-    if (sOmmWarpModeIndexPrev != sOmmWarpModeIndex) {
-        s32 levelNum = omm_level_get_list()[sOmmWarpLevelNum];
-        sOmmWarpLevelOpt->choices = sOmmWarpLevelChoices[sOmmWarpModeIndex];
-        sOmmWarpLevelOpt->numChoices = omm_level_get_count();
-        sOmmWarpActOpt->choices = sOmmWarpActChoices[sOmmWarpModeIndex];
-        sOmmWarpActOpt->numChoices = omm_array_count(sOmmWarpActValues[sOmmWarpModeIndex]);
-        sOmmWarpActNum = omm_opt_get_first_act_index(levelNum);
+    if (sOmmWarp->prevMode != sOmmWarp->currMode) {
+        sOmmWarp->currLevel = omm_opt_get_level_value(sOmmWarp->currLevel, sOmmWarp->currMode);
+        sOmmWarp->currAct = omm_opt_get_act_value(sOmmWarp->currAct, sOmmWarp->currMode);
     }
 
     // Level changed
-    else if (sOmmWarpLevelNumPrev != sOmmWarpLevelNum) {
-        s32 levelNum = omm_level_get_list()[sOmmWarpLevelNum];
-        sOmmWarpActNum = omm_opt_get_first_act_index(levelNum);
+    else if (sOmmWarp->prevLevel != sOmmWarp->currLevel) {
+        sOmmWarp->currLevel = omm_opt_get_level_value(sOmmWarp->currLevel, sOmmWarp->currMode);
+        sOmmWarp->currAct = omm_opt_get_first_act_value(sOmmWarp->currLevel, sOmmWarp->currMode);
     }
 
     // Act changed
-    else if (sOmmWarpActNumPrev != sOmmWarpActNum) {
-        s32 levelNum = ((ActValues *) omm_array_get(sOmmWarpActValues[sOmmWarpModeIndex], ptr, sOmmWarpActNum))->levelNum;
-        sOmmWarpLevelNum = omm_opt_get_level_index(levelNum);
+    else if (sOmmWarp->prevAct != sOmmWarp->currAct) {
+        sOmmWarp->currAct = omm_opt_get_act_value(sOmmWarp->currAct, sOmmWarp->currMode);
+        sOmmWarp->currLevel = omm_opt_get_level_value_from_act_value(sOmmWarp->currAct, sOmmWarp->currMode);
     }
 
     // Update values
-    sOmmWarpLevelNumPrev = sOmmWarpLevelNum;
-    sOmmWarpModeIndexPrev = sOmmWarpModeIndex;
-    sOmmWarpActNumPrev = sOmmWarpActNum;
+    sOmmWarp->prevLevel = sOmmWarp->currLevel;
+    sOmmWarp->prevMode = sOmmWarp->currMode;
+    sOmmWarp->prevAct = sOmmWarp->currAct;
 }
 
-static void omm_opt_warp_to_level(UNUSED void *opt, s32 arg) {
+static void omm_opt_warp_to_level(UNUSED struct Option *opt, s32 arg) {
     if (!arg) {
-        s32 levelNum = omm_level_get_list()[sOmmWarpLevelNum];
-        s32 actNum = ((ActValues *) omm_array_get(sOmmWarpActValues[sOmmWarpModeIndex], ptr, sOmmWarpActNum))->actNum;
-        if (omm_is_main_menu() || !omm_warp_to_level(levelNum, sOmmWarpModeIndex + 1, actNum)) {
+        s32 levelNum = omm_opt_get_level_num(sOmmWarp->currLevel);
+        s32 actNum = omm_opt_get_act_num(sOmmWarp->currAct);
+        if (omm_is_main_menu() || !omm_warp_to_level(levelNum, sOmmWarp->currMode + 1, actNum)) {
             play_sound(SOUND_MENU_CAMERA_BUZZ | 0xFF00, gGlobalSoundArgs);
         }
     }
 }
 
-void omm_opt_sm74_change_mode(UNUSED void *opt, s32 arg) {
+static void omm_opt_warp_to_castle(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        s32 levelNum = omm_opt_get_level_num(sOmmWarp->currLevel);
+        if (omm_is_main_menu() || !omm_exit_level(levelNum, sOmmWarp->currMode + 1, true)) {
+            play_sound(SOUND_MENU_CAMERA_BUZZ | 0xFF00, gGlobalSoundArgs);
+        }
+    }
+}
+
+void omm_opt_sm74_change_mode(UNUSED struct Option *opt, s32 arg) {
     if (!arg) {
         if (!omm_is_main_menu()) {
             if (optmenu_open) optmenu_toggle();
-            gCurrAreaIndex = sWarpDest.areaIdx = 1 + ((OMM_GAME_MODE + 1) % OMM_SM74_MODE_COUNT);
+            gCurrAreaIndex = sWarpDest.areaIdx = 1 + ((OMM_GAME_MODE + 1) % OMM_NUM_SAVE_MODES);
             initiate_warp(gCurrLevelNum, gCurrAreaIndex, 0x0A, 0);
             fade_into_special_warp(0, 0);
             gSavedCourseNum = COURSE_NONE;
@@ -173,33 +164,4 @@ void omm_opt_sm74_change_mode(UNUSED void *opt, s32 arg) {
     }
 }
 
-#else
-// File included from omm_options_menu.inl
-
-extern struct Option *sOmmWarpLevelOpt;
-extern struct Option *sOmmWarpActOpt;
-
-static void omm_sm74_opt_locate_warp_to_level_options(struct SubMenu *subMenu) {
-    if (subMenu) {
-        for (s32 i = 0; i != subMenu->numOpts; ++i) {
-            struct Option *opt = &subMenu->opts[i];
-            if (opt->type == OPT_SUBMENU) {
-                omm_sm74_opt_locate_warp_to_level_options(opt->nextMenu);
-            } else if (opt->type == OPT_CHOICE) {
-                switch ((uintptr_t) opt->choices) {
-                    case 1: sOmmWarpLevelOpt = opt; break;
-                    case 2: sOmmWarpActOpt = opt; break;
-                }
-            }
-        }
-    }
-}
-
-OMM_ROUTINE_UPDATE(omm_sm74_opt_update) {
-    if (OMM_UNLIKELY(!sOmmWarpLevelOpt || !sOmmWarpActOpt)) {
-        omm_sm74_opt_locate_warp_to_level_options(&menuMain);
-    }
-}
-
-#endif
 #endif

@@ -2,6 +2,9 @@
 # Odyssey Mario's Moveset
 # -----------------------
 
+OMM_VERSION_NUMBER := 8.0.0
+OMM_DEVELOPER := PeachyPeach
+
 # ------
 # Source
 # ------
@@ -17,10 +20,12 @@ data/omm/cappy \
 data/omm/capture \
 data/omm/peachy \
 data/omm/level \
+data/omm/time_trials \
 data/omm/dev
 
 INC_DIRS := \
 -I data/omm/engine/headers \
+-I data/omm/engine/headers/actors \
 -I data/omm/engine/headers/include \
 -I data/omm/engine/headers/include/PR \
 -I data/omm/engine/headers/src \
@@ -30,83 +35,67 @@ INC_DIRS := \
 -I data/omm/engine/headers/src/menu \
 -I data/omm/engine/headers/src/pc
 
-# -------
-# Version
-# -------
-
-OMM_VERSION_NUMBER := 7.5.1
-OMM_VERSION_REVISION := 5
-OMM_DEVELOPER := PeachyPeach
-VERSION_CFLAGS += -DOMM_VERSION="$(OMM_VERSION_NUMBER)"
-VERSION_CFLAGS += -DOMM_REVISION="$(OMM_VERSION_REVISION)"
-VERSION_CFLAGS += -DOMM_DEVELOPER="$(OMM_DEVELOPER)"
-DEFINES += OMM_VERSION="$(OMM_VERSION_NUMBER)"
-DEFINES += OMM_REVISION="$(OMM_VERSION_REVISION)"
-DEFINES += OMM_DEVELOPER="$(OMM_DEVELOPER)"
+# ----
+# Game
+# ----
 
 # Super Mario 64 Moonshine
-ifeq      ($(or $(and $(wildcard actors/Bee/geo.inc.c),1),0),1)
-  VERSION_CFLAGS += -DSMMS
-  DEFINES += SMMS=1
-  OMM_VERSION_SUB := Super Mario 64 Moonshine
-  OMM_BUILD_CUSTOM_ASSETS := 0
+ifeq ($(or $(and $(wildcard actors/Bee/geo.inc.c),1),0),1)
+  OMM_GAME_NAME := Super Mario 64 Moonshine
+  OMM_GAME_CODE := smms
 
 # Super Mario Star Road
 else ifeq ($(or $(and $(wildcard levels/zerolife/script.c),1),0),1)
-  VERSION_CFLAGS += -DSMSR
-  DEFINES += SMSR=1
-  OMM_VERSION_SUB := Super Mario Star Road
-  OMM_BUILD_CUSTOM_ASSETS := 1
-	
+  OMM_GAME_NAME := Super Mario Star Road
+  OMM_GAME_CODE := smsr
+
 # Super Mario 64: The Green Stars
 else ifeq ($(or $(and $(wildcard data/smgs.data.custom.h),1),0),1)
-  VERSION_CFLAGS += -DSMGS
-  DEFINES += SMGS=1
-  OMM_VERSION_SUB := Super Mario 64: The Green Stars
-  OMM_BUILD_CUSTOM_ASSETS := 1
-	
+  OMM_GAME_NAME := Super Mario 64: The Green Stars
+  OMM_GAME_CODE := smgs
+
 # Super Mario 74
 else ifeq ($(or $(and $(wildcard text/us/coursesEE.h),1),0),1)
-  VERSION_CFLAGS += -DSM74
-  DEFINES += SM74=1
-  OMM_VERSION_SUB := Super Mario 74
-  OMM_BUILD_CUSTOM_ASSETS := 1
+  OMM_GAME_NAME := Super Mario 74
+  OMM_GAME_CODE := sm74
 
 # Render96ex
 else ifeq ($(or $(and $(wildcard data/r96/r96_defines.h),1),0),1)
-  VERSION_CFLAGS += -DR96X
-  DEFINES += R96X=1
-  OMM_VERSION_SUB := Render96
-  OMM_BUILD_CUSTOM_ASSETS := 1
-
-# sm64ex-alo (Refresh 15+)
-else ifeq ($(or $(and $(wildcard src/extras/bettercamera.h),1),0),1)
-  VERSION_CFLAGS += -DXALO
-  DEFINES += XALO=1
-  OMM_VERSION_SUB := Super Mario 64 ex-alo
-  OMM_BUILD_CUSTOM_ASSETS := 1
+  OMM_GAME_NAME := Render96
+  OMM_GAME_CODE := r96x
 
 # sm64ex-nightly
-else 
-  VERSION_CFLAGS += -DSMEX
-  DEFINES += SMEX=1
-  OMM_VERSION_SUB := Super Mario 64 ex-nightly
-  OMM_BUILD_CUSTOM_ASSETS := 1
+else
+  OMM_GAME_NAME := Super Mario 64
+  OMM_GAME_CODE := smex
 endif
 
-# --------------
-# Initialization
-# --------------
-
-OMM_INIT := \
-  mkdir -p $(BUILD_DIR)/$(BASEDIR); \
-  cp -rf omm/gfx $(BUILD_DIR)/$(BASEDIR) 2>/dev/null || true; \
-  cp -rf omm/sound $(BUILD_DIR)/$(BASEDIR) 2>/dev/null || true; \
-  echo 'ok'
-
-ifneq ($(shell $(call OMM_INIT)),ok)
-  $(error Could not initialize OMM before building. Aborting make..)
+TARGET := sm64.$(OMM_GAME_CODE)
+ifeq ($(WINDOWS_BUILD),1)
+  EXE := $(BUILD_DIR)/$(TARGET).exe
+else
+  EXE := $(BUILD_DIR)/$(TARGET)
 endif
+
+BASEPACK := base.$(OMM_GAME_CODE).zip
+OMM_GAME_BASEPACK_LST := $(BUILD_DIR)/$(BASEDIR)/basepack.lst
+OMM_GAME_BASEPACK_ZIP := $(BUILD_DIR)/$(BASEDIR)/$(BASEPACK)
+
+VERSION_CFLAGS += \
+  -DOMM_VERSION="\"$(OMM_VERSION_NUMBER)\"" \
+  -DOMM_DEVELOPER="\"$(OMM_DEVELOPER)\"" \
+  -DOMM_GAME_NAME="\"$(OMM_GAME_NAME)\"" \
+  -DOMM_GAME_CODE="\"$(OMM_GAME_CODE)\"" \
+  -D$(OMM_GAME_CODE) \
+  -DDYNOS_INL
+CUSTOM_C_DEFINES += \
+  -DOMM_VERSION="\"$(OMM_VERSION_NUMBER)\"" \
+  -DOMM_DEVELOPER="\"$(OMM_DEVELOPER)\"" \
+  -DOMM_GAME_NAME="\"$(OMM_GAME_NAME)\"" \
+  -DOMM_GAME_CODE="\"$(OMM_GAME_CODE)\"" \
+  -D$(OMM_GAME_CODE) \
+  -DDYNOS_INL
+BITS += -lz
 
 # -------
 # Defines
@@ -120,46 +109,88 @@ include omm_defines.mk
 
 ifeq ($(or $(and $(wildcard data/dynos.h),1),0),1)
   VERSION_CFLAGS += -DDYNOS
-  DEFINES += DYNOS=1
+  CUSTOM_C_DEFINES += -DDYNOS
 endif
 
 ifeq ($(or $(and $(wildcard src/game/mario_cheats.h),1),0),1)
   VERSION_CFLAGS += -DCHEATER
-  DEFINES += CHEATER=1
+  CUSTOM_C_DEFINES += -DCHEATER
 endif
 
 ifeq ($(or $(and $(wildcard src/game/time_trials.h),1),0),1)
   VERSION_CFLAGS += -DTIME_TRIALS
-  DEFINES += TIME_TRIALS=1
+  CUSTOM_C_DEFINES += -DTIME_TRIALS
 endif
 
-# ---------------
-# Builder/Patcher
-# ---------------
+# ------
+# Builds
+# ------
 
-ifeq ($(OMM_BUILDER),1)
-  CC := $(CROSS)gcc -w $(INC_DIRS)
-  CXX := $(CROSS)g++ -w $(INC_DIRS)
-else
-  ifneq ($(OMM_DEV),1)
-    OMM_PATCH := $(shell python3 omm_patcher.py -p)
-  endif
+ifneq ($(OMM_DEV),1)
+  OMM_PATCH != python3 omm_patcher.py -p
+endif
+
+ifeq ($(DEBUG),1)
   CC := $(CROSS)gcc $(INC_DIRS)
   CXX := $(CROSS)g++ $(INC_DIRS)
+else
+  CC := $(CROSS)gcc -w $(INC_DIRS)
+  CXX := $(CROSS)g++ -w $(INC_DIRS)
 endif
 
 # ---------
 # OMM rules
 # ---------
 
-all: OMM_VERSION OMM_EXE_MAP
+all: OMM_VERSION OMM_FIX_BANK_SETS_SIZE OMM_BASEPACK_ZIP
+
+basepack: OMM_BASEPACK_LST
 
 OMM_VERSION:
-	@printf -- \
-	"--------------------------------------------------------------------------------------------------------------------------------\n\
-	Odyssey Mario's Moveset v$(OMM_VERSION_NUMBER) by $(OMM_DEVELOPER) - $(OMM_VERSION_SUB) detected\n\
-	--------------------------------------------------------------------------------------------------------------------------------\n"
+	@printf -- "\
+	                                                          _                                                 \n\
+	   ____     _                          __    __          |_|     _        __    __                     _    \n\
+	  / __ \  _| |_  _______________  __   | \  / |____  _ __ _  __ |/ ____   | \  / | ____  _____ _______| |__ \n\
+	 / /  \ \/   \ \/ / __/ __/ _ \ \/ /   |  \/  |\__ \| '_/| |/  \  / __/   |  \/  |/  \ \/ / _ \ __/ _ \  _/ \n\
+	 \ \__/ / (] |\  /\__ \__ \ __/\  /    | \  / |/ _  | |  | | () | \__ \   | \  / | () \  /  __/__ \ __/ |__ \n\
+	  \____/ \___|/ / /___/___/___// /     |_|\/|_|\___/|_|  |_|\__/  /___/   |_|\/|_|\__/ \/ \___/___/___/___/ \n\
+	             /_/              /_/                                                                           \n\
+	\n\
+	            +----------------------------------------------------------------------------------+\n\
+	            | %-80s |\n\
+	            +----------------------------------------------------------------------------------+\n\n" \
+	"Odyssey Mario's Moveset v$(OMM_VERSION_NUMBER) by $(OMM_DEVELOPER) - $(OMM_GAME_NAME)"
 
-OMM_EXE_MAP: $(EXE)
-	@objdump -t $(EXE) > $(BUILD_DIR)/$(BASEDIR)/omm.map
-	@python3 omm_map.py
+ifneq ($(or $(and $(wildcard $(OMM_GAME_BASEPACK_LST)),1),0),1)
+
+$(OMM_GAME_BASEPACK_LST): $(EXE)
+	@echo "Preparing basepack..."
+	@mkdir -p $(BUILD_DIR)/$(BASEDIR)
+	@chmod 777 $(BUILD_DIR)/$(BASEDIR)
+	@echo "$(BUILD_DIR)/sound/bank_sets sound/bank_sets" > $@
+	@echo "$(BUILD_DIR)/sound/sequences.bin sound/sequences.bin" >> $@
+	@echo "$(BUILD_DIR)/sound/sound_data.ctl sound/sound_data.ctl" >> $@
+	@echo "$(BUILD_DIR)/sound/sound_data.tbl sound/sound_data.tbl" >> $@
+	@find actors -name \*.png -exec echo "{} gfx/{}" >> $@ \;
+	@find levels -name \*.png -exec echo "{} gfx/{}" >> $@ \;
+	@find textures -name \*.png -not -path "textures/skybox.custom/*" -not -path "textures/skybox_tiles/*" -exec echo "{} gfx/{}" >> $@ \;
+
+endif
+
+OMM_BASEPACK_ZIP: $(EXE) $(OMM_GAME_BASEPACK_LST)
+	@cp -f baserom.us.z64 $(BUILD_DIR)/baserom.us.z64
+	@objdump -t $(EXE) > $(BUILD_DIR)/$(BASEDIR)/omm.$(OMM_GAME_CODE).map
+	@python3 -u omm_map.py $(BUILD_DIR)/$(BASEDIR)/omm.$(OMM_GAME_CODE).map
+	@python3 -u omm_mkzip.py $(OMM_GAME_BASEPACK_LST) $(OMM_GAME_BASEPACK_ZIP) omm/basepack.lst $(BUILD_DIR)/$(BASEDIR)/omm.zip
+ifneq ($(DEBUG),1)
+	@rm -f $(OMM_GAME_BASEPACK_LST)
+	@ls $(BUILD_DIR) | grep -vE "^res$$|^sm64|^dynos$$|^baserom|\.dll$$" | awk '{print "$(BUILD_DIR)/"$$1}' | xargs rm -rf
+endif
+
+OMM_BASEPACK_LST:
+	@rm -f omm/basepack.lst
+	@find omm -name \*.\* -exec bash -c "echo \"{} {}\" | sed 's| omm/| |' -" > basepack.lst \;
+	@mv -f basepack.lst omm/basepack.lst
+
+OMM_FIX_BANK_SETS_SIZE: $(BUILD_DIR)/sound/bank_sets
+	@truncate --size='>256' $(BUILD_DIR)/sound/bank_sets

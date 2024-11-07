@@ -11,14 +11,16 @@ Gfx *geo_act_selector_strings(UNUSED s16 a, UNUSED struct GraphNode *b, UNUSED v
 // Data
 //
 
-struct Object *sOmmStarSelectStars[OMM_NUM_ACTS_MAX_PER_COURSE];
-Scroll sOmmStarSelectScrollV = { 0 };
-Scroll sOmmStarSelectScrollH = { 0 };
-f32 sOmmStarSelectCurrent = 0;
-s32 sOmmStarSelectTarget = 0;
-s32 sOmmStarSelectCourse = 0;
-s32 sOmmStarSelectTimer = 0;
-s32 sOmmStarSelectAlpha = 0;
+static struct {
+    struct Object *stars[OMM_NUM_ACTS_MAX_PER_COURSE];
+    Scroll scrollv;
+    Scroll scrollh;
+    f32 current;
+    s32 target;
+    s32 course;
+    s32 timer;
+    s32 alpha;
+} sOmmStarSelect[1];
 
 //
 // Render
@@ -40,10 +42,10 @@ static s32 omm_star_select_get_string_width(const u8 *str64, s32 glyphSize, s32 
 
 static void omm_star_select_render_background_rect(s32 x0, s32 y0, u8 r0, u8 g0, u8 b0, u8 a0, s32 x1, s32 y1, u8 r1, u8 g1, u8 b1, u8 a1, bool vrt) {
     Vtx *vtx = alloc_display_list(sizeof(Vtx) * 4);
-    vtx[0] = (Vtx) { { { x0, y0, 0 }, 0, { 0, 0 }, { r0, g0, b0, (a0              * sOmmStarSelectAlpha) / 0xFF } } };
-    vtx[1] = (Vtx) { { { x1, y0, 0 }, 0, { 0, 0 }, { r0, g0, b0, ((vrt ? a0 : a1) * sOmmStarSelectAlpha) / 0xFF } } };
-    vtx[2] = (Vtx) { { { x1, y1, 0 }, 0, { 0, 0 }, { r1, g1, b1, (a1              * sOmmStarSelectAlpha) / 0xFF } } };
-    vtx[3] = (Vtx) { { { x0, y1, 0 }, 0, { 0, 0 }, { r1, g1, b1, ((vrt ? a1 : a0) * sOmmStarSelectAlpha) / 0xFF } } };
+    vtx[0] = (Vtx) { { { x0, y0, 0 }, 0, { 0, 0 }, { r0, g0, b0, (a0              * sOmmStarSelect->alpha) / 0xFF } } };
+    vtx[1] = (Vtx) { { { x1, y0, 0 }, 0, { 0, 0 }, { r0, g0, b0, ((vrt ? a0 : a1) * sOmmStarSelect->alpha) / 0xFF } } };
+    vtx[2] = (Vtx) { { { x1, y1, 0 }, 0, { 0, 0 }, { r1, g1, b1, (a1              * sOmmStarSelect->alpha) / 0xFF } } };
+    vtx[3] = (Vtx) { { { x0, y1, 0 }, 0, { 0, 0 }, { r1, g1, b1, ((vrt ? a1 : a0) * sOmmStarSelect->alpha) / 0xFF } } };
     omm_render_create_dl_ortho_matrix();
     gSPClearGeometryMode(gDisplayListHead++, G_LIGHTING);
     gDPSetCombineLERP(gDisplayListHead++, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE);;
@@ -70,24 +72,24 @@ static void omm_star_select_render_string(const u8 *str64, s32 x, s32 y, s32 gly
         dy = ((dy * glyphSize) / 16);
         if (texture) {
             if (shadow) {
-            omm_render_glyph(x + dx + 3, y + dy - 3, glyphSize, glyphSize, 0x20, 0x20, 0x20, sOmmStarSelectAlpha / 2, texture, false);
+            omm_render_glyph(x + dx + 3, y + dy - 3, glyphSize, glyphSize, 0x20, 0x20, 0x20, sOmmStarSelect->alpha / 2, texture, false);
             }
             if (outline) {
-            omm_render_glyph(x + dx + 1, y + dy,     glyphSize, glyphSize, 0x00, 0x00, 0x00, sOmmStarSelectAlpha, texture, false);
-            omm_render_glyph(x + dx - 1, y + dy,     glyphSize, glyphSize, 0x00, 0x00, 0x00, sOmmStarSelectAlpha, texture, false);
-            omm_render_glyph(x + dx,     y + dy + 1, glyphSize, glyphSize, 0x00, 0x00, 0x00, sOmmStarSelectAlpha, texture, false);
-            omm_render_glyph(x + dx,     y + dy - 1, glyphSize, glyphSize, 0x00, 0x00, 0x00, sOmmStarSelectAlpha, texture, false);
+            omm_render_glyph(x + dx + 1, y + dy,     glyphSize, glyphSize, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, texture, false);
+            omm_render_glyph(x + dx - 1, y + dy,     glyphSize, glyphSize, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, texture, false);
+            omm_render_glyph(x + dx,     y + dy + 1, glyphSize, glyphSize, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, texture, false);
+            omm_render_glyph(x + dx,     y + dy - 1, glyphSize, glyphSize, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, texture, false);
             }
-            omm_render_glyph(x + dx,     y + dy,     glyphSize, glyphSize, 0xFF, 0xFF, 0xFF, sOmmStarSelectAlpha, texture, false);
+            omm_render_glyph(x + dx,     y + dy,     glyphSize, glyphSize, 0xFF, 0xFF, 0xFF, sOmmStarSelect->alpha, texture, false);
         }
         x += dw;
     }
 }
 
 static void omm_star_select_render() {
-    sOmmStarSelectAlpha = (clamp_s(sOmmStarSelectTimer, 0, 15) * 17);
-    u8 starFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
-    s32 selectedIndex = ((sOmmStarSelectTarget + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
+    sOmmStarSelect->alpha = (clamp_s(sOmmStarSelect->timer, 0, 15) * 17);
+    u8 starSaveFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
+    s32 selectedIndex = ((sOmmStarSelect->target + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
     u32 color = (OMM_GAME_IS_SMMS ? 0x00F000FF : (OMM_EXTRAS_COLORED_STARS ? omm_stars_get_color(gCurrLevelNum, OMM_GAME_MODE) : 0xFFFFFFFF));
     u8 r = (color >> 24) & 0xFF;
     u8 g = (color >> 16) & 0xFF;
@@ -100,7 +102,8 @@ static void omm_star_select_render() {
     omm_star_select_render_background_rect(GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(0), OMM_RENDER_STAR_SELECT_BACKGROUND_TOP_Y0, r / 2, g / 2, b / 2, 0xFF, GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(0), OMM_RENDER_STAR_SELECT_BACKGROUND_TOP_Y1, r, g, b, 0xFF, true);
 
     // Course name
-    const u8 *courseName = omm_level_get_course_name(gCurrLevelNum, OMM_GAME_MODE, false, false);
+    ustr_t courseName;
+    omm_level_get_course_name(courseName, gCurrLevelNum, OMM_GAME_MODE, false, false);
     s32 length = omm_text_length(courseName);
     s32 courseNum = omm_level_get_course(gCurrLevelNum);
     u8 buffer[64];
@@ -135,42 +138,43 @@ static void omm_star_select_render() {
     omm_star_select_render_string(actNumber, actNumberX, actNumberY, 16, 0, true, true);
 
     // Act name
-    u8 *actName = omm_level_get_act_name(gCurrLevelNum, selectedIndex + 1, OMM_GAME_MODE, false, false);
+    ustr_t actName;
+    omm_level_get_act_name(actName, gCurrLevelNum, selectedIndex + 1, OMM_GAME_MODE, false, false);
     s32 actNameX = (SCREEN_WIDTH - omm_render_get_string_width(actName)) / 2;
-    omm_render_string(actNameX - 1, OMM_RENDER_STAR_SELECT_ACT_NAME_Y,     0x00, 0x00, 0x00, sOmmStarSelectAlpha, actName, false);
-    omm_render_string(actNameX + 1, OMM_RENDER_STAR_SELECT_ACT_NAME_Y,     0x00, 0x00, 0x00, sOmmStarSelectAlpha, actName, false);
-    omm_render_string(actNameX,     OMM_RENDER_STAR_SELECT_ACT_NAME_Y - 1, 0x00, 0x00, 0x00, sOmmStarSelectAlpha, actName, false);
-    omm_render_string(actNameX,     OMM_RENDER_STAR_SELECT_ACT_NAME_Y + 1, 0x00, 0x00, 0x00, sOmmStarSelectAlpha, actName, false);
-    omm_render_string(actNameX,     OMM_RENDER_STAR_SELECT_ACT_NAME_Y,     0xFF, 0xFF, 0xFF, sOmmStarSelectAlpha, actName, false);
+    omm_render_string(actNameX - 1, OMM_RENDER_STAR_SELECT_ACT_NAME_Y,     0x00, 0x00, 0x00, sOmmStarSelect->alpha, actName, false);
+    omm_render_string(actNameX + 1, OMM_RENDER_STAR_SELECT_ACT_NAME_Y,     0x00, 0x00, 0x00, sOmmStarSelect->alpha, actName, false);
+    omm_render_string(actNameX,     OMM_RENDER_STAR_SELECT_ACT_NAME_Y - 1, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, actName, false);
+    omm_render_string(actNameX,     OMM_RENDER_STAR_SELECT_ACT_NAME_Y + 1, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, actName, false);
+    omm_render_string(actNameX,     OMM_RENDER_STAR_SELECT_ACT_NAME_Y,     0xFF, 0xFF, 0xFF, sOmmStarSelect->alpha, actName, false);
 
     // Score text
     u8 *scoreText = omm_text_convert(OMM_TEXT_MY_SCORE, false);
     s32 scoreTextX = (SCREEN_WIDTH / 2) - (omm_render_get_string_width(scoreText) + 11);
-    omm_render_string(scoreTextX - 1, OMM_RENDER_STAR_SELECT_SCORE_Y,     0x40, 0x40, 0x00, sOmmStarSelectAlpha, scoreText, false);
-    omm_render_string(scoreTextX + 1, OMM_RENDER_STAR_SELECT_SCORE_Y,     0x40, 0x40, 0x00, sOmmStarSelectAlpha, scoreText, false);
-    omm_render_string(scoreTextX,     OMM_RENDER_STAR_SELECT_SCORE_Y - 1, 0x40, 0x40, 0x00, sOmmStarSelectAlpha, scoreText, false);
-    omm_render_string(scoreTextX,     OMM_RENDER_STAR_SELECT_SCORE_Y + 1, 0x40, 0x40, 0x00, sOmmStarSelectAlpha, scoreText, false);
-    omm_render_string(scoreTextX,     OMM_RENDER_STAR_SELECT_SCORE_Y,     0xFF, 0xFF, 0x00, sOmmStarSelectAlpha, scoreText, false);
+    omm_render_string(scoreTextX - 1, OMM_RENDER_STAR_SELECT_SCORE_Y,     0x40, 0x40, 0x00, sOmmStarSelect->alpha, scoreText, false);
+    omm_render_string(scoreTextX + 1, OMM_RENDER_STAR_SELECT_SCORE_Y,     0x40, 0x40, 0x00, sOmmStarSelect->alpha, scoreText, false);
+    omm_render_string(scoreTextX,     OMM_RENDER_STAR_SELECT_SCORE_Y - 1, 0x40, 0x40, 0x00, sOmmStarSelect->alpha, scoreText, false);
+    omm_render_string(scoreTextX,     OMM_RENDER_STAR_SELECT_SCORE_Y + 1, 0x40, 0x40, 0x00, sOmmStarSelect->alpha, scoreText, false);
+    omm_render_string(scoreTextX,     OMM_RENDER_STAR_SELECT_SCORE_Y,     0xFF, 0xFF, 0x00, sOmmStarSelect->alpha, scoreText, false);
 
     // Coin score
     s32 scoreCoins = omm_save_file_get_course_coin_score(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
     s32 scoreCoinsX = (SCREEN_WIDTH / 2) - 7;
-    omm_render_hud_coins(scoreCoinsX, OMM_RENDER_STAR_SELECT_SCORE_Y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sOmmStarSelectAlpha, scoreCoins, false);
+    omm_render_hud_coins(scoreCoinsX, OMM_RENDER_STAR_SELECT_SCORE_Y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sOmmStarSelect->alpha, scoreCoins);
 
     // 100 coins star
-    if (starFlags & 0x40) {
+    if (starSaveFlags & 0x40) {
         s32 coinsStarX = OMM_RENDER_STAR_SELECT_100_COINS_STAR_X;
         s32 coinsStarY = OMM_RENDER_STAR_SELECT_SCORE_Y - ((OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE - 8) / 2) + 1;
-        const void *coinsStarTex = omm_render_get_star_glyph(clamp_s(gCurrCourseNum, 0, 16), OMM_EXTRAS_COLORED_STARS);
-        omm_render_glyph(coinsStarX + 1, coinsStarY,     OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelectAlpha, coinsStarTex, false);
-        omm_render_glyph(coinsStarX - 1, coinsStarY,     OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelectAlpha, coinsStarTex, false);
-        omm_render_glyph(coinsStarX,     coinsStarY + 1, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelectAlpha, coinsStarTex, false);
-        omm_render_glyph(coinsStarX,     coinsStarY - 1, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelectAlpha, coinsStarTex, false);
-        omm_render_glyph(coinsStarX,     coinsStarY,     OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0xFF, 0xFF, 0xFF, sOmmStarSelectAlpha, coinsStarTex, false);
+        const void *coinsStarTex = omm_render_get_star_glyph(clamp_s(gCurrCourseNum, 0, 16), OMM_EXTRAS_COLORED_STARS, true);
+        omm_render_glyph(coinsStarX + 1, coinsStarY,     OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, coinsStarTex, false);
+        omm_render_glyph(coinsStarX - 1, coinsStarY,     OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, coinsStarTex, false);
+        omm_render_glyph(coinsStarX,     coinsStarY + 1, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, coinsStarTex, false);
+        omm_render_glyph(coinsStarX,     coinsStarY - 1, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, coinsStarTex, false);
+        omm_render_glyph(coinsStarX,     coinsStarY,     OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0xFF, 0xFF, 0xFF, sOmmStarSelect->alpha, coinsStarTex, false);
     }
 
     // Time trials star time
-    time_trials_render_star_select_time(selectedIndex);
+    time_trials_render_star_select_time(selectedIndex, sOmmStarSelect->alpha);
 }
 
 //
@@ -189,15 +193,9 @@ static s32 omm_level_star_select_should_skip(UNUSED s32 arg, s32 levelNum) {
 #if !OMM_GAME_IS_SM74
         gCurrAreaIndex = 1;
 #endif
-        gDialogCourseActNum = gCurrActNum;
 
         // Reset the coin counter and star flags unless Mario enters a Bowser fight or returns to the Castle
-        if (levelNum != LEVEL_BOWSER_1 &&
-            levelNum != LEVEL_BOWSER_2 &&
-            levelNum != LEVEL_BOWSER_3 &&
-            levelNum != LEVEL_CASTLE   &&
-            levelNum != LEVEL_GROUNDS  &&
-            levelNum != LEVEL_COURT) {
+        if (!OMM_LEVEL_IS_BOWSER_FIGHT(levelNum) && !OMM_LEVEL_IS_CASTLE_LEVEL(levelNum)) {
             gMarioState->numCoins = 0;
             gHudDisplay.coins = 0;
             gCurrCourseStarFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
@@ -209,13 +207,13 @@ static s32 omm_level_star_select_should_skip(UNUSED s32 arg, s32 levelNum) {
 
 static s32 omm_level_star_select_init(UNUSED s32 arg, UNUSED s32 unused) {
     gCurrAreaIndex = sWarpDest.areaIdx;
-    u8 starFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
-    sOmmStarSelectTimer = 0;
-    sOmmStarSelectCourse = gCurrCourseNum - COURSE_MIN;
-    sOmmStarSelectCurrent = 0;
-    while ((sOmmStarSelectCurrent < OMM_NUM_ACTS_MAX_PER_COURSE) && (starFlags & (1 << ((s32) (sOmmStarSelectCurrent))))) sOmmStarSelectCurrent += 1;
-    sOmmStarSelectCurrent = (((s32) sOmmStarSelectCurrent) % OMM_NUM_ACTS_MAX_PER_COURSE);
-    sOmmStarSelectTarget = sOmmStarSelectCurrent;
+    u8 starSaveFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
+    sOmmStarSelect->timer = 0;
+    sOmmStarSelect->course = gCurrCourseNum - COURSE_MIN;
+    sOmmStarSelect->current = 0;
+    while ((sOmmStarSelect->current < OMM_NUM_ACTS_MAX_PER_COURSE) && (starSaveFlags & (1 << ((s32) (sOmmStarSelect->current))))) sOmmStarSelect->current += 1;
+    sOmmStarSelect->current = (((s32) sOmmStarSelect->current) % OMM_NUM_ACTS_MAX_PER_COURSE);
+    sOmmStarSelect->target = sOmmStarSelect->current;
     area_update_objects();
     return 0;
 }
@@ -223,7 +221,7 @@ static s32 omm_level_star_select_init(UNUSED s32 arg, UNUSED s32 unused) {
 static s32 omm_level_star_select_init_objects(UNUSED s32 arg, UNUSED s32 unused) {
     s32 i = 0;
     for_each_object_with_behavior(obj, bhvOmmActSelectStar) {
-        sOmmStarSelectStars[i++] = obj;
+        sOmmStarSelect->stars[i++] = obj;
     }
 #if OMM_GAME_IS_R96X
     r96_play_menu_jingle(R96_EVENT_STAR_SELECT, 1.0, 1.0, 1500);
@@ -234,36 +232,36 @@ static s32 omm_level_star_select_init_objects(UNUSED s32 arg, UNUSED s32 unused)
 static s32 omm_level_star_select_update(UNUSED s32 arg, UNUSED s32 unused) {
 
     // Update stars
-    u8 starFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
-    s32 selectedIndex = ((((s32) (sOmmStarSelectCurrent < 0.f ? (sOmmStarSelectCurrent - 0.5f) : (sOmmStarSelectCurrent + 0.5f))) + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
+    u8 starSaveFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
+    s32 selectedIndex = ((((s32) (sOmmStarSelect->current < 0.f ? (sOmmStarSelect->current - 0.5f) : (sOmmStarSelect->current + 0.5f))) + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
     for (s32 i = 0; i != OMM_NUM_ACTS_MAX_PER_COURSE; ++i) {
-        f32 delta = invlerp_0_1_f(sOmmStarSelectTimer, 0, 15);
-        f32 angle = ((f32) i - sOmmStarSelectCurrent) / OMM_NUM_ACTS_MAX_PER_COURSE;
-        sOmmStarSelectStars[i]->oPosX = OMM_RENDER_STAR_SELECT_ACT_STAR_X + delta * OMM_RENDER_STAR_SELECT_ACT_STAR_DX * sins((angle - (1.f - delta) / 2.f) * 0x10000);
-        sOmmStarSelectStars[i]->oPosY = OMM_RENDER_STAR_SELECT_ACT_STAR_Y;
-        sOmmStarSelectStars[i]->oPosZ = OMM_RENDER_STAR_SELECT_ACT_STAR_Z + delta * OMM_RENDER_STAR_SELECT_ACT_STAR_DZ * coss((angle - (1.f - delta) / 2.f) * 0x10000);
-        sOmmStarSelectStars[i]->oScaleX = delta;
-        sOmmStarSelectStars[i]->oScaleY = delta;
-        sOmmStarSelectStars[i]->oScaleZ = delta;
-        sOmmStarSelectStars[i]->oGraphNode = gLoadedGraphNodes[((starFlags & (1 << i)) ? MODEL_STAR : MODEL_TRANSPARENT_STAR)];
-        sOmmStarSelectStars[i]->oFaceAngleYaw = (sOmmStarSelectStars[i]->oFaceAngleYaw + 0x800) * (i == selectedIndex);
+        f32 delta = invlerp_0_1_f(sOmmStarSelect->timer, 0, 15);
+        f32 angle = ((f32) i - sOmmStarSelect->current) / OMM_NUM_ACTS_MAX_PER_COURSE;
+        sOmmStarSelect->stars[i]->oPosX = OMM_RENDER_STAR_SELECT_ACT_STAR_X + delta * OMM_RENDER_STAR_SELECT_ACT_STAR_DX * sins((angle - (1.f - delta) / 2.f) * 0x10000);
+        sOmmStarSelect->stars[i]->oPosY = OMM_RENDER_STAR_SELECT_ACT_STAR_Y;
+        sOmmStarSelect->stars[i]->oPosZ = OMM_RENDER_STAR_SELECT_ACT_STAR_Z + delta * OMM_RENDER_STAR_SELECT_ACT_STAR_DZ * coss((angle - (1.f - delta) / 2.f) * 0x10000);
+        sOmmStarSelect->stars[i]->oScaleX = delta;
+        sOmmStarSelect->stars[i]->oScaleY = delta;
+        sOmmStarSelect->stars[i]->oScaleZ = delta;
+        sOmmStarSelect->stars[i]->oGraphNode = geo_layout_to_graph_node(NULL, (starSaveFlags & (1 << i)) != 0 ? star_geo : transparent_star_geo);
+        sOmmStarSelect->stars[i]->oFaceAngleYaw = (sOmmStarSelect->stars[i]->oFaceAngleYaw + 0x800) * (i == selectedIndex);
     }
 
     // Up-down scroll to change the course
     // A course is available only if at least 1 star has been collected
     // The course that showed up first is always available
-    sOmmStarSelectScrollV.idx = gCurrCourseNum - COURSE_MIN;
-    omm_render_update_scroll(&sOmmStarSelectScrollV, COURSE_STAGES_COUNT, -gPlayer1Controller->stickY);
-    while (sOmmStarSelectScrollV.inc != 0) {
-        s32 nextCourseIndex = (((gCurrCourseNum - COURSE_MIN) + sOmmStarSelectScrollV.inc + COURSE_STAGES_COUNT) % COURSE_STAGES_COUNT);
-        if (nextCourseIndex == sOmmStarSelectCourse || (omm_save_file_get_course_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE, nextCourseIndex) != 0)) {
-            gCurrLevelNum = omm_level_get_list()[nextCourseIndex];
+    sOmmStarSelect->scrollv.idx = gCurrCourseNum - COURSE_MIN;
+    omm_render_update_scroll(&sOmmStarSelect->scrollv, COURSE_STAGES_COUNT, -gPlayer1Controller->stickY);
+    while (sOmmStarSelect->scrollv.inc != 0) {
+        s32 nextCourseIndex = (((gCurrCourseNum - COURSE_MIN) + sOmmStarSelect->scrollv.inc + COURSE_STAGES_COUNT) % COURSE_STAGES_COUNT);
+        if (nextCourseIndex == sOmmStarSelect->course || (omm_save_file_get_course_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE, nextCourseIndex) != 0)) {
+            gCurrLevelNum = omm_level_from_course(nextCourseIndex + COURSE_MIN);
             gCurrCourseNum = omm_level_get_course(gCurrLevelNum);
             gSavedCourseNum = gCurrCourseNum;
             sWarpDest.levelNum = gCurrLevelNum;
             sWarpDest.areaIdx = OMM_GAME_MODE + 1;
             sWarpDest.nodeId = OMM_LEVEL_ENTRY_WARP(gCurrLevelNum);
-            starFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
+            starSaveFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
             break;
         }
         gCurrCourseNum = nextCourseIndex + COURSE_MIN;
@@ -272,34 +270,33 @@ static s32 omm_level_star_select_update(UNUSED s32 arg, UNUSED s32 unused) {
     // Left-right scroll to change the act
     // An act is available only if its star or the star of the previous act has been collected
     // The first act is always available
-    s32 targetIndex = ((sOmmStarSelectTarget + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
-    if (targetIndex != 0 && !(starFlags & (1 << targetIndex)) && !(starFlags & (1 << (targetIndex - 1)))) {
-        sOmmStarSelectScrollH.inc = -1;
+    s32 targetIndex = ((sOmmStarSelect->target + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
+    if (targetIndex != 0 && !(starSaveFlags & (1 << targetIndex)) && !(starSaveFlags & (1 << (targetIndex - 1)))) {
+        sOmmStarSelect->scrollh.inc = -1;
     } else {
-        sOmmStarSelectScrollH.idx = ((sOmmStarSelectTarget + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
-        omm_render_update_scroll(&sOmmStarSelectScrollH, OMM_NUM_ACTS_MAX_PER_COURSE, +gPlayer1Controller->stickX);
+        sOmmStarSelect->scrollh.idx = ((sOmmStarSelect->target + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
+        omm_render_update_scroll(&sOmmStarSelect->scrollh, OMM_NUM_ACTS_MAX_PER_COURSE, +gPlayer1Controller->stickX);
     }
-    while (sOmmStarSelectScrollH.inc != 0) {
-        sOmmStarSelectTarget += sOmmStarSelectScrollH.inc;
-        s32 nextTargetIndex = ((sOmmStarSelectTarget + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
-        if (nextTargetIndex == 0 || (starFlags & (1 << nextTargetIndex)) || (starFlags & (1 << (nextTargetIndex - 1)))) {
+    while (sOmmStarSelect->scrollh.inc != 0) {
+        sOmmStarSelect->target += sOmmStarSelect->scrollh.inc;
+        s32 nextTargetIndex = ((sOmmStarSelect->target + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
+        if (nextTargetIndex == 0 || (starSaveFlags & (1 << nextTargetIndex)) || (starSaveFlags & (1 << (nextTargetIndex - 1)))) {
             break;
         }
     }
 
     // Move smoothly the star selector
-    f32 delta = clamp_f(sOmmStarSelectTarget - sOmmStarSelectCurrent, -1.f, +1.f) / 4.f;
-    sOmmStarSelectCurrent += delta;
-    if (abs_f(sOmmStarSelectTarget - sOmmStarSelectCurrent) < 0.01f) { sOmmStarSelectCurrent = sOmmStarSelectTarget; }
-    while (sOmmStarSelectTarget <= -OMM_NUM_ACTS_MAX_PER_COURSE) { sOmmStarSelectTarget += OMM_NUM_ACTS_MAX_PER_COURSE; sOmmStarSelectCurrent += OMM_NUM_ACTS_MAX_PER_COURSE; }
-    while (sOmmStarSelectTarget >= +OMM_NUM_ACTS_MAX_PER_COURSE) { sOmmStarSelectTarget -= OMM_NUM_ACTS_MAX_PER_COURSE; sOmmStarSelectCurrent -= OMM_NUM_ACTS_MAX_PER_COURSE; }
-    while (abs_f(sOmmStarSelectTarget - sOmmStarSelectCurrent) >= OMM_NUM_ACTS_MAX_PER_COURSE) { sOmmStarSelectCurrent += OMM_NUM_ACTS_MAX_PER_COURSE * sign_f(sOmmStarSelectTarget - sOmmStarSelectCurrent); }
+    f32 delta = clamp_f(sOmmStarSelect->target - sOmmStarSelect->current, -1.f, +1.f) / 4.f;
+    sOmmStarSelect->current += delta;
+    if (abs_f(sOmmStarSelect->target - sOmmStarSelect->current) < 0.01f) { sOmmStarSelect->current = sOmmStarSelect->target; }
+    while (sOmmStarSelect->target <= -OMM_NUM_ACTS_MAX_PER_COURSE) { sOmmStarSelect->target += OMM_NUM_ACTS_MAX_PER_COURSE; sOmmStarSelect->current += OMM_NUM_ACTS_MAX_PER_COURSE; }
+    while (sOmmStarSelect->target >= +OMM_NUM_ACTS_MAX_PER_COURSE) { sOmmStarSelect->target -= OMM_NUM_ACTS_MAX_PER_COURSE; sOmmStarSelect->current -= OMM_NUM_ACTS_MAX_PER_COURSE; }
+    while (abs_f(sOmmStarSelect->target - sOmmStarSelect->current) >= OMM_NUM_ACTS_MAX_PER_COURSE) { sOmmStarSelect->current += OMM_NUM_ACTS_MAX_PER_COURSE * sign_f(sOmmStarSelect->target - sOmmStarSelect->current); }
 
     // Press A, B or Start to select the act
-    if ((sOmmStarSelectTimer++ >= 15) && (gPlayer1Controller->buttonPressed & (A_BUTTON | B_BUTTON | START_BUTTON))) {
+    if ((sOmmStarSelect->timer++ >= 15) && (gPlayer1Controller->buttonPressed & (A_BUTTON | B_BUTTON | START_BUTTON))) {
         play_sound(SOUND_MENU_STAR_SOUND_LETS_A_GO, gGlobalSoundArgs);
-        s32 selectedIndex = ((sOmmStarSelectTarget + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
-        gDialogCourseActNum = selectedIndex + 1;
+        s32 selectedIndex = ((sOmmStarSelect->target + OMM_NUM_ACTS_MAX_PER_COURSE) % OMM_NUM_ACTS_MAX_PER_COURSE);
         return selectedIndex + 1;
     }
 

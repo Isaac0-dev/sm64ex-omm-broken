@@ -1,9 +1,9 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
-#define OMM_RING_SCALE 1.00f
-#define oRingDot0 OBJECT_FIELD_F32(0x1B)
-#define oRingDot1 OBJECT_FIELD_F32(0x1C)
+#include "behavior_commands.h"
+
+#define OMM_RING_SCALE (1.00f)
 
 //
 // Gfx
@@ -244,8 +244,8 @@ static void bhv_omm_star_ring_update() {
         case 0: {
             o->oWaterRingMarioDistInFront = 0.f;
             o->oBehParams2ndByte = obj_get_count_with_behavior(bhvOmmStarRing);
-            o->oRingDot0 = 0.f;
-            o->oRingDot1 = 0.f;
+            o->oStarRingDot0 = 0.f;
+            o->oStarRingDot1 = 0.f;
             o->oAction = 1;
         } break;
 
@@ -264,13 +264,13 @@ static void bhv_omm_star_ring_update() {
             // Horizontal ring, infinite vertical cylinder
             if (o->oFaceAnglePitch != 0) {
                 if (vec3f_hdist(m->pos, &o->oPosX) < 120.f * o->oScaleX) {
-                    collected |= (o->oRingDot0 * dy0) < 0.f;
-                    collected |= (o->oRingDot1 * dy1) < 0.f;
-                    o->oRingDot0 = dy0;
-                    o->oRingDot1 = dy1;
+                    collected |= (o->oStarRingDot0 * dy0) < 0.f;
+                    collected |= (o->oStarRingDot1 * dy1) < 0.f;
+                    o->oStarRingDot0 = dy0;
+                    o->oStarRingDot1 = dy1;
                 } else {
-                    o->oRingDot0 = 0.f;
-                    o->oRingDot1 = 0.f;
+                    o->oStarRingDot0 = 0.f;
+                    o->oStarRingDot1 = 0.f;
                 }
             }
             
@@ -285,21 +285,24 @@ static void bhv_omm_star_ring_update() {
                     vec3f_length(p1) < 120.f * o->oScaleX) {
                     f32 dot0 = vec3f_dot(n, d0);
                     f32 dot1 = vec3f_dot(n, d1);
-                    collected |= (o->oRingDot0 * dot0) < 0.f;
-                    collected |= (o->oRingDot1 * dot1) < 0.f;
-                    o->oRingDot0 = dot0;
-                    o->oRingDot1 = dot1;
+                    collected |= (o->oStarRingDot0 * dot0) < 0.f;
+                    collected |= (o->oStarRingDot1 * dot1) < 0.f;
+                    o->oStarRingDot0 = dot0;
+                    o->oStarRingDot1 = dot1;
                 } else {
-                    o->oRingDot0 = 0.f;
-                    o->oRingDot1 = 0.f;
+                    o->oStarRingDot0 = 0.f;
+                    o->oStarRingDot1 = 0.f;
                 }
             }
 
             // Collected?
             if (collected) {
-                s32 number = 1 + o->oBehParams2ndByte - obj_get_count_with_behavior_and_field_s32(bhvOmmStarRing, 0x31, 1);
-                omm_spawn_orange_number(o, number);
-                play_sound(SOUND_MENU_COLLECT_SECRET + (max_s(0, 4 + number - o->oBehParams2ndByte) << 16), gGlobalSoundArgs);
+                s32 number = 1 + o->oBehParams2ndByte - obj_get_count_with_behavior_and_field_s32(bhvOmmStarRing, _FIELD(oAction), 1);
+                omm_obj_spawn_orange_number(m->marioObj,
+                    number, 80,
+                    SOUND_MENU_COLLECT_SECRET, max_s(0, 4 + number - o->oBehParams2ndByte),
+                    omm_geo_number
+                );
                 o->oAction = 2;
             }
         } break;
@@ -318,19 +321,19 @@ static void bhv_omm_star_ring_update() {
 
 const BehaviorScript bhvOmmStarRing[] = {
     OBJ_TYPE_LEVEL,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_star_ring_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_star_ring_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_star_ring(struct Object *o, f32 x, f32 y, f32 z, bool vertical, s32 yaw) {
+struct Object *omm_obj_spawn_star_ring(struct Object *o, f32 x, f32 y, f32 z, bool vertical, s32 yaw) {
     struct Object *ring = obj_spawn_from_geo(o, omm_geo_star_ring, bhvOmmStarRing);
-    obj_set_pos(ring, x, y, z);
+    obj_set_xyz(ring, x, y, z);
     obj_set_angle(ring, vertical ? 0 : 0x4000, vertical ? yaw : 0, 0);
     obj_scale(ring, 0);
     ring->oOpacity = 0;

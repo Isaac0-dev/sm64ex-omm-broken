@@ -3,12 +3,12 @@
 #undef OMM_ALL_HEADERS
 
 static void omm_cappy_flaming_bobomb_explode(struct Object *o, bool deleteObj) {
-    omm_spawn_flaming_bobomb_explosion(o);
+    omm_obj_spawn_flaming_bobomb_explosion(o);
 
     // Final boom
     if (deleteObj) {
         obj_drop_to_floor(o);
-        omm_spawn_shockwave_fire(o, 100, 80, 120, 40, 5000, OMM_TEXTURE_BOWSER_FIRE_BLUE_1, OMM_TEXTURE_BOWSER_FIRE_BLUE_2);
+        omm_obj_spawn_bowser_shockwave_fire(o, 100, 80, 120, 40, 5000, OMM_TEXTURE_BOWSER_FIRE_BLUE_1, OMM_TEXTURE_BOWSER_FIRE_BLUE_2);
         obj_mark_for_deletion(o->oFlamingBobombAura);
         obj_mark_for_deletion(o);
     }
@@ -26,12 +26,11 @@ static void omm_cappy_flaming_bobomb_explode(struct Object *o, bool deleteObj) {
 
 bool omm_cappy_flaming_bobomb_init(struct Object* o) {
     if (o->oAction != 1 &&
-        o->oAction != 3) {
+        o->oAction != 3 &&
+        o->oAction != 5) {
         return false;
     }
 
-    gOmmObject->state.actionTimer = 0;
-    gOmmObject->state.actionState = 0;
     gOmmObject->flaming_bobomb.interactedTimer = 0;
     gOmmObject->flaming_bobomb.interactedFire = false;
     gOmmObject->flaming_bobomb.captureDuringAscent = (o->oAction == 1);
@@ -42,8 +41,12 @@ void omm_cappy_flaming_bobomb_end(struct Object *o) {
     omm_cappy_flaming_bobomb_explode(o, true);
 }
 
+u64 omm_cappy_flaming_bobomb_get_type(UNUSED struct Object *o) {
+    return OMM_CAPTURE_FLAMING_BOBOMB;
+}
+
 f32 omm_cappy_flaming_bobomb_get_top(struct Object *o) {
-    return 94.f * o->oScaleY;
+    return omm_capture_get_hitbox_height(o);
 }
 
 //
@@ -58,16 +61,15 @@ s32 omm_cappy_flaming_bobomb_update(struct Object *o) {
     o->oScaleZ = 1.2f;
     o->hitboxRadius = omm_capture_get_hitbox_radius(o);
     o->hitboxHeight = omm_capture_get_hitbox_height(o);
-    o->hitboxDownOffset = omm_capture_get_hitbox_down_offset(o);
     o->oWallHitboxRadius = omm_capture_get_wall_hitbox_radius(o);
 
     // Properties
     POBJ_SET_ABOVE_WATER;
 
     // Inputs
-    if (!omm_mario_is_locked(gMarioState)) {
+    if (pobj_process_inputs(o)) {
         pobj_move(o, false, false, false);
-        pobj_jump(o, 0, 1);
+        pobj_jump(o, 1);
 
         // Explosion
         if (POBJ_B_BUTTON_PRESSED && (gOmmObject->state.actionTimer == 0)) {
@@ -76,7 +78,7 @@ s32 omm_cappy_flaming_bobomb_update(struct Object *o) {
 
             // Five charges
             if (gOmmObject->state.actionState == 5) {
-                omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, false, 0);
+                omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, 0);
             } else {
                 omm_cappy_flaming_bobomb_explode(o, false);
             }
@@ -88,7 +90,7 @@ s32 omm_cappy_flaming_bobomb_update(struct Object *o) {
 
     // Movement
     perform_object_step(o, POBJ_STEP_FLAGS);
-    pobj_decelerate(o, 0.80f, 0.95f);
+    pobj_decelerate(o);
     pobj_apply_gravity(o, 1.f);
     pobj_handle_special_floors(o);
     pobj_stop_if_unpossessed();
@@ -114,11 +116,22 @@ s32 omm_cappy_flaming_bobomb_update(struct Object *o) {
         obj->oInteractStatus |= INT_STATUS_INTERACTED;
 
         // Gfx/Sfx
-        omm_spawn_flaming_bobomb_explosion(o);
+        omm_obj_spawn_flaming_bobomb_explosion(o);
     }
 
     );
     pobj_stop_if_unpossessed();
+
+    // Animation, sound and particles
+    obj_anim_play(o, 0, max_f(1.f, (o->oVelY <= 0.f) * POBJ_ABS_FORWARD_VEL * 2.f / pobj_get_walk_speed(o)));
+
+    // OK
+    gOmmObject->flaming_bobomb.interactedTimer = max_s(0, gOmmObject->flaming_bobomb.interactedTimer - 1);
+    pobj_return_ok;
+}
+
+void omm_cappy_flaming_bobomb_update_gfx(struct Object *o) {
+    bool damaged = gOmmObject->flaming_bobomb.interactedTimer != 0;
 
     // Gfx
     o->oFaceAnglePitch = 0;
@@ -127,9 +140,8 @@ s32 omm_cappy_flaming_bobomb_update(struct Object *o) {
     o->oMoveAngleRoll = 0;
     o->oGraphYOffset = 0;
     obj_update_gfx(o);
-    obj_anim_play(o, 0, (o->oVelY <= 0.f) * max_f(1.f, o->oForwardVel * (2.f / (omm_capture_get_walk_speed(o)))));
     obj_random_blink(o, &o->oBobombBlinkTimer);
-    if (gOmmObject->flaming_bobomb.interactedTimer & 1) {
+    if (damaged && (gGlobalTimer & 1)) {
         o->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
     } else {
         o->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
@@ -140,7 +152,7 @@ s32 omm_cappy_flaming_bobomb_update(struct Object *o) {
     vec3f_copy(&o->oFlamingBobombAura->oScaleX, &o->oScaleX);
     vec3f_mul(&o->oFlamingBobombAura->oScaleX, 6.f);
     o->oFlamingBobombAura->oGraphYOffset = o->oScaleY * 60.f;
-    if ((gOmmObject->flaming_bobomb.interactedTimer % 4) >= 2) {
+    if (damaged && (gGlobalTimer & 3) >= 2) {
         o->oFlamingBobombAura->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
     } else {
         o->oFlamingBobombAura->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
@@ -148,8 +160,8 @@ s32 omm_cappy_flaming_bobomb_update(struct Object *o) {
 
     // Smoke gfx
     if (gOmmObject->flaming_bobomb.interactedFire) {
-        if (gOmmObject->flaming_bobomb.interactedTimer != 0) {
-            obj_play_sound(o, SOUND_MOVING_LAVA_BURN);
+        if (damaged) {
+            obj_play_sound(o, !POBJ_IS_STAR_DANCING * POBJ_SOUND_LAVA_BURN);
             struct Object *smoke = spawn_object(o, MODEL_BURN_SMOKE, bhvBobombFuseSmoke);
             smoke->oPosY += 90.f * o->oScaleY;
             smoke->oVelY = 10.f;
@@ -160,11 +172,6 @@ s32 omm_cappy_flaming_bobomb_update(struct Object *o) {
         }
     }
 
-    // Cappy values
-    gOmmObject->cappy.offset[1] = 94.f;
-    gOmmObject->cappy.scale     = 1.2f;
-
-    // OK
-    gOmmObject->flaming_bobomb.interactedTimer = max_s(0, gOmmObject->flaming_bobomb.interactedTimer - 1);
-    pobj_return_ok;
+    // Cappy transform
+    gOmmObject->cappy.object = o;
 }

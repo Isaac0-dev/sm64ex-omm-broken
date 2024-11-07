@@ -31,19 +31,19 @@ static s32 omm_act_idle(struct MarioState *m) {
     s32 step = stationary_ground_step(m);
     if (step == GROUND_STEP_NONE) {
         if (m->actionArg & 1) {
-            obj_anim_play(m->marioObj, MARIO_ANIM_STAND_AGAINST_WALL, 1.f);
+            ANM(MARIO_ANIM_STAND_AGAINST_WALL, 1.f);
         } else {
             if (OMM_PEACH_VIBE_NO_HEAD_TURN) {
-                obj_anim_play(m->marioObj, MARIO_ANIM_FIRST_PERSON, 1.f);
+                ANM(MARIO_ANIM_FIRST_PERSON, 1.f);
             } else {
                 switch (m->actionState) {
-                    case 0: obj_anim_play(m->marioObj, MARIO_ANIM_IDLE_HEAD_LEFT, 1.f); break;
-                    case 1: obj_anim_play(m->marioObj, MARIO_ANIM_IDLE_HEAD_RIGHT, 1.f); break;
-                    case 2: obj_anim_play(m->marioObj, MARIO_ANIM_IDLE_HEAD_CENTER, 1.f); break;
+                    case 0: ANM(MARIO_ANIM_IDLE_HEAD_LEFT, 1.f); break;
+                    case 1: ANM(MARIO_ANIM_IDLE_HEAD_RIGHT, 1.f); break;
+                    case 2: ANM(MARIO_ANIM_IDLE_HEAD_CENTER, 1.f); break;
                 }
                 if (obj_anim_is_at_end(m->marioObj) && ++m->actionState == 3) {
                     f32 deltaY = abs_f(m->pos[1] - find_floor_height_relative_polar(m, -0x8000, 60.f));
-                    if (deltaY > 24.f || (m->floor->flags & SURFACE_FLAG_DYNAMIC) || ++m->actionTimer < 10) {
+                    if (deltaY > 24.f || (m->floor->flags & SURFACE_FLAG_DYNAMIC) || ++m->actionTimer < (omm_peach_vibe_is_calm() ? 3 : 10)) {
                         m->actionState = 0;
                     }
                 }
@@ -108,32 +108,9 @@ static s32 omm_act_shocked_from_high_fall(struct MarioState *m) {
     m->pos[1] = m->floorHeight = find_floor_height(m->pos[0], m->pos[1], m->pos[2]);
     vec3f_copy(m->marioObj->oGfxPos, m->pos);
     vec3s_set(m->marioObj->oGfxAngle, 0, m->faceAngle[1], 0);
-    obj_anim_play(m->marioObj, MARIO_ANIM_SHOCKED, 1.f);
+    ANM(MARIO_ANIM_SHOCKED, 1.f);
     if (m->actionTimer++ < 30) set_camera_shake_from_hit(SHAKE_SHOCK);
     action_condition(m->actionTimer >= 45, ACT_IDLE, 0, RETURN_BREAK);
-    return OMM_MARIO_ACTION_RESULT_CONTINUE;
-}
-
-static s32 omm_act_spin_ground(struct MarioState *m) {
-    action_init(m->forwardVel, 0.f, 0, 0);
-    action_cappy(1, ACT_OMM_CAPPY_THROW_GROUND, 0, RETURN_CANCEL);
-    action_zb_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_ROLL, 0, RETURN_CANCEL);
-    action_a_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_SPIN_JUMP, 0, RETURN_CANCEL);
-    action_b_pressed(OMM_MOVESET_ODYSSEY, ACT_MOVE_PUNCHING, 0, RETURN_CANCEL);
-    action_off_floor(OMM_MOVESET_ODYSSEY, ACT_OMM_SPIN_AIR, 0, RETURN_CANCEL);
-    action_off_floor(1, ACT_FREEFALL, 0, RETURN_CANCEL);
-    action_condition(gOmmMario->spin.timer == 0, ACT_IDLE, 0, RETURN_CANCEL);
-
-    s32 step = perform_ground_step(m);
-    action_condition(step == GROUND_STEP_LEFT_GROUND, ACT_OMM_SPIN_AIR, 0, RETURN_BREAK);
-
-    mario_set_forward_vel(m, max_f(0, m->forwardVel - 1.f));
-    obj_anim_play(m->marioObj, MARIO_ANIM_TWIRL, 1.f);
-    obj_play_sound(m->marioObj, SOUND_MOVING_TERRAIN_SLIDE + m->terrainSoundAddend);
-    gOmmMario->spin.yaw += min_s(0x31E9, 0x280 * gOmmMario->spin.timer);
-    m->marioObj->oGfxAngle[1] = m->faceAngle[1] - gOmmMario->spin.yaw;
-    m->marioBodyState->handState = MARIO_HAND_OPEN;
-    m->particleFlags |= PARTICLE_DUST;
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }
 
@@ -146,7 +123,7 @@ static s32 omm_act_spin_pound_land(struct MarioState *m) {
     action_off_floor(1, ACT_FREEFALL, 0, RETURN_CANCEL);
 
     stationary_ground_step(m);
-    obj_anim_play(m->marioObj, MARIO_ANIM_GENERAL_LAND, 1.f);
+    ANM(MARIO_ANIM_GENERAL_LAND, 1.f);
     action_condition(obj_anim_is_at_end(m->marioObj), ACT_IDLE, 0, RETURN_BREAK);
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }
@@ -198,7 +175,7 @@ s32 omm_mario_execute_stationary_action(struct MarioState *m) {
 
     // In water
     if (m->input & INPUT_IN_WATER) {
-        m->particleFlags |= PARTICLE_WAVE_TRAIL;
+        PFX(PARTICLE_WAVE_TRAIL);
         m->particleFlags &= ~PARTICLE_DUST;
     }
 
@@ -244,11 +221,9 @@ s32 omm_mario_execute_stationary_action(struct MarioState *m) {
 
         // Odyssey
         case ACT_OMM_SHOCKED_FROM_HIGH_FALL:    return omm_act_shocked_from_high_fall(m);
-        case ACT_OMM_SPIN_GROUND:               return omm_act_spin_ground(m);
         case ACT_OMM_SPIN_POUND_LAND:           return omm_act_spin_pound_land(m);
 
         // Peach
-        case ACT_OMM_PEACH_ATTACK_GROUND:       return omm_act_peach_attack_ground(m);
         case ACT_OMM_PEACH_PERRY_CHARGE_GROUND: return omm_act_peach_perry_charge_ground(m);
     }
 

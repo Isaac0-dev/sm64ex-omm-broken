@@ -7,7 +7,7 @@
 //
 
 bool omm_cappy_scuttlebug_init(UNUSED struct Object *o) {
-    gOmmObject->state.actionState = 0;
+    clear_surface_data(gOmmObject->scuttlebug.data);
     return true;
 }
 
@@ -15,8 +15,12 @@ void omm_cappy_scuttlebug_end(struct Object *o) {
     o->oHomeY = FLOOR_LOWER_LIMIT;
 }
 
+u64 omm_cappy_scuttlebug_get_type(UNUSED struct Object *o) {
+    return OMM_CAPTURE_SCUTTLEBUG;
+}
+
 f32 omm_cappy_scuttlebug_get_top(struct Object *o) {
-    return 90.f * o->oScaleY;
+    return omm_capture_get_hitbox_height(o);
 }
 
 //
@@ -24,94 +28,136 @@ f32 omm_cappy_scuttlebug_get_top(struct Object *o) {
 //
 
 s32 omm_cappy_scuttlebug_update(struct Object *o) {
+    if (gOmmObject->state.actionFlag) {
+        o->oFloorHeight = o->oPosY;
+    }
+    struct Surface *wall = get_surface_from_data(gOmmObject->scuttlebug.data);
 
     // Hitbox
     o->hitboxRadius = omm_capture_get_hitbox_radius(o);
     o->hitboxHeight = omm_capture_get_hitbox_height(o);
-    o->hitboxDownOffset = omm_capture_get_hitbox_down_offset(o);
     o->oWallHitboxRadius = omm_capture_get_wall_hitbox_radius(o);
+
+    // Wall check
+    if (!POBJ_B_BUTTON_DOWN || POBJ_A_BUTTON_PRESSED || POBJ_IS_OPENING_DOORS || omm_mario_is_locked(gMarioState) || !wall) {
+        gOmmObject->state.actionFlag = false;
+    }
 
     // Properties
     POBJ_SET_ABOVE_WATER;
+    POBJ_SET_AFFECTED_BY_VERTICAL_WIND;
+    POBJ_SET_AFFECTED_BY_CANNON;
     POBJ_SET_ABLE_TO_MOVE_ON_SLOPES;
+    POBJ_SET_ABLE_TO_OPEN_DOORS * !gOmmObject->state.actionFlag;
 
-    // Inputs
-    if (!obj_update_door(o) && !omm_mario_is_locked(gMarioState)) {
-        if (o->oWall && gOmmObject->state.actionState) {
-            s16 wallAngle = atan2s(o->oWall->normal.z, o->oWall->normal.x);
-            s16 diffAngle = (s16) gOmmMario->capture.stickYaw - (s16) wallAngle;
-            if (abs_s(diffAngle) < 0x4000) {
-                gOmmMario->capture.stickYaw = wallAngle + 0x8000 - diffAngle;
-            }
-            o->oFloor = o->oWall;
-            o->oFloorHeight = o->oPosY;
-        }
-        pobj_move(o, POBJ_B_BUTTON_DOWN, false, false);
-        if (pobj_jump(o, 0, 1) == POBJ_RESULT_JUMP_START) {
-            obj_play_sound(o, SOUND_OBJ2_SCUTTLEBUG_ALERT);
-        }
-    }
+    // States
+    if (gOmmObject->state.actionFlag) {
 
-    // Movement
-    static const s16 sStarParticlesAngles[] = {
-        0xE000, 0x0000,
-        0x0000, 0x0000,
-        0x2000, 0x0000,
-        0xE99A, 0x1666,
-        0x1666, 0x1666,
-        0xE99A, 0xE99A,
-        0x1666, 0xE99A
-    };
-    perform_object_step(o, POBJ_STEP_FLAGS);
-    pobj_decelerate(o, 0.85f, 0.95f);
-    if (o->oWall && (o->oVelY <= 0.f) && (o->oDistToFloor > o->hitboxRadius) && POBJ_B_BUTTON_DOWN) {
-        o->oVelY = 0;
-        if (!gOmmObject->state.actionState) {
-            s16 wallAngle = 0x8000 + atan2s(o->oWall->normal.z, o->oWall->normal.x);
-            for (s32 i = 0; i < 7; ++i) {
-                struct Object *obj = spawn_object(o, MODEL_CARTOON_STAR, bhvWallTinyStarParticle);
-                obj->oMoveAngleYaw = wallAngle + sStarParticlesAngles[2 * i] + 0x8000;
-                obj->oVelY = sins(sStarParticlesAngles[2 * i + 1]) * 25.f;
-                obj->oForwardVel = coss(sStarParticlesAngles[2 * i + 1]) * 25.f;
-            }
-            obj_play_sound(o, SOUND_OBJ_DEFAULT_DEATH);
+        // Apply platform displacement
+        if (wall->object) {
+            obj_apply_displacement(o,
+                wall->object,
+                gOmmObject->scuttlebug.data->pos,
+                gOmmObject->scuttlebug.data->angle,
+                gOmmObject->scuttlebug.data->scale,
+                true
+            );
         }
-        gOmmObject->state.actionState = 1;
+
+        // Inputs
+        s16 wallAngle = atan2s(wall->normal.z, wall->normal.x);
+        s16 signAngle = sign_f(gOmmMario->capture.stickX);
+        gOmmMario->capture.stickYaw = wallAngle + 0x4000 * signAngle;
+        gOmmMario->capture.stickMag = abs_f(gOmmMario->capture.stickX);
+
+        // Movement
+        o->oPosX -= 5.f * wall->normal.x;
+        o->oPosZ -= 5.f * wall->normal.z;
+        o->oFaceAngleYaw = gOmmMario->capture.stickYaw;
+        f32 maxVel = pobj_get_max_speed(o, POBJ_B_BUTTON_DOWN, false, false) / 1.5f;
+        obj_set_forward_and_y_vel(o, gOmmMario->capture.stickMag * maxVel, 0.f);
+        perform_object_step(o, POBJ_STEP_FLAGS);
+        if (!o->oWall) {
+            Vec3f orig; obj_pos_as_vec3f(o, orig);
+            Vec3f dir = { -wall->normal.x * 2.f * o->oWallHitboxRadius, 0, -wall->normal.z * 2.f * o->oWallHitboxRadius };
+            RayCollisionData hits;
+            if (!find_collisions_on_ray(orig, dir, &hits, 1.f, RAYCAST_FLAG_WALLS)) {
+                vec3f_add(orig, dir);
+                vec3f_rotate_around_n(dir, dir, gVec3fY, 0x4000 * signAngle);
+                find_collisions_on_ray(orig, dir, &hits, 1.f, RAYCAST_FLAG_WALLS);
+            }
+            if (hits.count) {
+                const RayHit *hit = &hits.hits[0];
+                o->oWall = hit->surf;
+                o->oPosX = hit->pos[0] + hit->surf->normal.x * o->oWallHitboxRadius;
+                o->oPosZ = hit->pos[2] + hit->surf->normal.z * o->oWallHitboxRadius;
+                o->oFaceAngleYaw = atan2s(hit->surf->normal.z, hit->surf->normal.x) + 0x4000 * signAngle;
+            } else {
+                o->oFaceAngleYaw = 0x8000 + wallAngle;
+            }
+        }
+        pobj_handle_special_floors(o);
+        pobj_stop_if_unpossessed();
+
     } else {
+
+        // Inputs
+        if (pobj_process_inputs(o)) {
+            pobj_move(o, POBJ_B_BUTTON_DOWN, false, false);
+            if (pobj_jump(o, 1) == POBJ_RESULT_JUMP_START) {
+                obj_play_sound(o, POBJ_SOUND_JUMP_2);
+            }
+        }
+
+        // Movement
+        perform_object_step(o, POBJ_STEP_FLAGS);
+        pobj_decelerate(o);
         pobj_apply_gravity(o, 1.f);
-        gOmmObject->state.actionState = 0;
+        pobj_handle_special_floors(o);
+        pobj_stop_if_unpossessed();
     }
-    pobj_handle_special_floors(o);
-    pobj_stop_if_unpossessed();
+
+    // Stick to wall
+    if (!POBJ_IS_OPENING_DOORS && o->oWall && o->oVelY <= 0.f && o->oDistToFloor > o->hitboxRadius && POBJ_B_BUTTON_DOWN) {
+        o->oFaceAngleYaw = atan2s(-o->oWall->normal.z, -o->oWall->normal.x);
+        o->oFloorHeight = o->oPosY;
+        if (!gOmmObject->state.actionFlag) {
+            obj_spawn_particle_preset(o, PARTICLE_VERTICAL_STAR, false);
+            obj_play_sound(o, POBJ_SOUND_DEATH);
+            gOmmObject->state.actionFlag = true;
+        }
+        get_surface_data(gOmmObject->scuttlebug.data, o->oWall);
+    } else {
+        gOmmObject->state.actionFlag = false;
+        clear_surface_data(gOmmObject->scuttlebug.data);
+    }
 
     // Interactions
-    pobj_process_interactions(
-
-    // Doors
-    obj_open_door(o, obj);
-
-    );
+    pobj_process_interactions();
     pobj_stop_if_unpossessed();
 
-    // Gfx
-    obj_update_gfx(o);
-    if (gOmmObject->state.actionState) {
-        s16 wallAngle = 0x8000 + atan2s(o->oWall->normal.z, o->oWall->normal.x);
-        o->oGfxPos[0] += o->oWallHitboxRadius * sins(wallAngle);
-        o->oGfxPos[2] += o->oWallHitboxRadius * coss(wallAngle);
-        o->oGfxAngle[0] = -0x4000;
-        o->oGfxAngle[1] = wallAngle;
-    }
-    obj_anim_play(o, 0, (o->oVelY <= 0.f) * max_f(1.f, o->oForwardVel * 2.f / (omm_capture_get_walk_speed(o))));
+    // Animation, sound and particles
+    obj_anim_play(o, 0, max_f(1.f, (o->oVelY <= 0.f) * POBJ_ABS_FORWARD_VEL * 2.f / pobj_get_walk_speed(o)));
     if (obj_is_on_ground(o)) {
-        obj_make_step_sound_and_particle(o, &gOmmObject->state.walkDistance, omm_capture_get_walk_speed(o) * 12.f, o->oForwardVel, SOUND_OBJ2_SCUTTLEBUG_WALK, OBJ_PARTICLE_NONE);
+        obj_make_step_sound_and_particle(o, &gOmmObject->state.walkDistance, pobj_get_walk_speed(o) * 12.f, POBJ_ABS_FORWARD_VEL, POBJ_SOUND_WALK_SCUTTLEBUG, OBJ_PARTICLE_NONE);
     }
-
-    // Cappy values
-    gOmmObject->cappy.copyGfx   = true;
-    gOmmObject->cappy.offset[1] = 90.f;
-    gOmmObject->cappy.scale     = 0.8f;
 
     // OK
     pobj_return_ok;
+}
+
+void omm_cappy_scuttlebug_update_gfx(struct Object *o) {
+
+    // Gfx
+    obj_update_gfx(o);
+    if (gOmmObject->state.actionFlag) {
+        s16 pullAngle = atan2s(-o->oWall->normal.z, -o->oWall->normal.x);
+        o->oGfxPos[0] += o->oWallHitboxRadius * sins(pullAngle);
+        o->oGfxPos[2] += o->oWallHitboxRadius * coss(pullAngle);
+        o->oGfxAngle[0] = -0x4000;
+        o->oGfxAngle[1] = pullAngle;
+    }
+
+    // Cappy transform
+    gOmmObject->cappy.object = o;
 }

@@ -11,12 +11,12 @@
 
 // Force the texture coords to (0, 0) for all vertices
 static void omm_cappy_gfx_hide_logo() {
-    if (OMM_EXTRAS_CAPPY_AND_TIARA && (strstr(sGfxRdp->texToLoad, "logo") || strstr(sGfxRdp->texLoaded, "logo"))) {
-        sGfxRdp->invTexWidth  = 0;
-        sGfxRdp->invTexHeight = 0;
+    if ((sGfxProc->texToLoad && strstr(sGfxProc->texToLoad, "logo")) || (sGfxProc->texLoaded[0] && strstr(sGfxProc->texLoaded[0], "logo"))) {
+        sGfxProc->invTexWidth  = 0;
+        sGfxProc->invTexHeight = 0;
     } else {
-        sGfxRdp->invTexWidth  = 1.f / ((sGfxRdp->texTile.lrs - sGfxRdp->texTile.uls + 4) >> 2);
-        sGfxRdp->invTexHeight = 1.f / ((sGfxRdp->texTile.lrt - sGfxRdp->texTile.ult + 4) >> 2);
+        sGfxProc->invTexWidth  = 1.f / ((sGfxProc->texTileSize.lrs - sGfxProc->texTileSize.uls + 4) >> 2);
+        sGfxProc->invTexHeight = 1.f / ((sGfxProc->texTileSize.lrt - sGfxProc->texTileSize.ult + 4) >> 2);
     }
 }
 
@@ -38,23 +38,17 @@ static void omm_cappy_gfx_dp_set_tile_size() {
 static void omm_cappy_gfx_dp_set_texture_image() {
     gfx_dp_set_texture_image();
     omm_cappy_gfx_hide_logo();
-#ifdef OMM_MK_MARIO_COLORS
     omm_shadow_mario_set_texture();
-#endif
 }
 
 static void omm_cappy_gfx_sp_set_other_mode_l() {
     gfx_sp_set_other_mode_l();
-#ifdef OMM_MK_MARIO_COLORS
     omm_shadow_mario_disable_alpha_noise();
-#endif
 }
 
 static void omm_cappy_gfx_sp_set_other_mode_h() {
     gfx_sp_set_other_mode_h();
-#ifdef OMM_MK_MARIO_COLORS
     omm_shadow_mario_disable_alpha_noise();
-#endif
 }
 
 //
@@ -99,23 +93,25 @@ static const Gfx *omm_cappy_enable_gfx(s32 callContext, struct GraphNode *node, 
 }
 
 static struct GraphNodeGenerated *omm_cappy_process_graph_node(struct Object *obj, bool enable) {
-    for (s32 i = 0; i != OMM_NUM_PLAYABLE_CHARACTERS; ++i) {
-        bool isMario = obj_check_model(obj, omm_player_graphics_get_model(i));
-        if (isMario || obj_check_model(obj, omm_player_graphics_get_normal_cap(i)) ||
-                       obj_check_model(obj, omm_player_graphics_get_wing_cap(i)) ||
-                       obj_check_model(obj, omm_player_graphics_get_metal_cap(i)) ||
-                       obj_check_model(obj, omm_player_graphics_get_winged_metal_cap(i))) {
-            static struct GraphNodeGenerated sOmmCappyNodes[2][2];
-            struct GraphNodeGenerated *node = &sOmmCappyNodes[enable][isMario];
-            node->fnNode.node.type = GRAPH_NODE_TYPE_GENERATED_LIST;
-            node->fnNode.node.flags = obj->header.gfx.node.flags;
-            node->fnNode.node.prev = NULL;
-            node->fnNode.node.next = NULL;
-            node->fnNode.node.parent = NULL;
-            node->fnNode.node.children = NULL;
-            node->fnNode.func = (GraphNodeFunc) omm_cappy_enable_gfx;
-            node->parameter = (enable << 1) | (isMario ? ((gMarioState->marioBodyState->modelState >> 8) & 1) : (obj->oOpacity != 0xFF));
-            return node;
+    if (OMM_EXTRAS_CAPPY_AND_TIARA && omm_cappy_gfx_has_eyes(obj->oGraphNode)) {
+        for (s32 i = 0; i != OMM_NUM_PLAYABLE_CHARACTERS; ++i) {
+            bool isMario = obj_has_model(obj, omm_player_graphics_get_model(i));
+            if (isMario || obj_has_model(obj, omm_player_graphics_get_normal_cap(i)) ||
+                           obj_has_model(obj, omm_player_graphics_get_wing_cap(i)) ||
+                           obj_has_model(obj, omm_player_graphics_get_metal_cap(i)) ||
+                           obj_has_model(obj, omm_player_graphics_get_winged_metal_cap(i))) {
+                static struct GraphNodeGenerated sOmmCappyNodes[2][2];
+                struct GraphNodeGenerated *node = &sOmmCappyNodes[enable][isMario];
+                node->fnNode.node.type = GRAPH_NODE_TYPE_GENERATED_LIST;
+                node->fnNode.node.flags = obj->header.gfx.node.flags;
+                node->fnNode.node.prev = NULL;
+                node->fnNode.node.next = NULL;
+                node->fnNode.node.parent = NULL;
+                node->fnNode.node.children = NULL;
+                node->fnNode.func = (GraphNodeFunc) omm_cappy_enable_gfx;
+                node->parameter = (enable << 1) | (isMario ? ((gMarioState->marioBodyState->modelState >> 8) & 1) : (obj->oOpacity != 0xFF));
+                return node;
+            }
         }
     }
     return NULL;

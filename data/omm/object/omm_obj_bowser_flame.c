@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -181,20 +182,20 @@ static void bhv_omm_bowser_flame_loop() {
 
 const BehaviorScript bhvOmmBowserFlame[] = {
     OBJ_TYPE_GENACTOR,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_bowser_flame_loop,
-    0x0F1A0001,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_bowser_flame_loop),
+        BHV_ADD_INT(oAnimState, 1),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_bowser_flame(struct Object *o, f32 x, f32 y, f32 z, s32 duration) {
+struct Object *omm_obj_spawn_bowser_flame(struct Object *o, f32 x, f32 y, f32 z, s32 duration) {
     struct Object *flame = obj_spawn_from_geo(o, omm_geo_bowser_flame, bhvOmmBowserFlame);
-    obj_set_pos(flame, x, y, z);
+    obj_set_xyz(flame, x, y, z);
     flame->oAction = 0;
     flame->oAnimState = random_u16() % 4;
     flame->oBowserFireDuration = duration;

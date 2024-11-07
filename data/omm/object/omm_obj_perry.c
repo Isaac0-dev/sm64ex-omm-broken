@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Behavior
@@ -20,18 +21,18 @@ static void bhv_omm_perry_update() {
         Vec3f p = { o->oPosX, o->oPosY, o->oPosZ };
         Vec3f d = { 0, OMM_PERRY_SWORD_HITBOX, 0 };
         vec3f_rotate_zxy(d, d, o->oFaceAnglePitch, o->oFaceAngleYaw, o->oFaceAngleRoll);
-        obj_set_pos(o, o->oPosX + d[0] * o->oScaleX / 2.f, o->oPosY + d[1] * o->oScaleY / 2.f, o->oPosZ + d[2] * o->oScaleZ / 2.f);
+        obj_set_xyz(o, o->oPosX + d[0] * o->oScaleX / 2.f, o->oPosY + d[1] * o->oScaleY / 2.f, o->oPosZ + d[2] * o->oScaleZ / 2.f);
         obj_set_params(o, 0, 0, 0, 0, true);
         obj_reset_hitbox(o, OMM_PERRY_SWORD_HITBOX / 2.f, OMM_PERRY_SWORD_HITBOX, 0, 0, 0, OMM_PERRY_SWORD_HITBOX / 2.f);
 
         // Process interactions
         struct Object *interacted = omm_obj_process_interactions(o, o->oPerryFlags);
         if (interacted && !omm_obj_is_collectible(interacted)) {
-            obj_play_sound(interacted, SOUND_ACTION_BOUNCE_OFF_OBJECT);
+            obj_play_sound(interacted, SOUND_ACTION_HIT_2);
         }
 
         // Reset values
-        obj_set_pos(o, p[0], p[1], p[2]);
+        obj_set_xyz(o, p[0], p[1], p[2]);
         obj_set_params(o, 0, 0, 0, 0, false);
         obj_reset_hitbox(o, 0, 0, 0, 0, 0, 0);
     }
@@ -42,17 +43,17 @@ static void bhv_omm_perry_update() {
 
 const BehaviorScript bhvOmmPerry[] = {
     OBJ_TYPE_SPECIAL, // This object must be updated before bhvOmmPerryTrail
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_perry_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_perry_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner (auto)
 //
 
-OMM_ROUTINE_UPDATE(omm_spawn_perry) {
+OMM_ROUTINE_UPDATE(omm_obj_spawn_perry) {
     if (gMarioObject) {
         if (OMM_PERRY_SWORD_ACTION) {
             struct Object *perry = omm_perry_get_object();

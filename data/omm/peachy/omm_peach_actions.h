@@ -19,7 +19,7 @@
 #define OMM_PEACH_VIBE_TYPE_CALM                    (4)
 #define OMM_PEACH_VIBE_TYPE_COUNT                   (5)
 
-#define OMM_PEACH_VIBE_NO_SLEEPING                  (omm_peach_vibe_is_rage() || omm_peach_vibe_is_gloom() || omm_peach_vibe_is_calm())
+#define OMM_PEACH_VIBE_NO_SLEEPING                  (omm_peach_vibe_is_rage() || omm_peach_vibe_is_gloom())
 #define OMM_PEACH_VIBE_NO_PANTING                   (omm_peach_vibe_is_rage() || omm_peach_vibe_is_gloom() || omm_peach_vibe_is_calm())
 #define OMM_PEACH_VIBE_NO_SHIVERING                 (omm_peach_vibe_is_rage() || omm_peach_vibe_is_gloom() || omm_peach_vibe_is_calm())
 #define OMM_PEACH_VIBE_NO_COUGHING                  (omm_peach_vibe_is_rage() || omm_peach_vibe_is_calm())
@@ -37,25 +37,29 @@
 #define OMM_PEACH_VIBE_GAUGE_RAGE_DEC               (15) // 20 seconds (600 frames)
 #define OMM_PEACH_VIBE_GAUGE_RAGE_SHOCKWAVE_DEC     (450) // Releasing a shockwave drains 5% of the Vibe gauge
 #define OMM_PEACH_VIBE_GAUGE_GLOOM_DEC              (12) // 25 seconds (750 frames)
-#define OMM_PEACH_VIBE_GAUGE_CALM_O2_DEC            (20) // 15 seconds (450 frames), recovers 6 O2 every frame (fully restored in 8~20 seconds)
+#define OMM_PEACH_VIBE_GAUGE_CALM_BREATH_DEC        (20) // 15 seconds (450 frames), recovers 6 breath points every frame (fully restored in 8~20 seconds)
 #define OMM_PEACH_VIBE_GAUGE_CALM_HEALTH_DEC        (30) // 10 seconds (300 frames), recovers 1 segment every 2 seconds (fully restored in 10 seconds)
 #define OMM_PEACH_VIBE_GAUGE_CALM_FREEZE_DEC        (15) // 20 seconds (600 frames), prevents the effect of frozen water
 
 #define OMM_PEACH_VIBE_COOLDOWN                     (20)
 
-#define OMM_PEACH_VIBE_MUSIC_FREQ_MOD_JOY           (1.50f)
-#define OMM_PEACH_VIBE_MUSIC_FREQ_MOD_RAGE          (0.40f)
-#define OMM_PEACH_VIBE_MUSIC_FREQ_MOD_GLOOM         (0.75f)
-#define OMM_PEACH_VIBE_MUSIC_FREQ_MOD_CALM          (1.20f)
-#define OMM_PEACH_VIBE_MUSIC_VOLUME_MOD_JOY         (1.00f)
-#define OMM_PEACH_VIBE_MUSIC_VOLUME_MOD_RAGE        (1.40f)
-#define OMM_PEACH_VIBE_MUSIC_VOLUME_MOD_GLOOM       (1.20f)
-#define OMM_PEACH_VIBE_MUSIC_VOLUME_MOD_CALM        (1.00f)
+#define OMM_PEACH_VIBE_MUSIC_SEQ_FREQ_MOD_NONE      (1.00f)
+#define OMM_PEACH_VIBE_MUSIC_SEQ_FREQ_MOD_JOY       (1.50f)
+#define OMM_PEACH_VIBE_MUSIC_SEQ_FREQ_MOD_RAGE      (0.40f)
+#define OMM_PEACH_VIBE_MUSIC_SEQ_FREQ_MOD_GLOOM     (0.75f)
+#define OMM_PEACH_VIBE_MUSIC_SEQ_FREQ_MOD_CALM      (1.20f)
+#define OMM_PEACH_VIBE_MUSIC_SEQ_VOLUME_MOD_NONE    (1.00f)
+#define OMM_PEACH_VIBE_MUSIC_SEQ_VOLUME_MOD_JOY     (1.00f)
+#define OMM_PEACH_VIBE_MUSIC_SEQ_VOLUME_MOD_RAGE    (1.40f)
+#define OMM_PEACH_VIBE_MUSIC_SEQ_VOLUME_MOD_GLOOM   (1.20f)
+#define OMM_PEACH_VIBE_MUSIC_SEQ_VOLUME_MOD_CALM    (1.00f)
 
+#define OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_NONE     (1.00f)
 #define OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_JOY      (1.40f)
 #define OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_RAGE     (0.55f)
 #define OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_GLOOM    (0.80f)
 #define OMM_PEACH_VIBE_MUSIC_STRM_FREQ_MOD_CALM     (1.10f)
+#define OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_NONE   (1.00f)
 #define OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_JOY    (1.00f)
 #define OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_RAGE   (1.30f)
 #define OMM_PEACH_VIBE_MUSIC_STRM_VOLUME_MOD_GLOOM  (1.15f)
@@ -79,14 +83,14 @@
 // Stationary
 //
 
-#define ACT_OMM_PEACH_ATTACK_GROUND                 (0x30 | ACT_GROUP_STATIONARY | ACT_FLAG_OMM_ACTION | ACT_FLAG_STATIONARY | ACT_FLAG_ATTACKING)
-#define ACT_OMM_PEACH_PERRY_CHARGE_GROUND           (0x31 | ACT_GROUP_STATIONARY | ACT_FLAG_OMM_ACTION | ACT_FLAG_STATIONARY)
+#define ACT_OMM_PEACH_PERRY_CHARGE_GROUND           (0x30 | ACT_GROUP_STATIONARY | ACT_FLAG_OMM_ACTION | ACT_FLAG_STATIONARY)
 
 //
 // Moving
 //
 
-#define ACT_OMM_PEACH_ATTACK_FAST                   (0x30 | ACT_GROUP_MOVING | ACT_FLAG_OMM_ACTION | ACT_FLAG_MOVING | ACT_FLAG_ATTACKING)
+#define ACT_OMM_PEACH_ATTACK_GROUND                 (0x30 | ACT_GROUP_MOVING | ACT_FLAG_OMM_ACTION | ACT_FLAG_MOVING | ACT_FLAG_ATTACKING)
+#define ACT_OMM_PEACH_ATTACK_FAST                   (0x31 | ACT_GROUP_MOVING | ACT_FLAG_OMM_ACTION | ACT_FLAG_MOVING | ACT_FLAG_ATTACKING)
 
 //
 // Airborne

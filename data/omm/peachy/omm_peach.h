@@ -3,11 +3,11 @@
 
 #include "types.h"
 
-#define MODEL_PEACH_OMM                             0x30
-#define MODEL_PEACHS_CAP_OMM                        0x31
-#define MODEL_PEACHS_WING_CAP_OMM                   0x32
-#define MODEL_PEACHS_METAL_CAP_OMM                  0x33
-#define MODEL_PEACHS_WINGED_METAL_CAP_OMM           0x34
+#define MODEL_PEACH_OMM                             (0x30)
+#define MODEL_PEACHS_CAP_OMM                        (0x31)
+#define MODEL_PEACHS_WING_CAP_OMM                   (0x32)
+#define MODEL_PEACHS_METAL_CAP_OMM                  (0x33)
+#define MODEL_PEACHS_WINGED_METAL_CAP_OMM           (0x34)
 
 #define GEO_PREPROCESS_PEACH_UP_VEC                 GEO_CULLING_RADIUS(0x01)
 #define GEO_PREPROCESS_PEACH_FORWARD_VEC            GEO_CULLING_RADIUS(0x02)
@@ -32,6 +32,8 @@ bool omm_peach_vibe_is_gloom();
 bool omm_peach_vibe_is_calm();
 bool omm_peach_vibe_activate(struct MarioState *m, s32 vibe);
 bool omm_peach_vibe_deactivate(struct MarioState *m);
+void omm_peach_vibe_increase(struct MarioState *m, u32 inc);
+void omm_peach_vibe_decrease(struct MarioState *m, u32 dec);
 void omm_peach_vibe_update(struct MarioState *m);
 
 s32 omm_act_peach_float(struct MarioState *m);

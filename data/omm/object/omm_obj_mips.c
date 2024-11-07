@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 //                       |   |
@@ -60,9 +61,9 @@ static const s32 sOmmMipsEscapePaths[][8] = {
 // Behavior
 //
 
-#define OMM_MIPS_ACT_WAIT 0
-#define OMM_MIPS_ACT_MOVE 1
-#define OMM_MIPS_ACT_IDLE 2
+#define OMM_MIPS_ACT_WAIT (0)
+#define OMM_MIPS_ACT_MOVE (1)
+#define OMM_MIPS_ACT_IDLE (2)
 
 static s32 bhv_omm_mips_get_nearest_waypoint(struct Object *o) {
     s32 nearestWaypoint = -1;
@@ -249,7 +250,10 @@ static void bhv_omm_mips_act_move(struct Object *o) {
 
         // Waypoint reached
         case 2: {
-            if (obj_is_on_ground(o)) {
+            if (o->oMipsGrabbedCounter >= 3 && o->oMipsEscapePath == -1) {
+                obj_spawn_white_puff(o, NO_SOUND);
+                obj_mark_for_deletion(o);
+            } else if (obj_is_on_ground(o)) {
                 obj_anim_play_with_sound(o, 0, 1.f, 0, true);
                 o->oMipsCurrentWaypoint = o->oMipsTargetWaypoint;
                 o->oAction = OMM_MIPS_ACT_WAIT;
@@ -261,7 +265,7 @@ static void bhv_omm_mips_act_move(struct Object *o) {
 
     // If waypoint reached, update sub-action
     f32 distToTarget = vec3f_hdist(sOmmMipsWaypointPositions[o->oMipsTargetWaypoint], &o->oPosX);
-    if (distToTarget < 50.f) {
+    if (distToTarget < o->oMipsForwardVelocity * 0.55f) {
         o->oSubAction = 2;
     }
 }
@@ -331,15 +335,11 @@ static void bhv_omm_mips_held(struct Object *o) {
 //
 
 static void bhv_omm_mips_dropped(struct Object *o) {
-    if (o->oMipsGrabbedCounter < 3) {
-        o->oAction = OMM_MIPS_ACT_WAIT;
-    } else {
-        o->oAction = OMM_MIPS_ACT_IDLE;
-    }
+    o->oAction = OMM_MIPS_ACT_WAIT;
     o->oSubAction = 0;
     o->oNodeFlags |= GRAPH_RENDER_ACTIVE;
     o->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
-    o->oInteractionSubtype &= ~INT_SUBTYPE_DROP_IMMEDIATELY;
+    o->oInteractionSubtype &= ~(INT_SUBTYPE_DROP_IMMEDIATELY | (INT_SUBTYPE_HOLDABLE_NPC * (o->oMipsGrabbedCounter >= 3)));
     o->oIntangibleTimer = 0;
     o->oHeldState = HELD_FREE;
     o->oVelY = 0.f;
@@ -359,31 +359,31 @@ static void bhv_omm_mips_update() {
     }
 
     // Crystal sparkles
-    if (o->oMipsGrabbedCounter < 3 || o->oAction != OMM_MIPS_ACT_IDLE) {
+    if (o->oMipsGrabbedCounter < 3 || o->oHeldState != HELD_FREE) {
         s32 freq = (o->oHeldState == HELD_FREE && o->oAction == OMM_MIPS_ACT_MOVE ? 2 : 4);
         if (gGlobalTimer % freq == 0) {
-            omm_spawn_sparkly_star_sparkle(o, OMM_SPARKLY_MODE_HARD, 40.f, 6.f, 0.3f, 20.f);
+            omm_obj_spawn_sparkly_star_sparkle(o, OMM_SPARKLY_MODE_HARD, 40.f, 6.f, 0.3f, 20.f);
         }
     }
 }
 
 const BehaviorScript bhvOmmMips[] = {
     OBJ_TYPE_GENACTOR,
-    0x11010409,
-    0x27260000, (uintptr_t) mips_seg6_anims_06015634,
-    0x0C000000, (uintptr_t) bhv_omm_mips_init,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_mips_update,
-    0x09000000
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE | OBJ_FLAG_SET_FACE_YAW_TO_MOVE_YAW | OBJ_FLAG_HOLDABLE),
+    BHV_LOAD_ANIMATIONS(oAnimations, mips_seg6_anims_06015634),
+    BHV_CALL_NATIVE(bhv_omm_mips_init),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_mips_update),
+    BHV_END_LOOP()
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_mips(struct Object *o, f32 x, f32 y, f32 z, f32 fVel) {
+struct Object *omm_obj_spawn_mips(struct Object *o, f32 x, f32 y, f32 z, f32 fVel) {
     struct Object *mips = spawn_object(o, MODEL_MIPS, bhvOmmMips);
-    obj_set_pos(mips, x, y, z);
+    obj_set_xyz(mips, x, y, z);
     obj_set_home(mips, x, y, z);
     obj_set_angle(mips, 0, 0, 0);
     obj_scale(mips, 1.f);

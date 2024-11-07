@@ -3,19 +3,18 @@
 #undef OMM_ALL_HEADERS
 #include "level_commands.h"
 
-//
-// Data
-//
-
 typedef void (*OmmRoutine)(void);
-static OmmArray sOmmRoutines[OMM_ROUTINE_TYPES] = { omm_array_zero, omm_array_zero, omm_array_zero };
-static bool sOmmSkipIntro = false;
-static bool sOmmIsMainMenu = true;
-static bool sOmmIsLevelEntry = false;
-static bool sOmmIsEndingCutscene = false;
-static bool sOmmIsEndingCakeScreen = false;
-static u32  sOmmReturnToMainMenu = 0;
-static s32  sOmmWarpToLastCourseNum = COURSE_NONE;
+
+static struct {
+    OmmArray routines[OMM_ROUTINE_TYPES];
+    bool skipIntro;
+    bool isMainMenu;
+    bool isEndingCutscene;
+    bool isEndingCake;
+    u32 returnToMainMenu;
+    s32 warpToLastCourseNum;
+    s16 transitionTimer;
+} sOmmSystem[1];
 
 //
 // Routines
@@ -23,15 +22,15 @@ static s32  sOmmWarpToLastCourseNum = COURSE_NONE;
 
 void omm_add_routine(s32 type, void (*func)(void)) {
     if (OMM_LIKELY(type >= 0 && type < OMM_ROUTINE_TYPES && func)) {
-        if (omm_array_find(sOmmRoutines[type], ptr, func) == -1) {
-            omm_array_add(sOmmRoutines[type], ptr, func);
+        if (omm_array_find(sOmmSystem->routines[type], ptr, func) == -1) {
+            omm_array_add(sOmmSystem->routines[type], ptr, func);
         }
     }
 }
 
-static void omm_execute_routines(s32 type) {
-    omm_array_for_each(sOmmRoutines[type], p) {
-        OmmRoutine routine = (OmmRoutine) p->as_ptr;
+void omm_execute_routines(s32 type) {
+    omm_array_for_each(sOmmSystem->routines[type], p_routine) {
+        OmmRoutine routine = (OmmRoutine) p_routine->as_ptr;
         routine();
     }
 }
@@ -45,11 +44,10 @@ void omm_select_save_file(s32 fileIndex, s32 modeIndex, s32 courseNum, bool skip
     gCurrSaveFileNum = fileIndex + 1;
     gCurrAreaIndex = modeIndex + 1;
     sWarpDest.areaIdx = modeIndex + 1;
-    sOmmWarpToLastCourseNum = courseNum;
-    sOmmIsMainMenu = false;
-    sOmmIsLevelEntry = false;
-    sOmmIsEndingCutscene = false;
-    sOmmSkipIntro = skipIntro;
+    sOmmSystem->warpToLastCourseNum = courseNum;
+    sOmmSystem->isMainMenu = false;
+    sOmmSystem->isEndingCutscene = false;
+    sOmmSystem->skipIntro = skipIntro;
 }
 
 void omm_return_to_main_menu() {
@@ -66,21 +64,15 @@ void omm_return_to_main_menu() {
 void omm_update() {
 
     // Resume save file from last course
-    if (!sOmmIsMainMenu && sOmmWarpToLastCourseNum != COURSE_NONE && gMarioObject) {
-        s32 levelNum = omm_level_from_course(sOmmWarpToLastCourseNum);
+    if (!sOmmSystem->isMainMenu && sOmmSystem->warpToLastCourseNum != COURSE_NONE && gMarioObject) {
+        s32 levelNum = omm_level_from_course(sOmmSystem->warpToLastCourseNum);
         initiate_warp(levelNum, gCurrAreaIndex, OMM_LEVEL_ENTRY_WARP(levelNum), 0);
         play_transition(WARP_TRANSITION_FADE_INTO_COLOR, 1, 0xFF, 0xFF, 0xFF);
         level_set_transition(0, NULL);
         warp_special(0);
         gSavedCourseNum = COURSE_NONE;
-        sOmmWarpToLastCourseNum = COURSE_NONE;
+        sOmmSystem->warpToLastCourseNum = COURSE_NONE;
         return;
-    }
-
-    // Level entry
-    if (sOmmIsLevelEntry) {
-        omm_execute_routines(OMM_ROUTINE_TYPE_LEVEL_ENTRY);
-        sOmmIsLevelEntry = false;
     }
 
     // Update routines
@@ -104,13 +96,6 @@ void omm_update() {
     configWindow.settings_changed = sConfigWindow.fullscreen != configWindow.fullscreen || sConfigWindow.vsync != configWindow.vsync;
     sConfigWindow = configWindow;
 
-    // Trigger a save after exiting the options menu
-    static bool optmenu_was_open = false;
-    if (optmenu_was_open && !optmenu_open) {
-        omm_save_file_do_save();
-    }
-    optmenu_was_open = optmenu_open;
-
     // Misc stuff
     gPrevFrameObjectCount = 0;
 #if OMM_GAME_IS_SMSR
@@ -126,8 +111,8 @@ static void omm_pre_render_update_stars_models() {
 
     // Stars number
     if (OMM_EXTRAS_SHOW_STAR_NUMBER) {
-        omm_array_for_each(omm_obj_get_star_or_key_behaviors(), p) {
-            const BehaviorScript *bhv = (const BehaviorScript *) p->as_ptr;
+        omm_array_for_each(omm_obj_get_star_or_key_behaviors(), p_bhv) {
+            const BehaviorScript *bhv = (const BehaviorScript *) p_bhv->as_ptr;
             for_each_object_with_behavior(star, bhv) {
                 if (!obj_is_dormant(star) &&
                     star->behavior != bhvBowserKey &&
@@ -141,7 +126,7 @@ static void omm_pre_render_update_stars_models() {
                         }
                     }
                     if (!numberSpawned) {
-                        omm_spawn_star_number(star);
+                        omm_obj_spawn_star_number(star);
                     }
                 }
             }
@@ -150,8 +135,8 @@ static void omm_pre_render_update_stars_models() {
 
 #if !OMM_GAME_IS_SMMS
     // Colored Stars
-    static struct GraphNode *sOmmStarGraphNodes[34] = { NULL };
-    if (OMM_UNLIKELY(!sOmmStarGraphNodes[0])) {
+    static struct GraphNode *sOmmStarGraphNodes[34] = {0};
+    OMM_DO_ONCE {
         sOmmStarGraphNodes[0]  = geo_layout_to_graph_node(NULL, omm_geo_star_0_opaque);
         sOmmStarGraphNodes[1]  = geo_layout_to_graph_node(NULL, omm_geo_star_1_opaque);
         sOmmStarGraphNodes[2]  = geo_layout_to_graph_node(NULL, omm_geo_star_2_opaque);
@@ -189,19 +174,19 @@ static void omm_pre_render_update_stars_models() {
     }
 
     s32 starColor = OMM_STAR_COLOR_[clamp_s(gCurrCourseNum, 0, 16) + OMM_STAR_COLOR_OFFSET(OMM_GAME_MODE)];
-    omm_array_for_each(omm_obj_get_star_model_behaviors(), p) {
-        const BehaviorScript *bhv = (const BehaviorScript *) p->as_ptr;
+    omm_array_for_each(omm_obj_get_star_model_behaviors(), p_bhv) {
+        const BehaviorScript *bhv = (const BehaviorScript *) p_bhv->as_ptr;
         for_each_object_with_behavior(obj, bhv) {
             if (OMM_EXTRAS_COLORED_STARS) {
-                if (obj_check_model(obj, MODEL_STAR) || (obj->behavior == bhvCelebrationStar && !obj_check_model(obj, MODEL_BOWSER_KEY))) {
+                if (obj_has_model(obj, MODEL_STAR) || (obj->behavior == bhvCelebrationStar && !obj_has_model(obj, MODEL_BOWSER_KEY))) {
                     obj->oGraphNode = sOmmStarGraphNodes[starColor];
-                } else if (obj_check_model(obj, MODEL_TRANSPARENT_STAR)) {
+                } else if (obj_has_model(obj, MODEL_TRANSPARENT_STAR)) {
                     obj->oGraphNode = sOmmStarGraphNodes[starColor + 17 * !omm_is_ending_cutscene()];
                 }
             } else {
                 for (s32 i = 0; i != 34; ++i) {
                     if (obj_has_graph_node(obj, sOmmStarGraphNodes[i])) {
-                        obj->oGraphNode = gLoadedGraphNodes[i < 17 ? MODEL_STAR : MODEL_TRANSPARENT_STAR];
+                        obj->oGraphNode = geo_layout_to_graph_node(NULL, i < 17 ? star_geo : transparent_star_geo);
                         break;
                     }
                 }
@@ -212,21 +197,21 @@ static void omm_pre_render_update_stars_models() {
 }
 
 static void omm_pre_render_update_caps_models() {
-    static s32 (*sCapFunctions[])(s32) = {
+    static s32 (*cap_functions[])(s32) = {
         omm_player_graphics_get_normal_cap,
         omm_player_graphics_get_wing_cap,
         omm_player_graphics_get_metal_cap,
         omm_player_graphics_get_winged_metal_cap,
     };
     s32 playerIndex = omm_player_get_selected_index();
-    omm_array_for_each(omm_obj_get_cap_behaviors(), p) {
-        const BehaviorScript *bhv = (const BehaviorScript *) p->as_ptr;
+    omm_array_for_each(omm_obj_get_cap_behaviors(), p_bhv) {
+        const BehaviorScript *bhv = (const BehaviorScript *) p_bhv->as_ptr;
         for_each_object_with_behavior(obj, bhv) {
             for (s32 capType = 0; capType != 4; ++capType) {
-                s32 playerCapModel = sCapFunctions[capType](playerIndex);
+                s32 playerCapModel = cap_functions[capType](playerIndex);
                 for (s32 charIndex = 0; charIndex != OMM_NUM_PLAYABLE_CHARACTERS; ++charIndex) {
-                    s32 charCapModel = sCapFunctions[capType](charIndex);
-                    if (charCapModel != playerCapModel && obj_check_model(obj, charCapModel)) {
+                    s32 charCapModel = cap_functions[capType](charIndex);
+                    if (charCapModel != playerCapModel && obj_has_model(obj, charCapModel)) {
                         obj->oGraphNode = gLoadedGraphNodes[playerCapModel];
                         capType = 3; // break the other for loop
                         break;
@@ -251,10 +236,12 @@ void omm_pre_render() {
     }
 
     // Sparkly Stars sparkles
-    if (OMM_EXTRAS_SPARKLY_STARS_REWARD && gMarioObject && get_dialog_id() == -1 && !omm_is_game_paused()) {
+    if (OMM_SPARKLY_STARS_COMPLETION_REWARD && gMarioObject && !(gMarioObject->oNodeFlags & GRAPH_RENDER_INVISIBLE) && get_dialog_id() == -1 && !omm_is_game_paused()) {
         f32 vel = vec3f_dist(gMarioState->pos, gOmmMario->state.previous.pos);
         if (gGlobalTimer % (3 - clamp_s(vel / 25.f, 0, 2)) == 0) {
-            omm_spawn_sparkly_star_sparkle_mario(gMarioObject, OMM_EXTRAS_SPARKLY_STARS_REWARD, 60.f, 10.f, 0.4f, 30.f);
+            struct Object *sparkle = omm_obj_spawn_sparkly_star_sparkle_mario(gMarioObject, OMM_SPARKLY_STARS_COMPLETION_REWARD, 20.f, 10.f, 0.4f, 30.f);
+            f32 *marioRootPos = geo_get_marios_root_pos();
+            vec3f_sub(vec3f_add(&sparkle->oPosX, marioRootPos), &gMarioObject->oPosX);
         }
     }
 
@@ -266,8 +253,8 @@ void omm_pre_render() {
     omm_execute_routines(OMM_ROUTINE_TYPE_PRE_RENDER);
 
     // Invisible mode
-    omm_array_for_each(omm_obj_get_player_behaviors(), p) {
-        const BehaviorScript *bhv = (const BehaviorScript *) p->as_ptr;
+    omm_array_for_each(omm_obj_get_player_behaviors(), p_bhv) {
+        const BehaviorScript *bhv = (const BehaviorScript *) p_bhv->as_ptr;
         for_each_object_with_behavior(obj, bhv) {
             if (OMM_EXTRAS_INVISIBLE_MODE) {
                 obj->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
@@ -278,7 +265,7 @@ void omm_pre_render() {
     }
 
     // Cut the music before resuming save file from last course
-    if (!sOmmIsMainMenu && sOmmWarpToLastCourseNum != COURSE_NONE && gMarioObject) {
+    if (!sOmmSystem->isMainMenu && sOmmSystem->warpToLastCourseNum != COURSE_NONE && gMarioObject) {
         music_fade_out(SEQ_PLAYER_LEVEL, 1);
         music_pause();
     }
@@ -291,7 +278,7 @@ void omm_pre_render() {
 // Level commands
 //
 
-void *omm_update_cmd(void *cmd, s32 reg) {
+void *omm_update_cmd(void *cmd, UNUSED s32 reg) {
 
     // Main menu
     if (cmd == level_script_entry_point ||
@@ -307,12 +294,11 @@ void *omm_update_cmd(void *cmd, s32 reg) {
         cmd == level_script_file_select) {
         gMarioState->action = 0;
         configSkipIntro = false;
-        sOmmSkipIntro = false;
-        sOmmIsMainMenu = true;
-        sOmmIsLevelEntry = false;
-        sOmmIsEndingCutscene = false;
-        sOmmIsEndingCakeScreen = false;
-        sOmmReturnToMainMenu = 0;
+        sOmmSystem->skipIntro = false;
+        sOmmSystem->isMainMenu = true;
+        sOmmSystem->isEndingCutscene = false;
+        sOmmSystem->isEndingCake = false;
+        sOmmSystem->returnToMainMenu = 0;
     }
 
     // Loading screen
@@ -323,11 +309,9 @@ void *omm_update_cmd(void *cmd, s32 reg) {
     }
 
     // Palette editor
-    if (sOmmIsMainMenu && !omm_is_transition_active()) {
-        switch (gOmmPaletteEditorState) {
-            case OMM_PALETTE_EDITOR_STATE_OPENING: { gOmmPaletteEditorState = OMM_PALETTE_EDITOR_STATE_OPEN;   return (void *) omm_level_palette_editor; }
-            case OMM_PALETTE_EDITOR_STATE_CLOSING: { gOmmPaletteEditorState = OMM_PALETTE_EDITOR_STATE_CLOSED; return (void *) level_script_file_select; }
-        }
+    if (sOmmSystem->isMainMenu && !omm_is_transition_active()) {
+        if (omm_palette_editor_is_opening()) { omm_palette_editor_set_open();   return (void *) omm_level_palette_editor; }
+        if (omm_palette_editor_is_closing()) { omm_palette_editor_set_closed(); return (void *) level_script_file_select; }
     }
 
 #if OMM_GAME_IS_SM64
@@ -336,51 +320,52 @@ void *omm_update_cmd(void *cmd, s32 reg) {
     // Meaning we can enable the former, then set configSkipIntro to skip the latter 
     static const uintptr_t cmd_lvl_init_from_save_file[] = { CALL(0, lvl_init_from_save_file) };
     if (mem_eq(cmd, cmd_lvl_init_from_save_file, sizeof(cmd_lvl_init_from_save_file))) {
-        configSkipIntro = sOmmSkipIntro;
+        configSkipIntro = sOmmSystem->skipIntro;
     }
 #endif
 
     // Level entry
+    bool isLevelEntry = false;
     static const uintptr_t cmd_level_entry[] = { CALL(0, lvl_init_or_update) };
     if (mem_eq(cmd, cmd_level_entry, sizeof(cmd_level_entry))) {
-        sOmmIsMainMenu = false;
-        sOmmIsLevelEntry = true;
-        sOmmIsEndingCakeScreen = false;
-        omm_stars_init_bits();
+        isLevelEntry = true;
+        sOmmSystem->isMainMenu = false;
+        sOmmSystem->isEndingCake = false;
+        omm_execute_routines(OMM_ROUTINE_TYPE_LEVEL_ENTRY);
     }
 
 #if OMM_GAME_IS_SM64 || OMM_GAME_IS_SM74
-    if (!sOmmIsMainMenu) {
+    if (!sOmmSystem->isMainMenu) {
 
         // Ending cutscene
         if (gMarioState->action == ACT_END_PEACH_CUTSCENE ||
             gMarioState->action == ACT_CREDITS_CUTSCENE ||
             gMarioState->action == ACT_END_WAVING_CUTSCENE) {
-            sOmmIsEndingCutscene = true;
+            sOmmSystem->isEndingCutscene = true;
         }
 
         // Ending cake screen
         if (cmd == level_script_cake_ending) {
-            sOmmIsEndingCutscene = true;
-            sOmmIsEndingCakeScreen = true;
+            sOmmSystem->isEndingCutscene = true;
+            sOmmSystem->isEndingCake = true;
         }
 
         // Skip ending
-        if (sOmmIsEndingCutscene && !sOmmReturnToMainMenu && (gPlayer1Controller->buttonPressed & START_BUTTON)) {
-            sOmmReturnToMainMenu = gGlobalTimer;
+        if (sOmmSystem->isEndingCutscene && !sOmmSystem->returnToMainMenu && (gPlayer1Controller->buttonPressed & START_BUTTON)) {
+            sOmmSystem->returnToMainMenu = gGlobalTimer;
             play_transition(WARP_TRANSITION_FADE_INTO_STAR, 30, 0, 0, 0);
             music_fade_out(SEQ_PLAYER_LEVEL, 190);
             return NULL;
         }
 
         // Return to main menu
-        if (sOmmReturnToMainMenu && (gGlobalTimer - sOmmReturnToMainMenu) > 45) {
-            gHudDisplay.flags = 0;
-            sOmmIsEndingCutscene = false;
-            sOmmReturnToMainMenu = 0;
+        if (sOmmSystem->returnToMainMenu && (gGlobalTimer - sOmmSystem->returnToMainMenu) > 45) {
+            gHudDisplay.flags = HUD_DISPLAY_NONE;
+            sOmmSystem->isEndingCutscene = false;
+            sOmmSystem->returnToMainMenu = 0;
 
             // Level stack is already cleared by the jump to cake ending, so just jump to the main menu entry
-            if (sOmmIsEndingCakeScreen) {
+            if (sOmmSystem->isEndingCake) {
                 return (void *) level_script_goddard_regular;
             }
 
@@ -400,7 +385,7 @@ void *omm_update_cmd(void *cmd, s32 reg) {
 #endif
 
     // Warp update
-    return omm_update_warp(cmd, sOmmIsLevelEntry);
+    return omm_update_warp(cmd, isLevelEntry);
 }
 
 //
@@ -408,7 +393,7 @@ void *omm_update_cmd(void *cmd, s32 reg) {
 //
 
 bool omm_is_main_menu() {
-    return sOmmIsMainMenu;
+    return sOmmSystem->isMainMenu;
 }
 
 bool omm_is_game_paused() {
@@ -416,17 +401,16 @@ bool omm_is_game_paused() {
 }
 
 bool omm_is_transition_active() {
-    static s16 sOmmTransitionTimer = 0;
-    if (sTransitionTimer > 0) sOmmTransitionTimer = sTransitionTimer;
-    bool isTransitionActive = (gWarpTransition.isActive || sOmmTransitionTimer > 0);
-    sOmmTransitionTimer = sTransitionTimer;
+    if (sTransitionTimer > 0) sOmmSystem->transitionTimer = sTransitionTimer;
+    bool isTransitionActive = (gWarpTransition.isActive || sOmmSystem->transitionTimer > 0);
+    sOmmSystem->transitionTimer = sTransitionTimer;
     return isTransitionActive;
 }
 
 bool omm_is_ending_cutscene() {
-    return sOmmIsEndingCutscene;
+    return sOmmSystem->isEndingCutscene;
 }
 
 bool omm_is_ending_cake_screen() {
-    return sOmmIsEndingCakeScreen;
+    return sOmmSystem->isEndingCake;
 }

@@ -69,7 +69,7 @@ void __str_cat(char *dst, s32 dst_siz, const char **src) {
     if (src && dst && dst_siz) {
         for (; *src && dst_siz; ++src) {
             __str_cpy(dst, dst_siz, *src);
-            int src_siz = (int) strlen(*src);
+            s32 src_siz = (s32) strlen(*src);
             dst += src_siz;
             dst_siz = max_s(0, dst_siz - src_siz);
         }
@@ -164,10 +164,10 @@ void __omm_map_remove(OmmMap *pmap, s32 index) {
 
 s32 __omm_hmap_find(OmmHMap *phmap, u32 key) {
     if (OMM_LIKELY(phmap->s)) {
-        s32 i = 0, c = phmap->s;
+        u32 i = 0, c = phmap->s;
         const u32 *k = phmap->k;
         while (c >>= 1) {
-            i += ((k[i + c] >= key) ? c : 0);
+            i += (k[i + c] >= key) * c;
         }
         if (k[i] == key) {
             return i;
@@ -212,38 +212,57 @@ typedef struct {
     s32 current;
 } OmmMemoryPool;
 
-void *gOmmMemoryPoolStrings;
-void *gOmmMemoryPoolGeoData;
+void *gOmmMemoryPoolStrings = NULL;
+void *gOmmMemoryPoolGeoData = NULL;
 
-static OmmMemoryObject *omm_memory_get_free_slot(OmmMemoryPool *omp) {
-    OmmMemoryObject *obj = NULL;
-    while (!obj) {
-        obj = &omp->objects[omp->current];
-
-        // Check if the owner's oGeoData points to the block of memory
-        // If that's the case, it means the block is in use, so skip it
-        if (omp == gOmmMemoryPoolGeoData) {
-            struct Object *o = (struct Object *) obj->owner;
-            if (o && o->oGeoData && o->oGeoData == obj->data) {
-                obj = NULL;
-            }
-        }
-        omp->current = (omp->current + 1) % (omp->capacity);
+static void omm_memory_pool_grow(OmmMemoryPool *omp, s32 capacity) {
+    OmmMemoryObject *objects = mem_new(OmmMemoryObject, capacity);
+    if (omp->objects) {
+        mem_cpy(objects, omp->objects, sizeof(OmmMemoryObject) * omp->capacity);
+        mem_del(omp->objects);
     }
-    return obj;
+    omp->objects = objects;
+    omp->capacity = capacity;
+}
+
+static OmmMemoryPool *omm_memory_pool_create(s32 capacity) {
+    OmmMemoryPool *pool = mem_new(OmmMemoryPool, 1);
+    omm_memory_pool_grow(pool, capacity);
+    pool->current = 0;
+    return pool;
+}
+
+static OmmMemoryObject *omm_memory_pool_get_free_slot(OmmMemoryPool *omp) {
+    for (s32 i = 0; i != omp->capacity; ++i) {
+        OmmMemoryObject *obj = omp->objects + omp->current;
+        omp->current = (omp->current + 1) % (omp->capacity);
+        if (!obj->owner) {
+            return obj;
+        }
+    }
+
+    // No free slot found, increase pool capacity
+    omm_memory_pool_grow(omp, omp->capacity * 2);
+    omp->current = omp->capacity / 2;
+    return omp->objects + omp->current;
+}
+
+OMM_AT_STARTUP static void omm_memory_init_pools() {
+    gOmmMemoryPoolStrings = omm_memory_pool_create(32);
+    gOmmMemoryPoolGeoData = omm_memory_pool_create(64);
 }
 
 void *omm_memory_new(void *pool, s32 size, void *caller) {
     void *p = NULL;
     if (pool) {
         OmmMemoryPool *omp = (OmmMemoryPool *) pool;
-        OmmMemoryObject *obj = omm_memory_get_free_slot(omp);
+        OmmMemoryObject *obj = omm_memory_pool_get_free_slot(omp);
         if (obj->size < size) {
             mem_del(obj->data);
             obj->data = mem_new(u8, size);
             obj->size = size;
         } else {
-            mem_clr(obj->data, size);
+            mem_zero(obj->data, size);
         }
         obj->owner = caller;
         p = obj->data;
@@ -253,32 +272,58 @@ void *omm_memory_new(void *pool, s32 size, void *caller) {
     return p;
 }
 
-static void omm_memory_init_pool(void **pool, s32 capacity) {
-    *pool = mem_new(OmmMemoryPool, 1);
-    OmmMemoryPool *omp = (OmmMemoryPool *) *pool;
-    omp->objects = (OmmMemoryObject *) mem_new(OmmMemoryObject, capacity);
-    omp->capacity = capacity;
-    omp->current = 0;
-}
-
-OMM_AT_STARTUP static void omm_memory_init_pools() {
-    omm_memory_init_pool(&gOmmMemoryPoolStrings, 32);
-    omm_memory_init_pool(&gOmmMemoryPoolGeoData, 256);
-}
-
-// DEBUG DISPLAY FOR COUNTING THE USED SLOTS OF GEO DATA POOL
-/*OMM_ROUTINE_UPDATE(aaa) {
-    s32 usedCount = 0;
-    OmmMemoryPool *omp = (OmmMemoryPool *) gOmmMemoryPoolGeoData;
+OMM_ROUTINE_UPDATE(omm_memory_pool_geo_data_gc) {
+    OmmMemoryPool *omp = gOmmMemoryPoolGeoData;
     for (s32 i = 0; i != omp->capacity; ++i) {
-        OmmMemoryObject *obj = &omp->objects[i];
-        if (omp == gOmmMemoryPoolGeoData) {
-            struct Object *o = (struct Object *) obj->owner;
-            if (o && o->oGeoData && o->oGeoData == obj->data) {
-                usedCount++;
-            }
+        OmmMemoryObject *obj = omp->objects + i;
+        struct Object *o = obj->owner;
+        if (o && !o->activeFlags) {
+            obj->owner = NULL;
         }
     }
-    omm_debug_text(-60, 24, "%d", omp->current);
-    omm_debug_text(-60, 4, "%d I %d", usedCount, omp->capacity);
-}*/
+}
+
+// // DEBUG DISPLAY FOR COUNTING THE USED SLOTS OF GEO DATA POOL
+// OMM_ROUTINE_PRE_RENDER(omm_memory_pool_geo_data_debug_display) {
+//     s32 usedCount = 0;
+//     OmmMemoryPool *omp = gOmmMemoryPoolGeoData;
+//     for (s32 i = 0; i != omp->capacity; ++i) {
+//         OmmMemoryObject *obj = omp->objects + i;
+//         usedCount += (obj->owner != NULL);
+//     }
+//     omm_debug_text(-50, 24, "%d", omp->current);
+//     omm_debug_text(-50, 4, "%d I %d", usedCount, omp->capacity);
+// }
+
+//
+// Pools for VTX and GFX
+//
+
+#if !OMM_CODE_DEV
+
+#define OMM_VTX_POOL_SIZE (0x10000)
+#define OMM_GFX_POOL_SIZE (0x10000)
+
+Vtx *omm_alloc_vtx(s32 count) {
+    mem_new1(Vtx *, sVtxPool, mem_new(Vtx, OMM_VTX_POOL_SIZE));
+    mem_new1(Vtx *, sVtxHead, sVtxPool);
+    if (sVtxHead + count > sVtxPool + OMM_VTX_POOL_SIZE) {
+        sVtxHead = sVtxPool;
+    }
+    Vtx *vtx = sVtxHead;
+    sVtxHead += count;
+    return vtx;
+}
+
+Gfx *omm_alloc_gfx(s32 count) {
+    mem_new1(Gfx *, sGfxPool, mem_new(Gfx, OMM_GFX_POOL_SIZE));
+    mem_new1(Gfx *, sGfxHead, sGfxPool);
+    if (sGfxHead + count > sGfxPool + OMM_GFX_POOL_SIZE) {
+        sGfxHead = sGfxPool;
+    }
+    Gfx *gfx = sGfxHead;
+    sGfxHead += count;
+    return gfx;
+}
+
+#endif

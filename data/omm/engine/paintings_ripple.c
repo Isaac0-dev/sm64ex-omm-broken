@@ -30,7 +30,7 @@ void gfx_interpolate_frame_paintings(f32 t) {
 }
 
 void gfx_clear_frame_paintings() {
-    mem_clr(sPaintingVtx, sizeof(sPaintingVtx));
+    mem_zero(sPaintingVtx, sizeof(sPaintingVtx));
     sPaintingCount = 0;
 }
 

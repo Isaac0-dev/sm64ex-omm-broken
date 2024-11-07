@@ -21,14 +21,14 @@ static bool omm_cappy_is_obj_targetable(struct Object *o, struct MarioState *m) 
           (omm_behavior_data_get_capture(o->behavior) && OMM_CAP_CAPPY_CAPTURE)));
 }
 
-struct Object *omm_cappy_find_target(struct Object *cappy, struct MarioState *m, f32 distanceMax) {
+struct Object *omm_cappy_find_target(f32 *origin, struct Object *cappy, struct MarioState *m, f32 distanceMax) {
     struct Object *target = NULL;
     struct Object *targetCoin = NULL;
     f32 distanceMin = distanceMax;
     f32 distanceCoinMin = distanceMax;
     for_each_object_in_cappy_lists(obj) {
         if (obj != cappy && omm_cappy_is_obj_targetable(obj, m)) {
-            f32 distToCappy = obj_get_distance(obj, cappy) - (cappy->hitboxRadius + obj->hitboxRadius);
+            f32 distToCappy = vec3f_dist(origin, &obj->oPosX) - (cappy->hitboxRadius + obj->hitboxRadius);
             if (omm_obj_is_coin(obj)) {
                 if (distToCappy < distanceCoinMin) {
                     distanceCoinMin = distToCappy;
@@ -87,18 +87,26 @@ bool omm_cappy_is_mario_available(struct MarioState *m, bool isCapture) {
     return true;
 }
 
-void omm_cappy_try_to_target_next_coin(struct Object *cappy) {
+void omm_cappy_try_to_target_next_object(struct Object *cappy, struct MarioState *m) {
     if (cappy->oCappyFlags & OMM_CAPPY_FLAG_HOMING_ATTACK) {
-        struct Object *target = omm_cappy_find_target(cappy, gMarioState, OMM_CAPPY_HOMING_ATTACK_VEL * OMM_CAPPY_HOMING_ATTACK_DURATION);
+        f32 velocity = OMM_CAPPY_HOMING_ATTACK_VELOCITY;
+        s32 duration = OMM_CAPPY_HOMING_ATTACK_DURATION;
+        struct Object *target = omm_cappy_find_target(&cappy->oPosX, cappy, m, velocity * duration);
         if (target) {
             f32 dx = target->oPosX - cappy->oPosX;
             f32 dy = target->oPosY - cappy->oPosY;
             f32 dz = target->oPosZ - cappy->oPosZ;
             f32 dv = max_f(0.1f, sqrtf(sqr_f(dx) + sqr_f(dy) + sqr_f(dz)));
-            cappy->oVelX = OMM_CAPPY_HOMING_ATTACK_VEL * (dx / dv);
-            cappy->oVelY = OMM_CAPPY_HOMING_ATTACK_VEL * (dy / dv);
-            cappy->oVelZ = OMM_CAPPY_HOMING_ATTACK_VEL * (dz / dv);
-            cappy->oCappyLifeTimer = OMM_CAPPY_LIFETIME - OMM_CAPPY_HOMING_ATTACK_DURATION - 1;
+            if (dv > velocity * duration) {
+                cappy->oVelX = dx / duration;
+                cappy->oVelY = dy / duration;
+                cappy->oVelZ = dz / duration;
+            } else {
+                cappy->oVelX = velocity * dx / dv;
+                cappy->oVelY = velocity * dy / dv;
+                cappy->oVelZ = velocity * dz / dv;
+            }
+            cappy->oCappyLifeTimer = OMM_CAPPY_LIFETIME - duration - 1;
         } else {
             omm_cappy_return_to_mario(cappy);
         }
@@ -107,8 +115,10 @@ void omm_cappy_try_to_target_next_coin(struct Object *cappy) {
 
 void omm_cappy_bounce_back(struct Object *cappy) {
     if (cappy->oCappyBehavior < OMM_CAPPY_BHV_SPIN_GROUND && !(cappy->oCappyFlags & OMM_CAPPY_FLAG_PLAY_AS)) {
-        spawn_object(cappy, MODEL_NONE, bhvHorStarParticleSpawner);
-        obj_play_sound(cappy, SOUND_OBJ_DEFAULT_DEATH);
+        if (!omm_mario_is_capture(gMarioState)) {
+            spawn_object(cappy, MODEL_NONE, bhvHorStarParticleSpawner);
+            obj_play_sound(cappy, SOUND_OBJ_DEFAULT_DEATH);
+        }
         omm_cappy_return_to_mario(cappy);
     }
 }
@@ -119,10 +129,10 @@ void omm_cappy_process_interactions(struct Object *cappy, struct MarioState *m) 
     if ((cappy->oCappyFlags & OMM_CAPPY_FLAG_INTERACT_MARIO) && !gOmmMario->cappy.bounced) {
 
         // Mario must be available and not swimming
-        if (omm_cappy_is_mario_available(m, false) && !(m->action & ACT_FLAG_SWIMMING)) {
+        if (omm_cappy_is_mario_available(m, false) && (!(m->action & ACT_FLAG_SWIMMING) || (m->pos[1] > m->waterLevel - OMM_MARIO_WATER_JUMP_SURFACE_OFFSET))) {
 
             // Hitbox overlapping
-            struct Object sMarioHitbox = {
+            struct Object marioHitbox = {
                 .oPosX = m->pos[0],
                 .oPosY = m->pos[1],
                 .oPosZ = m->pos[2],
@@ -130,11 +140,12 @@ void omm_cappy_process_interactions(struct Object *cappy, struct MarioState *m) 
                 .hitboxHeight = m->marioObj->hitboxHeight,
                 .hitboxDownOffset = 0.f
             };
-            if (obj_detect_hitbox_overlap(cappy, &sMarioHitbox, OBJ_OVERLAP_FLAG_HITBOX, OBJ_OVERLAP_FLAG_HITBOX)) {
-                bool bounce = (m->action & ACT_FLAG_AIR) || (!OMM_CHEAT_WALK_ON_LAVA && m->floor->type == SURFACE_BURNING);
+            if (obj_detect_hitbox_overlap(cappy, &marioHitbox, OBJ_OVERLAP_FLAG_HITBOX, OBJ_OVERLAP_FLAG_HITBOX)) {
+                bool bounce = (m->action & ACT_FLAG_AIR) || (m->action & ACT_FLAG_SWIMMING) || (!OMM_CHEAT_WALK_ON_LAVA && m->floor->type == SURFACE_BURNING);
                 bool vault = !bounce || m->framesSinceA < OMM_CAPPY_SUPER_BOUNCE_FRAMES;
                 bool water = (m->action & ACT_FLAG_METAL_WATER);
                 gOmmMario->cappy.bounced |= bounce && !OMM_CHEAT_UNLIMITED_CAPPY_BOUNCES;
+                PFX((m->action & ACT_FLAG_SWIMMING) ? PARTICLE_WATER_SPLASH : 0);
                 omm_mario_set_action(m, vault ?
                     (water ? ACT_OMM_METAL_WATER_TRIPLE_JUMP  : ACT_OMM_CAPPY_VAULT ) :
                     (water ? ACT_OMM_METAL_WATER_CAPPY_BOUNCE : ACT_OMM_CAPPY_BOUNCE),
@@ -143,7 +154,7 @@ void omm_cappy_process_interactions(struct Object *cappy, struct MarioState *m) 
                 omm_mario_init_next_action(m);
                 omm_cappy_return_to_mario(cappy);
                 spawn_object(m->marioObj, MODEL_NONE, bhvHorStarParticleSpawner);
-                obj_play_sound(m->marioObj, SOUND_GENERAL_BOING1);
+                SFX(SOUND_GENERAL_BOING1);
                 gOmmStats->cappyBounces++;
                 return;
             }
@@ -154,21 +165,7 @@ void omm_cappy_process_interactions(struct Object *cappy, struct MarioState *m) 
     // They are normally intangible and their hitbox
     // is too large to directly interact with them
     for_each_object_with_behavior(obj, bhvTreasureChestBottom) {
-        if (vec3f_is_inside_cylinder(&cappy->oPosX, &obj->oPosX, 150.f * obj->oScaleX, 160.f * obj->oScaleY, 0.f)) {
-            if (obj->oAction == 0 || (obj->oAction == 2 && obj->oTimer > 30)) {
-                if (obj->parentObj->oTreasureChestUnkF4 == obj->oBehParams2ndByte) {
-                    play_sound(SOUND_GENERAL2_RIGHT_ANSWER, gGlobalSoundArgs);
-                    obj->parentObj->oTreasureChestUnkF4++;
-                    obj->parentObj->oTreasureChestUnkF8 = 0;
-                    obj->oAction = 1;
-                } else {
-                    play_sound(SOUND_MENU_CAMERA_BUZZ, gGlobalSoundArgs);
-                    obj->parentObj->oTreasureChestUnkF4 = 1;
-                    obj->parentObj->oTreasureChestUnkF8 = 1;
-                    obj->oAction = 2;
-                    omm_spawn_damage_mario(m->marioObj, INTERACT_SHOCK, obj->oDamageOrCoinValue);
-                }
-            }
+        if (omm_obj_interact_treasure_chest(cappy, obj)) {
             omm_cappy_bounce_back(cappy);
             return;
         }

@@ -18,7 +18,7 @@ hMin _|        \________
        vMin |   | vMax
 */
 
-#define OMM_MARIO_HANDLING_DISABLE      100.f
+#define OMM_MARIO_HANDLING_DISABLE      (100.f)
 #define OMM_MARIO_HANDLING_MODIFIER(x)  (sqr_f(x))
 
 static f32 omm_mario_get_handling_velocity(struct MarioState *m) {
@@ -88,7 +88,8 @@ static bool update_air(struct MarioState *m, bool turn) {
 
         // Update Mario's angle
         if (m->input & INPUT_NONZERO_ANALOG) {
-            if (m->action != ACT_BACKFLIP && m->action != ACT_OMM_METAL_WATER_BACKFLIP && ((
+            if (m->action != ACT_BACKFLIP && m->action != ACT_OMM_METAL_WATER_BACKFLIP &&
+                m->action != ACT_WATER_JUMP && m->action != ACT_HOLD_WATER_JUMP && ((
                 m->action != ACT_LONG_JUMP && m->action != ACT_OMM_METAL_WATER_LONG_JUMP) || !OMM_CHEAT_BLJ_ANYWHERE)) {
                 f32 handlingMin  = (shellRiding ? 0x400 : 0x200);
                 f32 handlingMax  = (shellRiding ? 0x2000 : 0x2000);

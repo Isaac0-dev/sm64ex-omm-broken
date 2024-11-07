@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -123,17 +124,17 @@ static void bhv_omm_break_particle_update() {
 
 const BehaviorScript bhvOmmBreakParticle[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_break_particle_update,
-    0x09000000
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_break_particle_update),
+    BHV_END_LOOP()
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_break_particle(struct Object *o, u8 r, u8 g, u8 b, f32 offsetY, f32 velMin, f32 velMax, f32 velY, f32 scaleMin, f32 scaleMax) {
+struct Object *omm_obj_spawn_break_particle(struct Object *o, u8 r, u8 g, u8 b, f32 offsetY, f32 velMin, f32 velMax, f32 velY, f32 scaleMin, f32 scaleMax) {
     f32 fvel                = velMin + (velMax - velMin) * random_float();
     s16 fangle              = random_u16();
     struct Object *particle = obj_spawn_from_geo(o, omm_geo_break_particle, bhvOmmBreakParticle);

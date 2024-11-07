@@ -2,13 +2,6 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 
-extern s8 gDialogBoxState;
-extern s8 gDialogBoxType;
-extern s16 gDialogTextPos;
-extern s16 gDialogScrollOffsetY;
-extern f32 gDialogBoxAngle;
-extern f32 gDialogBoxScale;
-
 //
 // Frame interpolation
 //
@@ -97,6 +90,14 @@ void render_dialog_box_type(struct DialogEntry *dialog, s8 linesPerBox) {
     create_dl_translation_matrix(MENU_MTX_NOPUSH, dialog->leftOffset, dialog->width, 0);
     bool interpolate = gFrameInterpolation && (sDialogBox1->type == gDialogBoxType);
 
+    // Close dialog box if pressed B
+    if (gDialogBoxState == 1 && (gPlayer1Controller->buttonPressed & B_BUTTON)) {
+        handle_special_dialog_text(gDialogID);
+        gDialogLineNum = 1;
+        gDialogResponse = 1;
+        gDialogBoxState = 3;
+    }
+
     // Previous frame
     if (interpolate) {
         sDialogBoxPos       = gDisplayListHead;
@@ -111,7 +112,7 @@ void render_dialog_box_type(struct DialogEntry *dialog, s8 linesPerBox) {
         sDialogBox0->state  = gDialogBoxState;
         sDialogBox0->type   = gDialogBoxType;
         sDialogBox0->offset = gDialogScrollOffsetY;
-        sDialogBox0->angle  = gDialogBoxAngle;
+        sDialogBox0->angle  = gDialogBoxOpenTimer;
         sDialogBox0->scale  = gDialogBoxScale;
     }
 
@@ -120,7 +121,7 @@ void render_dialog_box_type(struct DialogEntry *dialog, s8 linesPerBox) {
     sDialogBox1->state  = gDialogBoxState;
     sDialogBox1->type   = gDialogBoxType;
     sDialogBox1->offset = gDialogScrollOffsetY;
-    sDialogBox1->angle  = gDialogBoxAngle;
+    sDialogBox1->angle  = gDialogBoxOpenTimer;
     sDialogBox1->scale  = gDialogBoxScale;
 
     // Render dialog box
@@ -130,9 +131,13 @@ void render_dialog_box_type(struct DialogEntry *dialog, s8 linesPerBox) {
 
 // Fix a frame-perfect softlock with scrolling textboxes
 OMM_ROUTINE_PRE_RENDER(dialog_box_update) {
-    if (gDialogID != -1 && sDialogBox0->state != sDialogBox1->state) {
-        gPlayer1Controller->buttonPressed = 0;
-        gPlayer2Controller->buttonPressed = 0;
-        gPlayer3Controller->buttonPressed = 0;
+    if (gDialogID != -1 && !omm_is_game_paused()) {
+        if (sDialogBox0->state != sDialogBox1->state) {
+            gPlayer1Controller->buttonPressed = 0;
+            gPlayer2Controller->buttonPressed = 0;
+            gPlayer3Controller->buttonPressed = 0;
+        } else {
+            gPlayer3Controller->buttonPressed &= ~B_BUTTON;
+        }
     }
 }

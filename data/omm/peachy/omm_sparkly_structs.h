@@ -4,7 +4,7 @@
 #include "types.h"
 
 typedef struct OmmSparklyData {
-    s32 starIndex, dialogId, gameType, levelNum, areaIndex;
+    s32 starIndex, gameType, levelNum, areaIndex;
     s32 starX, starY, starZ;
     s32 signX, signY, signZ, signA, hint;
     s32 timer;
@@ -24,7 +24,7 @@ typedef struct OmmSparklyContext {
     bool entryDialog;
     bool timerStarted;
     bool eventStarted;
-    bool zones[5];
+    u32 eventFlags;
     s32 coinsYellow, coinsYellowPrev, coinsYellowDiff;
     s32 coinsLost, coinsLostPrev, coinsLostDiff;
     s32 coinsRed, coinsRedPrev, coinsRedDiff;

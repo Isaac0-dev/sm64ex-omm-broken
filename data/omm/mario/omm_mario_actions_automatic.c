@@ -53,6 +53,11 @@ static s32 omm_act_top_of_pole_transition(struct MarioState *m) {
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }
 
+static s32 omm_act_top_of_pole(struct MarioState *m) {
+    action_z_pressed(OMM_MOVESET_ODYSSEY, ACT_TOP_OF_POLE_JUMP, 0, RETURN_CANCEL, m->vel[1] = 48.f * omm_player_physics_get_selected_jump(););
+    return OMM_MARIO_ACTION_RESULT_CONTINUE;
+}
+
 static s32 omm_act_start_hanging(struct MarioState *m) {
     if (OMM_MOVESET_ODYSSEY) {
         action_init(0.f, 0.f, 0, SOUND_MARIO_WHOA);
@@ -63,7 +68,7 @@ static s32 omm_act_start_hanging(struct MarioState *m) {
         action_condition((m->input & INPUT_NONZERO_ANALOG) && m->actionTimer >= 15, ACT_HANG_MOVING, 0, RETURN_CANCEL);
 
         omm_act_hanging_update(m);
-        obj_anim_play(m->marioObj, MARIO_ANIM_HANG_ON_CEILING, 2.f);
+        ANM(MARIO_ANIM_HANG_ON_CEILING, 2.f);
         play_sound_if_no_flag(m, SOUND_ACTION_HANGING_STEP, MARIO_ACTION_SOUND_PLAYED);
         action_condition(obj_anim_is_at_end(m->marioObj), ACT_HANGING, 0, RETURN_BREAK);
         return OMM_MARIO_ACTION_RESULT_BREAK;
@@ -80,7 +85,7 @@ static s32 omm_act_hanging(struct MarioState *m) {
         action_condition(m->input & INPUT_NONZERO_ANALOG, ACT_HANG_MOVING, m->actionArg, RETURN_CANCEL);
 
         omm_act_hanging_update(m);
-        obj_anim_play(m->marioObj, (m->actionArg ? MARIO_ANIM_HANDSTAND_LEFT : MARIO_ANIM_HANDSTAND_RIGHT), 1.f);
+        ANM((m->actionArg ? MARIO_ANIM_HANDSTAND_LEFT : MARIO_ANIM_HANDSTAND_RIGHT), 1.f);
         return OMM_MARIO_ACTION_RESULT_BREAK;
     }
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
@@ -98,7 +103,7 @@ static s32 omm_act_hang_moving(struct MarioState *m) {
         action_condition(perform_hang_step(m) == HANG_STEP_LEFT_CEIL, ACT_FREEFALL, 0, RETURN_BREAK);
         
         f32 animSpeed = relerp_0_1_f(m->forwardVel, 0.f, OMM_MARIO_HANG_MAX_SPEED, 1.f, 2.f);
-        obj_anim_play(m->marioObj, (m->actionArg ? MARIO_ANIM_MOVE_ON_WIRE_NET_RIGHT : MARIO_ANIM_MOVE_ON_WIRE_NET_LEFT), animSpeed);
+        ANM((m->actionArg ? MARIO_ANIM_MOVE_ON_WIRE_NET_RIGHT : MARIO_ANIM_MOVE_ON_WIRE_NET_LEFT), animSpeed);
         if (obj_anim_is_past_frame(m->marioObj, 12)) {
             play_sound_if_no_flag(m, SOUND_ACTION_HANGING_STEP, MARIO_ACTION_SOUND_PLAYED);
         }
@@ -146,8 +151,8 @@ static s32 omm_act_in_cannon(struct MarioState *m) {
 
             // Aiming and fire
             case 2: {
-                m->faceAngle[0] = clamp_s(m->faceAngle[0] - CAMERA_Y_FIRST_PERSON_VIEW * ((m->controller->stickY * 10) - (BETTER_CAM_MOUSE_CAM * gMouseY * 16)), 0x0000, 0x3C00);
-                m->faceAngle[1] =         m->faceAngle[1] + CAMERA_X_FIRST_PERSON_VIEW * ((m->controller->stickX * 10) - (BETTER_CAM_MOUSE_CAM * gMouseX * 16));
+                m->faceAngle[0] = clamp_s(m->faceAngle[0] + OMM_CAMERA_Y * ((m->controller->stickY * 10) - (BETTER_CAM_MOUSE_CAM * gOmmGlobals->mouseDeltaY * 16)), 0x0000, 0x3C00);
+                m->faceAngle[1] =         m->faceAngle[1] - OMM_CAMERA_X * ((m->controller->stickX * 10) + (BETTER_CAM_MOUSE_CAM * gOmmGlobals->mouseDeltaX * 16));
                 if (m->controller->buttonPressed & (A_BUTTON | B_BUTTON)) {
                     mario_set_forward_vel(m, 100 * coss(m->faceAngle[0]));
                     m->vel[1]  = 100 * sins(m->faceAngle[0]);
@@ -155,21 +160,21 @@ static s32 omm_act_in_cannon(struct MarioState *m) {
                     m->pos[1] += 120 * sins(m->faceAngle[0]);
                     m->pos[2] += 120 * coss(m->faceAngle[0]) * coss(m->faceAngle[1]);
                     m->marioObj->oNodeFlags |= GRAPH_RENDER_ACTIVE;
-                    obj_play_sound(m->marioObj, SOUND_ACTION_FLYING_FAST);
-                    obj_play_sound(m->marioObj, SOUND_OBJ_POUNDING_CANNON);
+                    SFX(SOUND_ACTION_FLYING_FAST);
+                    SFX(SOUND_OBJ_POUNDING_CANNON);
                     omm_mario_set_action(m, ACT_SHOT_FROM_CANNON, 0, A_BUTTON | B_BUTTON);
                     set_camera_mode(m->area->camera, CAMERA_MODE_BEHIND_MARIO, 1);
                     m->usedObj->oAction = 2;
                     return OMM_MARIO_ACTION_RESULT_BREAK;
                 }
                 if (m->controller->stickX || m->controller->stickY) {
-                    obj_play_sound(m->marioObj, SOUND_MOVING_AIM_CANNON);
+                    SFX(SOUND_MOVING_AIM_CANNON);
                 }
             } break;
         }
         vec3f_copy(m->marioObj->oGfxPos, m->pos);
         vec3s_set(m->marioObj->oGfxAngle, 0, m->faceAngle[1], 0);
-        obj_anim_play(m->marioObj, MARIO_ANIM_DIVE, 1);
+        ANM(MARIO_ANIM_DIVE, 1);
         return OMM_MARIO_ACTION_RESULT_BREAK;
     }
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
@@ -179,13 +184,14 @@ static s32 omm_act_in_cannon(struct MarioState *m) {
 // Odyssey //
 /////////////
 
-static bool sAboutToReleaseBowser = false;
-static s16 sTargetMineYawAngle = 0;
-static s16 sTargetMineYawVel = 0;
-static struct Object *sTargetMine = NULL;
+static struct {
+    struct Object *obj;
+    s16 yawAngle;
+    s16 yawVel;
+} sOmmBowserTargetMine[1];
 
 static s32 omm_act_grab_bowser(struct MarioState *m) {
-    action_init(0, 0, 0, 0, obj_anim_play_with_sound(m->marioObj, MARIO_ANIM_GRAB_BOWSER, 1.f, SOUND_MARIO_HRMM, true); sAboutToReleaseBowser = false;);
+    action_init(0, 0, 0, 0, obj_anim_play_with_sound(m->marioObj, MARIO_ANIM_GRAB_BOWSER, 1.f, SOUND_MARIO_HRMM, true););
     if (obj_anim_is_at_end(m->marioObj)) {
         omm_mario_set_action(m, ACT_OMM_HOLD_BOWSER, 0, 0);
         m->angleVel[1] = 0;
@@ -195,10 +201,10 @@ static s32 omm_act_grab_bowser(struct MarioState *m) {
 }
 
 static s32 omm_act_hold_bowser(struct MarioState *m) {
-    obj_anim_play(m->marioObj, m->angleVel[1] == 0 ? MARIO_ANIM_HOLDING_BOWSER : MARIO_ANIM_SWINGING_BOWSER, 1.f);
+    ANM(m->angleVel[1] == 0 ? MARIO_ANIM_HOLDING_BOWSER : MARIO_ANIM_SWINGING_BOWSER, 1.f);
 
     // Prepare release
-    if (!sAboutToReleaseBowser && (m->controller->buttonPressed & B_BUTTON) && (abs_s(m->angleVel[1]) >= 0x0E00)) {
+    if (!m->actionState && (m->controller->buttonPressed & B_BUTTON) && (abs_s(m->angleVel[1]) >= 0x0E00)) {
         
         // Target the nearest mine to throw Bowser into
         // Takes the current rotation into account
@@ -221,36 +227,32 @@ static s32 omm_act_hold_bowser(struct MarioState *m) {
             }
         }
 
-        sTargetMine = targetMine;
-        sTargetMineYawAngle = targetAngle;
-        sTargetMineYawVel = m->angleVel[1];
-        sAboutToReleaseBowser = true;
+        sOmmBowserTargetMine->obj = targetMine;
+        sOmmBowserTargetMine->yawAngle = targetAngle;
+        sOmmBowserTargetMine->yawVel = m->angleVel[1];
+        m->actionState = 1;
     }
 
     // About to release
-    if (sAboutToReleaseBowser) {
-        u16 angleDiff = (u16) abs_s(m->faceAngle[1] - sTargetMineYawAngle);
-        if (angleDiff < (u16) abs_s((s16) sTargetMineYawVel)) {
+    if (m->actionState) {
+        u16 angleDiff = (u16) abs_s(m->faceAngle[1] - sOmmBowserTargetMine->yawAngle);
+        if (angleDiff < (u16) abs_s((s16) sOmmBowserTargetMine->yawVel)) {
         
             // Set Bowser's starting point and direction
-            m->faceAngle[1] = sTargetMineYawAngle;
+            m->faceAngle[1] = sOmmBowserTargetMine->yawAngle;
             struct Object *bowser = obj_get_first_with_behavior(bhvOmmBowser);
             f32 distBowserFromCenter = sqrtf(sqr_f(bowser->oPosX) + sqr_f(bowser->oPosZ));
             bowser->oPosX = distBowserFromCenter * sins(m->faceAngle[1]);
             bowser->oPosZ = distBowserFromCenter * coss(m->faceAngle[1]);
             bowser->oFaceAngleYaw = m->faceAngle[1];
-            bowser->oBowserMine = sTargetMine;
-
-            // "So long-a Bowser"
-            obj_anim_play_with_sound(m->marioObj, MARIO_ANIM_RELEASE_BOWSER, 1.f, SOUND_MARIO_SO_LONGA_BOWSER | 0xFF00, true);
-            m->actionState = 1;
+            bowser->oBowserMine = sOmmBowserTargetMine->obj;
 
             // Release
-            sAboutToReleaseBowser = false;
+            obj_anim_play_with_sound(m->marioObj, MARIO_ANIM_RELEASE_BOWSER, 1.f, SOUND_MARIO_SO_LONGA_BOWSER | 0xFF00, true);
             omm_mario_set_action(m, ACT_OMM_RELEASE_BOWSER, 0, B_BUTTON);
             return OMM_MARIO_ACTION_RESULT_CANCEL;
         }
-        m->angleVel[1] = sTargetMineYawVel;
+        m->angleVel[1] = sOmmBowserTargetMine->yawVel;
     
     } else {
     
@@ -275,7 +277,7 @@ static s32 omm_act_hold_bowser(struct MarioState *m) {
     m->faceAngle[1] += m->angleVel[1];
     if ((m->angleVel[1] < 0 && prevAngle < m->faceAngle[1]) ||
         (m->angleVel[1] > 0 && prevAngle > m->faceAngle[1])) {
-        obj_play_sound(m->marioObj, SOUND_OBJ_BOWSER_SPINNING);
+        SFX(SOUND_OBJ_BOWSER_SPINNING);
     }
     stationary_ground_step(m);
 
@@ -304,6 +306,7 @@ static bool omm_check_common_automatic_cancels(struct MarioState *m) {
 
     // Plunge
     if (m->pos[1] < m->waterLevel - 100) {
+        action_condition(m->action == ACT_GRABBED, ACT_OMM_GRABBED_WATER, 0, return true);
         set_water_plunge_action(m);
         return true;
     }
@@ -333,7 +336,7 @@ s32 omm_mario_execute_automatic_action(struct MarioState *m) {
         case ACT_HOLDING_POLE:              return omm_act_holding_pole(m);
         case ACT_CLIMBING_POLE:             return omm_act_climbing_pole(m);
         case ACT_TOP_OF_POLE_TRANSITION:    return omm_act_top_of_pole_transition(m);
-        case ACT_TOP_OF_POLE:               return OMM_MARIO_ACTION_RESULT_CONTINUE;
+        case ACT_TOP_OF_POLE:               return omm_act_top_of_pole(m);
         case ACT_START_HANGING:             return omm_act_start_hanging(m);
         case ACT_HANGING:                   return omm_act_hanging(m);
         case ACT_HANG_MOVING:               return omm_act_hang_moving(m);

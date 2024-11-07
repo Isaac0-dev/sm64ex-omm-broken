@@ -6,13 +6,10 @@
 
 struct OmmData {
     void (*reset)(void);
-    void (*resetMario)(void);
-    void (*resetObject)(void);
-    void (*update)(void);
-    void (*updateMario)(void);
-    void (*updateObject)(void);
-    bool (*readStats)(const char **tokens);
-    void (*writeStats)(char **buffer);
+    void (*reset_mario)(void);
+    void (*reset_object)(void);
+    bool (*read_stats)(const char *name, const char *value1, const char *value2, bool *invalid);
+    void (*write_stats)();
 
     // Mario data
     struct {
@@ -21,10 +18,14 @@ struct OmmData {
         struct {
             s32 ticks;
             s32 coins;
-            s32 o2;
+            s32 breath;
             s32 airCombo;
             f32 peakHeight;
             void *poleObject;
+            struct {
+                s32 state;
+                s32 timer;
+            } health;
             struct {
                 s32 dmg;
                 s32 gfx;
@@ -42,6 +43,15 @@ struct OmmData {
             struct Object *obj;
         } grab;
 
+        // Dialog
+        struct {
+            struct Object *obj;
+            s32 state;
+            s16 id;
+            s16 turn;
+            bool choice;
+        } dialog;
+
         // Peach-only data
         struct {
             bool floated;
@@ -49,6 +59,7 @@ struct OmmData {
             s32 vibeType;
             s32 vibeGauge;
             s32 vibeTimer;
+            u32 vibeGfxTimer;
             s32 joySpinYaw;
             s32 perryCharge;
             bool perryBlast;
@@ -67,7 +78,10 @@ struct OmmData {
             bool pressed;
             s16 yaw;
             s32 timer;
-            s32 decel;
+            u8 _buffer;
+            u8 _counter;
+            s8 _checkpoint;
+            s8 _direction;
         } spin;
 
         // Midair spin move data
@@ -91,14 +105,14 @@ struct OmmData {
     
         // Capture data
         struct {
-            const void *data;
             struct Object *obj;
             struct Object *prev;
-            const BehaviorScript *bhv;
             Vec3f animPos[3];
-            s32 model;
             s32 timer;
             s32 lockTimer;
+            bool starDance;
+            bool openDoors;
+            bool firstPerson;
             f32 stickX;   // [-1, +1], positive is right
             f32 stickY;   // [-1, +1], positive is up
             f32 stickMag; // [0, 1]
@@ -108,10 +122,20 @@ struct OmmData {
 #if OMM_CODE_DEBUG
             f32 hitboxRadius;
             f32 hitboxHeight;
-            f32 hitboxOffset;
             f32 hitboxWall;
 #endif
         } capture;
+
+        // Warp data
+        struct {
+            struct Object *object;
+            const BehaviorScript *behavior;
+            const GeoLayout *georef;
+            s32 behParams;
+            s32 behParams2ndByte;
+            s32 state;
+            s32 timer;
+        } warp;
 
         // Sparkly stars data
         struct {
@@ -138,33 +162,48 @@ struct OmmData {
     struct {
 
         // State data
+        // Fields with underscore are reserved for specific mechanics and shouldn't be modified
+        // in the capture's code directly (except through appropriate macros/functions)
         struct {
-            u32 properties;
             bool actionFlag;
             s32 actionState;
             s32 actionTimer;
-            s32 squishTimer;
-            s32 bullyTimer;
-            s32 invincTimer;
             f32 walkDistance;
-            Vec3f initialPos;
-            bool camBehindMario;
+            Vec3f friction; // ground, air, ice
+            struct Object *heldObj;
+            u32 _properties;
+            s32 _invincTimer;
+            s32 _cannonTimer;
+            s32 _bullyTimer;
+            s32 _powerTimer;
+            s32 _squishTimer;
+            Vec3f _squishScale;
+            Vec3f _initialHome;
+            bool _camBehindMario;
         } state;
 
         // Cappy data
         struct {
-            bool copyGfx;
-            Vec3f offset;
-            Vec3s angle;
+            struct Object *object;
+            union { struct { f32 tra_x, tra_y, tra_z; }; Vec3f tra; };
+            union { struct { s16 rot_x, rot_y, rot_z; }; Vec3s rot; };
             f32 scale;
+            bool o_gfx;
+            void (*post_update)(struct Object *);
         } cappy;
+
+        // Door data
+        struct {
+            Vec2f vel[2];
+            s32 timer;
+        } door;
 
         // Per object data
         union {
 
             // Goomba
             struct {
-                struct Object *stackObj[16];
+                struct Object *stackObj[OBJ_GOOMBA_STACK_MAX];
                 s32 stackCount;
             } goomba;
 
@@ -190,10 +229,34 @@ struct OmmData {
                 bool headFound;
             } snowmans_body;
 
-            // Boo
+            // Scuttlebug
             struct {
-                f32 gfxOffsetY;
-            } boo;
+                struct SurfaceData data[1];
+            } scuttlebug;
+
+            // Swoop
+            struct {
+                struct SurfaceData data[1];
+            } swoop;
+
+            // Monty mole
+            struct {
+                struct Object *holes[32];
+                s32 count;
+                s32 current;
+            } monty_mole;
+
+            // Pokey
+            struct {
+                struct Object *body[OBJ_POKEY_BALLS_MAX];
+                s32 parts;
+                f32 top;
+            } pokey;
+
+            // Ukiki
+            struct {
+                struct SurfaceData data[1];
+            } ukiki;
 
             // Toad
             struct {
@@ -208,36 +271,23 @@ struct OmmData {
                 bool captureDuringAscent;
             } flaming_bobomb;
 
-            // Swoop
+            // Yoshi
             struct {
-                s32 ceilingType;
-                union {
-                    struct {
-                        struct Surface *s;
-                        f32 height;
-                    } surface;
-                    struct {
-                        struct Object *o;
-                        Vec3f pos;
-                        Vec3f angle;
-                        Vec3f scale;
-                    } object;
-                } ceiling;
-            } swoop;
-
-            // Monty mole
-            struct {
-                struct Object *holes[32];
-                s32 count;
-                s32 current;
-            } monty_mole;
-
-            // Motos
-            struct {
-                struct Object *heldObj;
-            } motos;
+                s32 flutterTimer;
+                s32 tongueTimer;
+                f32 tongueSine;
+                struct Object *tongued;
+            } yoshi;
         };
     } object[1];
+
+    // Level data
+    struct {
+        s32 redCoins;
+        s32 redCoinStarIndex;
+        s32 secrets;
+        s32 secretStarIndex;
+    } level[8];
 
     // Stats data
     struct {
@@ -282,28 +332,38 @@ struct OmmData {
         u64 timeMetalCap[2];
         u64 timeVanishCap[2];
     } stats[1];
-};
-extern struct OmmData *gOmmData;
-#define gOmmMario      gOmmData->mario
-#define gOmmPeach    (&gOmmData->mario->peach)
-#define gOmmCappy      gOmmData->mario->cappy.cappy
-#define gOmmPerry      gOmmData->mario->peach.perry
-#define gOmmCapture    gOmmData->mario->capture.obj
-#define gOmmObject     gOmmData->object
-#define gOmmStats      gOmmData->stats
 
-#define oFields             header.gfx._oFields
-#define oGfxInited          oFields._oGfxInited
-#define oTransparency       oFields._oTransparency
-#define oGeoData            oFields._oGeoData
-#define oBhvPointer         oFields._oBhvPointer
-#define oBhvCommand         oFields._oBhvCommand
-#define oBhvStackIndex      oFields._oBhvStackIndex
-#define oBhvTypes           oFields._oBhvTypes
-#define oSafeStepInited     oFields._oSafeStepInited
-#define oSafeStepIgnore     oFields._oSafeStepIgnore
-#define oSafeStepIndex      oFields._oSafeStepIndex
-#define oSafeStepHeight     oFields._oSafeStepHeight
-#define oSafeStepCoords     oFields._oSafeStepCoords
+    // Globals
+    struct {
+        bool cameraSnapshotMode;
+        bool cameraUpdate;
+        bool cameraNoInit;
+        bool configNoSave;
+        bool findFloorForCutsceneStar;
+        bool hideHudCamera;
+        bool hideHudRadar;
+        bool isMirrorObj;
+        bool isMirrorRoom;
+        f32 mirrorRoomX;
+        f32 mirrorX;
+        u32 marioTimer;
+        s32 mouseDeltaX;
+        s32 mouseDeltaY;
+        s32 mouseWheelX;
+        s32 mouseWheelY;
+    } globals[1];
+};
+extern struct OmmData gOmmData[1];
+#define gOmmMario     gOmmData->mario
+#define gOmmPeach   (&gOmmData->mario->peach)
+#define gOmmCappy     gOmmData->mario->cappy.cappy
+#define gOmmPerry     gOmmData->mario->peach.perry
+#define gOmmCapture   gOmmData->mario->capture.obj
+#define gOmmWarp    (&gOmmData->mario->warp)
+#define gOmmObject    gOmmData->object
+#define gOmmLevel     gOmmData->level
+#define gOmmArea    (&gOmmData->level[gCurrAreaIndex])
+#define gOmmStats     gOmmData->stats
+#define gOmmGlobals   gOmmData->globals
 
 #endif // OMM_OBJECT_FIELDS_H

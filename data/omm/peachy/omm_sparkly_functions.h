@@ -4,16 +4,14 @@
 #include "types.h"
 
 #define OMM_SPARKLY_STATE_IS_OK         (gOmmSparklyContext->state == OMM_SPARKLY_STATE_OK)
-#define OMM_SPARKLY_MODE_IS_DISABLED    (gOmmSparklyMode == OMM_SPARKLY_MODE_DISABLED)
 #define OMM_SPARKLY_MODE_IS_ENABLED     (gOmmSparklyMode != OMM_SPARKLY_MODE_DISABLED)
 #define OMM_SPARKLY_MODE_IS_NORMAL      (gOmmSparklyMode == OMM_SPARKLY_MODE_NORMAL)
 #define OMM_SPARKLY_MODE_IS_HARD        (gOmmSparklyMode == OMM_SPARKLY_MODE_HARD)
 #define OMM_SPARKLY_MODE_IS_LUNATIC     (gOmmSparklyMode == OMM_SPARKLY_MODE_LUNATIC)
-#define OMM_SPARKLY_LUNATIC_HEALTH      (OMM_SPARKLY_MODE_IS_LUNATIC && !omm_sparkly_is_completed(OMM_SPARKLY_MODE_LUNATIC))
 
 s32  omm_sparkly_get_index(s32 sparklyMode, s32 levelNum, s32 areaIndex);
-u8  *omm_sparkly_get_level_name(s32 sparklyMode, s32 starIndex);
-u8  *omm_sparkly_get_star_name(s32 sparklyMode, s32 starIndex);
+u8  *omm_sparkly_get_level_name(ustr_t dst, s32 sparklyMode, s32 starIndex);
+u8  *omm_sparkly_get_star_name(ustr_t dst, s32 sparklyMode, s32 starIndex);
 s32  omm_sparkly_get_collected_count(s32 sparklyMode);
 s32  omm_sparkly_get_bowser_4_index(s32 sparklyMode);
 
@@ -37,8 +35,9 @@ void omm_sparkly_collect_star(s32 sparklyMode, s32 starIndex);
 void omm_sparkly_collect_grand_star(s32 sparklyMode);
 void omm_sparkly_unlock_bowser_4(s32 sparklyMode);
 void omm_sparkly_clear_mode(s32 sparklyMode);
-bool omm_sparkly_read(const char **tokens);
-void omm_sparkly_write(char **buffer);
+void omm_sparkly_clear_all();
+bool omm_sparkly_read(const char *name, const char *value, bool *invalid);
+void omm_sparkly_write();
 bool omm_sparkly_check_cheats(struct MarioState *m);
 void omm_sparkly_turn_off_cheats();
 
@@ -61,6 +60,37 @@ void omm_sparkly_context_spawn_sign(struct MarioState *m);
 void omm_sparkly_context_update_level(struct MarioState *m, const OmmSparklyData *data);
 void omm_sparkly_context_update(struct MarioState *m);
 void omm_sparkly_context_reset();
+
+bool omm_sparkly_level__all_secrets(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__all_mushrooms(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__all_boxes(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__all_flames(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__eight_shards(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__eight_shards_and_lava(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__secrets_in_order(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__ten_goombas_stack(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__launch_cappy_to_target(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__dont_touch_floor(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__toads_on_pillars(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__toads_hide_and_seek(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__invalidate_if_not_flooded(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__invalidate_if_not_frozen(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__inc_timer_with_coins(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__shell_ride(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__koopa_the_quick_race(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__all_star_rings(struct MarioState *m, const s32 *params);
+
+bool omm_sparkly_level_jrb__flooded_frozen(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level_ddd__switch_and_boxes(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level_sl__snowmen_at_top(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level_wdw__star_box_red_coins(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level_bitdw__goomba_and_coins(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level_bitfs__six_secrets(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level_bits__bobomb_and_enemies(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level_bits__dark_all_star_rings(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level_vcutm__five_corners(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level_basement__catch_mips(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level_upstairs__toads_hide_and_seek(struct MarioState *m, const s32 *params);
 
 s32  omm_sparkly_act_star_dance(struct MarioState *m);
 s32  omm_sparkly_act_ending_1(struct MarioState *m);

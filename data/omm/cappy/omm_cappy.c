@@ -58,6 +58,8 @@ struct Object *omm_cappy_spawn(struct MarioState *m) {
     cappy->oCappyThrowStrength = 0;
     cappy->oIntangibleTimer    = 0;
     obj_set_dormant(cappy, true);
+    obj_set_angle(cappy, 0, m->faceAngle[1], 0);
+    obj_update_gfx(cappy);
     gOmmCappy = cappy;
     gOmmStats->cappyThrows++;
     return cappy;
@@ -74,15 +76,14 @@ extern void omm_cappy_process_interactions(struct Object *cappy, struct MarioSta
 extern bool omm_cappy_perform_step_return_to_mario(struct Object *cappy, struct MarioState *m);
 
 void omm_cappy_update(struct MarioState *m) {
-    static bool sReturnedToMario = false;
     struct Object *cappy = omm_cappy_get_object();
 
     // Update Mario's throw animation (the Cappy object can be NULL)
     omm_cappy_update_mario_anim(cappy, m);
 
     // Unloads Cappy if he returned to Mario the previous frame
-    if (sReturnedToMario) {
-        sReturnedToMario = false;
+    if (cappy && (cappy->oCappyFlags & OMM_CAPPY_FLAG_RETURNED_TO_MARIO)) {
+        cappy->oCappyFlags &= ~OMM_CAPPY_FLAG_RETURNED_TO_MARIO;
         omm_cappy_unload();
         return;
     }
@@ -122,7 +123,7 @@ void omm_cappy_update(struct MarioState *m) {
                 omm_cappy_update_behavior(cappy, m);
                 omm_cappy_process_interactions(cappy, m);
             } else if (omm_cappy_perform_step_return_to_mario(cappy, m)) {
-                sReturnedToMario = true;
+                cappy->oCappyFlags |= OMM_CAPPY_FLAG_RETURNED_TO_MARIO;
             }
             cappy->oGfxAngle[1] += OMM_CAPPY_GFX_ANGLE_VEL;
         }

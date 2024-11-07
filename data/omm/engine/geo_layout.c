@@ -401,7 +401,7 @@ struct GraphNode *geo_layout_to_graph_node(struct AllocOnlyPool *pool, const Geo
     if (!geoLayout) {
         return NULL;
     }
-    
+
     // Cache check
     if (!pool) {
         s32 i = omm_hmap_find(sGraphNodeCache, (uintptr_t) geoLayout);
@@ -409,7 +409,7 @@ struct GraphNode *geo_layout_to_graph_node(struct AllocOnlyPool *pool, const Geo
             return omm_hmap_get(sGraphNodeCache, struct GraphNode *, i);
         }
     }
-    
+
     // Init graph node stack
     sGraphNode = NULL;
     sGraphNodeStack[0] = NULL;

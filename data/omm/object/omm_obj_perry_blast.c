@@ -1,10 +1,11 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
-#define OMM_PERRY_BLAST_POINTS_PER_SEGMENT  30
-#define OMM_PERRY_BLAST_NUM_SEGMENTS        30
-#define OMM_PERRY_BLAST_DURATION            15
+#define OMM_PERRY_BLAST_POINTS_PER_SEGMENT  (30)
+#define OMM_PERRY_BLAST_NUM_SEGMENTS        (30)
+#define OMM_PERRY_BLAST_DURATION            (15)
 
 //
 // Gfx data
@@ -36,7 +37,7 @@ static const Gfx omm_perry_blast_gfx[] = {
     gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
     gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsSPDisplayList(null),
+    gsSPDisplayList(NULL),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
     gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
     gsSPEndDisplayList(),
@@ -47,10 +48,15 @@ static const Gfx omm_perry_blast_gfx[] = {
 //
 
 typedef struct {
+    Gfx *displayLists[1];
     Gfx gfx[array_length(omm_perry_blast_gfx)];
     Gfx tri[(OMM_PERRY_BLAST_NUM_SEGMENTS + 0) * (OMM_PERRY_BLAST_POINTS_PER_SEGMENT + 1) + 1];
     Vtx vtx[(OMM_PERRY_BLAST_NUM_SEGMENTS + 1) * (OMM_PERRY_BLAST_POINTS_PER_SEGMENT + 1)];
-} OmmPerryBigShotGeoData;
+} OmmPerryBlastGeoData;
+
+static const u32 sOmmPerryBlastGeoDataDisplayListsOffsets[] = {
+    offsetof(OmmPerryBlastGeoData, gfx),
+};
 
 //
 // Geo layout
@@ -88,7 +94,11 @@ static void bhv_omm_perry_blast_update() {
     }
 
     // Update gfx
-    OmmPerryBigShotGeoData *data = geo_get_geo_data(o, sizeof(OmmPerryBigShotGeoData), omm_perry_blast_gfx, sizeof(omm_perry_blast_gfx));
+    OmmPerryBlastGeoData *data = geo_get_geo_data(o, 
+        sizeof(OmmPerryBlastGeoData),
+        sOmmPerryBlastGeoDataDisplayListsOffsets,
+        array_length(sOmmPerryBlastGeoDataDisplayListsOffsets)
+    );
     f32 scale = relerp_0_1_f(o->oTimer, 0, OMM_PERRY_BLAST_DURATION, 0.f, 1.f) * OMM_PERRY_BLAST_RADIUS;
     f32 alpha = relerp_0_1_f(o->oTimer, 5, OMM_PERRY_BLAST_DURATION, 1.f, 0.f);
     obj_set_angle(o, 0, 0, 0);
@@ -137,7 +147,8 @@ static void bhv_omm_perry_blast_update() {
             vtx++;
         }
     }
-    gSPEndDisplayList(tri);
+    gSPEndDisplayList(tri++);
+    gfx_copy_and_fill_null(data->gfx, omm_perry_blast_gfx, sizeof(omm_perry_blast_gfx), data->tri);
 
     // Process interactions
     obj_set_params(o, 0, 0, 0, 0, true);
@@ -147,17 +158,17 @@ static void bhv_omm_perry_blast_update() {
 
 const BehaviorScript bhvOmmPerryBlast[] = {
     OBJ_TYPE_SPECIAL,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_perry_blast_update,
-    0x09000000
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_perry_blast_update),
+    BHV_END_LOOP()
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_perry_blast(struct Object *o, s32 type) {
+struct Object *omm_obj_spawn_perry_blast(struct Object *o, s32 type) {
     struct Object *blast = obj_spawn_from_geo(o, omm_geo_perry_blast, bhvOmmPerryBlast);
     obj_set_always_rendered(blast, true);
     blast->oPerryType = type;

@@ -152,8 +152,9 @@ struct GraphNodeObject *init_graph_node_object(struct AllocOnlyPool *pool, struc
     node->mAnimInfo.curAnim = NULL;
     node->mAnimInfo.animFrame = 0;
     node->mAnimInfo.animFrameAccelAssist = 0;
-    node->mAnimInfo.animAccel = 0x10000;
+    node->mAnimInfo.animAccel = ANIM_ACCEL_ONE;
     node->mAnimInfo.animTimer = 0;
+    node->mAnimInfo.animFlags = 0;
     gNode->flags |= GRAPH_RENDER_HAS_ANIMATION;
     return node;
 }
@@ -288,13 +289,27 @@ struct GraphNode *geo_make_first_child(struct GraphNode *node) {
 // Geo utils
 //
 
-void geo_move_from_camera(struct GraphNodeObject *node, struct GraphNodeTranslation *tnode, f32 offset) {
-    f32 dist = vec3f_length(node->cameraToObject);
-    if (dist != 0) {
-        tnode->translation[0] = (s16) ((offset * node->cameraToObject[0]) / (dist * node->scale[0])); 
-        tnode->translation[1] = (s16) ((offset * node->cameraToObject[1]) / (dist * node->scale[1])); 
-        tnode->translation[2] = (s16) ((offset * node->cameraToObject[2]) / (dist * node->scale[2])); 
+static Gfx *__geo_move_from_camera(s32 callContext, struct GraphNode *node, UNUSED void *context, f32 offsetScale) {
+    if (callContext == GEO_CONTEXT_RENDER && gCurGraphNodeObject) {
+        f32 dist = vec3f_length(gCurGraphNodeObject->cameraToObject);
+        if (dist != 0) {
+            struct GraphNodeGenerated *asGenerated = (struct GraphNodeGenerated *) node;
+            struct GraphNodeTranslation *translationNode = (struct GraphNodeTranslation *) node->next;
+            f32 offset = offsetScale * (s16) asGenerated->parameter;
+            translationNode->translation[0] = (s16) ((offset * gCurGraphNodeObject->cameraToObject[0]) / (dist * gCurGraphNodeObject->scale[0])); 
+            translationNode->translation[1] = (s16) ((offset * gCurGraphNodeObject->cameraToObject[1]) / (dist * gCurGraphNodeObject->scale[1])); 
+            translationNode->translation[2] = (s16) ((offset * gCurGraphNodeObject->cameraToObject[2]) / (dist * gCurGraphNodeObject->scale[2])); 
+        }
     }
+    return NULL;
+}
+
+Gfx *geo_move_from_camera(s32 callContext, struct GraphNode *node, void *context) {
+    return gCurGraphNodeObject ? __geo_move_from_camera(callContext, node, context, gCurGraphNodeObject->scale[1]) : NULL;
+}
+
+Gfx *geo_move_from_camera_mario_scale(s32 callContext, struct GraphNode *node, void *context) {
+    return gMarioObject ? __geo_move_from_camera(callContext, node, context, gMarioObject->oScaleY) : NULL;
 }
 
 static void geo_call_global_function_nodes_helper(struct GraphNode *node, s32 callContext) {
@@ -366,103 +381,57 @@ void geo_obj_init_spawninfo(struct GraphNodeObject *node, struct SpawnInfo *spaw
 }
 
 //
-// Geo animation
-//
-
-void geo_obj_init_animation(struct GraphNodeObject *node, struct Animation **animPtrAddr) {
-    struct Animation *anim = *animPtrAddr;
-    if (node->mAnimInfo.curAnim != anim) {
-        node->mAnimInfo.curAnim = anim;
-        node->mAnimInfo.animYTrans = 0;
-        node->mAnimInfo.animFrame = anim->mStartFrame + ((anim->flags & ANIM_FLAG_FORWARD) ? 1 : -1);
-    }
-    node->mAnimInfo.animAccel = 0x10000;
-    node->mAnimInfo.animFrameAccelAssist = (((s32) node->mAnimInfo.animFrame) << 16);
-}
-
-void geo_obj_init_animation_accel(struct GraphNodeObject *node, struct Animation **animPtrAddr, u32 animAccel) {
-    struct Animation *anim = *animPtrAddr;
-    if (node->mAnimInfo.curAnim != anim) {
-        node->mAnimInfo.curAnim = anim;
-        node->mAnimInfo.animYTrans = 0;
-        node->mAnimInfo.animFrameAccelAssist = (anim->mStartFrame << 16) + ((anim->flags & ANIM_FLAG_FORWARD) ? animAccel : -animAccel);
-    }
-    node->mAnimInfo.animAccel = animAccel;
-    node->mAnimInfo.animFrame = ((s16) (node->mAnimInfo.animFrameAccelAssist >> 16));
-}
-
-s32 retrieve_animation_index(s32 frame, u16 **attributes) {
-    u16 attr0 = (*attributes)[0];
-    u16 attr1 = (*attributes)[1];
-    s32 index = attr1 + min_s(frame, attr0 - 1);
-    *attributes += 2;
-    return index;
-}
-
-s16 geo_update_animation_frame(struct AnimInfoStruct *animInfo, s32 *accelAssist) {
-    obj_anim_sync_frame_counters(animInfo);
-    struct Animation *anim = animInfo->curAnim;
-    s32 frame;
-
-    // If the animation is already updated (or shouldn't be updated), return the current frame
-    if (animInfo->animTimer == gAreaUpdateCounter || (anim->flags & ANIM_FLAG_2)) {
-        if (accelAssist) { *accelAssist = animInfo->animFrameAccelAssist; }
-        return animInfo->animFrame;
-    }
-    
-    // (typo) Animation going backwards
-    if (anim->flags & ANIM_FLAG_FORWARD) {
-        frame = animInfo->animFrameAccelAssist - animInfo->animAccel;
-        if (GET_HIGH_S16_OF_32(frame) < anim->mLoopStart) {
-            if (anim->flags & ANIM_FLAG_NOLOOP) {
-                SET_HIGH_S16_OF_32(frame, anim->mLoopStart);
-            } else {
-                SET_HIGH_S16_OF_32(frame, anim->mLoopEnd - 1);
-            }
-        }
-    }
-    
-    // Animation going forward
-    else {
-        frame = animInfo->animFrameAccelAssist + animInfo->animAccel;
-        if (GET_HIGH_S16_OF_32(frame) >= anim->mLoopEnd) {
-            if (anim->flags & ANIM_FLAG_NOLOOP) {
-                SET_HIGH_S16_OF_32(frame, anim->mLoopEnd - 1);
-            } else {
-                SET_HIGH_S16_OF_32(frame, anim->mLoopStart);
-            }
-        }
-    }
-
-    // Return the updated frame
-    if (accelAssist) { *accelAssist = frame; }
-    return GET_HIGH_S16_OF_32(frame);
-}
-
-//
 // Geo data
 //
 
-void *geo_get_geo_data(struct Object *o, s32 size, const Gfx *gfxSrc, s32 gfxSize) {
+void *geo_get_geo_data(struct Object *o, s32 structSize, const u32 *displayListsOffsets, s32 numOffsets) {
     if (!o->oGeoData) {
-        void *data = omm_memory_new(gOmmMemoryPoolGeoData, size, o);
-        mem_cpy(data, gfxSrc, gfxSize);
-        for (s32 i = 0, n = gfxSize / sizeof(const Gfx); i != n; ++i) {
-            Gfx *gfx = ((Gfx *) data) + i;
-            if (_SHIFTR(gfx->words.w0, 24, 8) == G_DL && gfx->words.w1 == (uintptr_t) null) {
-                gfx->words.w1 = (uintptr_t) (((u8 *) data) + gfxSize);
-                break;
-            }
+        void *geoData = omm_memory_new(gOmmMemoryPoolGeoData, structSize, o);
+        Gfx **displayLists = (Gfx **) geoData;
+        for (s32 i = 0; i != numOffsets; ++i) {
+            displayLists[i] = (Gfx *) ((uintptr_t) geoData + (uintptr_t) displayListsOffsets[i]);
         }
-        o->oGeoData = (void *) data;
+        o->oGeoData = (void *) geoData;
     }
     return o->oGeoData;
 }
 
 Gfx *geo_link_geo_data(s32 callContext, struct GraphNode *node, UNUSED void *context) {
     if (gCurrGraphNodeObject && callContext == GEO_CONTEXT_RENDER) {
+        struct GraphNodeGenerated *asGenerated = (struct GraphNodeGenerated *) node;
         struct GraphNodeDisplayList *displayListNode = (struct GraphNodeDisplayList *) node->next;
-        displayListNode->displayList = gCurrGraphNodeObject->oGeoData;
+        Gfx **displayLists = (Gfx **) gCurrGraphNodeObject->oGeoData;
+        if (displayLists) {
+            displayListNode->displayList = (void *) displayLists[asGenerated->parameter];
+        } else {
+            displayListNode->displayList = NULL;
+        }
     }
     return NULL;
+}
+
+#if OMM_GAME_IS_SM64
+Gfx *geo_link_geo_data_skip_mirror_obj(s32 callContext, struct GraphNode *node, void *context) {
+    if (callContext == GEO_CONTEXT_RENDER) {
+        if (gOmmGlobals->isMirrorObj) {
+            struct GraphNodeDisplayList *displayListNode = (struct GraphNodeDisplayList *) node->next;
+            displayListNode->displayList = NULL;
+            return NULL;
+        }
+        return geo_link_geo_data(callContext, node, context);
+    }
+    return NULL;
+}
+#endif
+
+Gfx *gfx_copy_and_fill_null(Gfx *dest, const Gfx *src, s32 size, const Gfx *gfx) {
+    mem_cpy(dest, src, size);
+    for (s32 i = 0, n = size / sizeof(Gfx); i != n; ++i) {
+        Gfx *cmd = ((Gfx *) dest) + i;
+        if (_SHIFTR(cmd->words.w0, 24, 8) == G_DL && cmd->words.w1 == (uintptr_t) NULL) {
+            cmd->words.w1 = (uintptr_t) gfx;
+            break;
+        }
+    }
+    return dest;
 }

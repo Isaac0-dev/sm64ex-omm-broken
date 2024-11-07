@@ -682,6 +682,9 @@ static const Vtx omm_peach_chest_vertices[] = {
     { { { 66, -27, -20 }, 0, { 1308, 5407 }, { 78, -63, -77, 255 } } },
     { { { 64, -13, -28 }, 0, { 1253, 5403 }, { 85, -11, -93, 255 } } },
     { { { 68, -34, 0 }, 0, { 1337, 5409 }, { 94, -85, 0, 255 } } },
+};
+
+static const Vtx omm_peach_neck_vertices[] = {
     { { { 114, 9, 12 }, 0, { 1122, 5567 }, { 0, 91, 88, 255 } } },
     { { { 114, 14, 0 }, 0, { 1122, 5567 }, { 2, 126, 0, 255 } } },
     { { { 54, 10, 9 }, 0, { 1122, 5567 }, { 0, 105, 70, 255 } } },
@@ -6668,25 +6671,30 @@ static const Gfx omm_peach_chest_triangles[] = {
     gsSP1Triangle(51, 57, 56, 0),
     gsSP1Triangle(51, 58, 57, 0),
     gsSP1Triangle(51, 59, 58, 0),
-    gsSPVertex(omm_peach_chest_vertices + 180, 20, 0),
+    gsSPVertex(omm_peach_chest_vertices + 180, 4, 0),
     gsSP1Triangle(0, 1, 2, 0),
     gsSP1Triangle(0, 3, 1, 0),
-    gsSP1Triangle(4, 5, 6, 0),
+    gsSPEndDisplayList(),
+};
+
+static const Gfx omm_peach_neck_triangles[] = {
+    gsSPVertex(omm_peach_neck_vertices + 0, 16, 0),
+    gsSP1Triangle(0, 1, 2, 0),
+    gsSP1Triangle(0, 2, 3, 0),
+    gsSP1Triangle(0, 3, 4, 0),
+    gsSP1Triangle(5, 2, 1, 0),
+    gsSP1Triangle(3, 6, 4, 0),
     gsSP1Triangle(4, 6, 7, 0),
-    gsSP1Triangle(4, 7, 8, 0),
-    gsSP1Triangle(9, 6, 5, 0),
-    gsSP1Triangle(7, 10, 8, 0),
-    gsSP1Triangle(8, 10, 11, 0),
-    gsSP1Triangle(12, 13, 11, 0),
+    gsSP1Triangle(8, 9, 7, 0),
+    gsSP1Triangle(6, 8, 7, 0),
+    gsSP1Triangle(10, 11, 1, 0),
     gsSP1Triangle(10, 12, 11, 0),
-    gsSP1Triangle(14, 15, 5, 0),
-    gsSP1Triangle(14, 16, 15, 0),
-    gsSP1Triangle(14, 17, 16, 0),
-    gsSP1Triangle(9, 5, 15, 0),
-    gsSP1Triangle(16, 17, 18, 0),
-    gsSP1Triangle(17, 19, 18, 0),
-    gsSP1Triangle(12, 19, 13, 0),
-    gsSP1Triangle(18, 19, 12, 0),
+    gsSP1Triangle(10, 13, 12, 0),
+    gsSP1Triangle(5, 1, 11, 0),
+    gsSP1Triangle(12, 13, 14, 0),
+    gsSP1Triangle(13, 15, 14, 0),
+    gsSP1Triangle(8, 15, 9, 0),
+    gsSP1Triangle(14, 15, 8, 0),
     gsSPEndDisplayList(),
 };
 
@@ -10229,6 +10237,9 @@ static const Gfx omm_peach_normal_chest_gfx[] = {
     gsSPLight(&omm_peach_dress_1_light.l, 1),
     gsSPLight(&omm_peach_dress_1_light.a, 2),
     gsSPDisplayList(omm_peach_chest_triangles),
+    gsSPLight(&omm_peach_skin_light.l, 1),
+    gsSPLight(&omm_peach_skin_light.a, 2),
+    gsSPDisplayList(omm_peach_neck_triangles),
     gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, ENVIRONMENT, 0),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
     gsDPLoadTextureBlock(OMM_TEXTURE_PEACH_BODY, G_IM_FMT_RGBA, G_IM_SIZ_32b, 256, 256, 0, 0, 0, 0, 0, 0, 0),
@@ -10691,6 +10702,7 @@ static const Gfx omm_peach_metal_arm2_right_gfx[] = {
 static const Gfx omm_peach_metal_chest_gfx[] = {
     gsSPDisplayList(omm_peach_metal_gfx_begin),
     gsSPDisplayList(omm_peach_chest_triangles),
+    gsSPDisplayList(omm_peach_neck_triangles),
     gsSPDisplayList(omm_peach_metal_gfx_end),
     gsSPEndDisplayList(),
 };

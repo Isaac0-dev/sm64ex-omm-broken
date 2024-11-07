@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Geo layouts
@@ -35,10 +36,10 @@ static void bhv_omm_big_flame_update() {
 
 const BehaviorScript bhvOmmBigFlame[] = {
     OBJ_TYPE_LEVEL,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_big_flame_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_big_flame_update),
+    BHV_END_LOOP(),
 };
 
 static void bhv_omm_big_flame_2_update() {
@@ -56,19 +57,19 @@ static void bhv_omm_big_flame_2_update() {
 
 const BehaviorScript bhvOmmBigFlame2[] = {
     OBJ_TYPE_DEFAULT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_big_flame_2_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_big_flame_2_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_big_flame(struct Object *o, f32 x, f32 y, f32 z) {
+struct Object *omm_obj_spawn_big_flame(struct Object *o, f32 x, f32 y, f32 z) {
     struct Object *flame = obj_spawn_from_geo(o, omm_geo_big_flame, bhvOmmBigFlame);
-    obj_set_pos(flame, x, y, z);
+    obj_set_xyz(flame, x, y, z);
     obj_set_scale(flame, 0, 0, 0);
     obj_spawn_from_geo(flame, omm_geo_big_flame_2, bhvOmmBigFlame2);
     return flame;

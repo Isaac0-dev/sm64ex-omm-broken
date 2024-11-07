@@ -25,19 +25,28 @@ bool omm_cappy_boo_init(struct Object *o) {
         return false;
     }
 
-    gOmmObject->state.actionState = 0;
-    gOmmObject->state.actionTimer = 0;
-    gOmmObject->state.actionFlag = false;
-    gOmmObject->boo.gfxOffsetY = 0.f;
+    o->oNumLootCoins = 0;
     o->oBooTargetOpacity = 255;
+
+    // Collect the coin inside the boo
+    struct Object *coin = obj_get_first_with_behavior_and_parent(o, bhvCoinInsideBoo);
+    if (coin) {
+        switch (obj_get_coin_type(coin)) {
+            case 0:  o->oNumLootCoins = 1; break; // Yallow coin
+            case 1:  o->oNumLootCoins = 2; break; // Red coin
+            case 2:  o->oNumLootCoins = -1; break; // Blue coin
+            default: o->oNumLootCoins = 0; break;
+        }
+        obj_mark_for_deletion(coin);
+    }
     return true;
 }
 
 void omm_cappy_boo_end(struct Object *o) {
     o->oTimer = 0;
     o->oAction = 6;
+    o->oNumLootCoins = 0;
     o->oBooTargetOpacity = 255;
-    o->oGfxPos[1] -= gOmmObject->boo.gfxOffsetY;
     obj_play_sound(o, SOUND_OBJ_BOO_LAUGH_LONG);
 
     // Ghost Hunt/Merry Go Round boo
@@ -52,8 +61,12 @@ void omm_cappy_boo_end(struct Object *o) {
     }
 }
 
+u64 omm_cappy_boo_get_type(struct Object *o) {
+    return is_boo_with_cage(o) ? OMM_CAPTURE_BIG_BOO : OMM_CAPTURE_BOO;
+}
+
 f32 omm_cappy_boo_get_top(struct Object *o) {
-    return 80.f * o->oBooBaseScale;
+    return omm_capture_get_hitbox_height(o) * (o->oBooBaseScale / o->oScaleY);
 }
 
 //
@@ -89,18 +102,10 @@ static void omm_cappy_boo_update_once(struct Object *o) {
         level_trigger_warp(gMarioState, WARP_OP_UNKNOWN_02);
     }
 
-    // Collect the coin inside the boo
-    for_each_object_with_behavior(coin, bhvCoinInsideBoo) {
-        if (coin->parentObj == o) {
-            switch (obj_get_coin_type(coin)) {
-                case 0:  coin->oDamageOrCoinValue = 1; break;
-                case 1:  coin->oDamageOrCoinValue = 2; break;
-                case 2:  coin->oDamageOrCoinValue = 5; break;
-                default: coin->oDamageOrCoinValue = 0; break;
-            }
-            omm_mario_interact_coin(gMarioState, coin);
-            obj_mark_for_deletion(coin);
-        }
+    // Collect the coins from the Boo
+    if (o->oNumLootCoins != 0) {
+        obj_collect_coins(o, o->oNumLootCoins);
+        o->oNumLootCoins = 0;
     }
 
     // Done
@@ -127,26 +132,32 @@ static void omm_cappy_boo_update_opacity_and_scale(struct Object *o) {
 
 s32 omm_cappy_boo_update(struct Object *o) {
     omm_cappy_boo_update_once(o);
+    obj_scale(o, o->oBooBaseScale);
 
     // Hitbox
     o->hitboxRadius = omm_capture_get_hitbox_radius(o);
     o->hitboxHeight = omm_capture_get_hitbox_height(o);
-    o->hitboxDownOffset = omm_capture_get_hitbox_down_offset(o);
     o->oWallHitboxRadius = omm_capture_get_wall_hitbox_radius(o);
 
     // Properties
     bool moveThroughWalls = (gOmmObject->state.actionState != 0);
     POBJ_SET_ABOVE_WATER;
     POBJ_SET_UNDER_WATER;
+    POBJ_SET_AFFECTED_BY_WATER;
+    POBJ_SET_AFFECTED_BY_VERTICAL_WIND;
+    POBJ_SET_AFFECTED_BY_CANNON;
+    POBJ_SET_FLOATING;
+    POBJ_SET_INTANGIBLE * moveThroughWalls;
     POBJ_SET_IMMUNE_TO_FIRE * moveThroughWalls;
     POBJ_SET_ABLE_TO_MOVE_ON_SLOPES;
     POBJ_SET_ABLE_TO_MOVE_THROUGH_WALLS * moveThroughWalls;
+    POBJ_SET_ABLE_TO_OPEN_DOORS * !moveThroughWalls;
 
     // Inputs
-    if (!omm_mario_is_locked(gMarioState)) {
+    if (pobj_process_inputs(o)) {
         pobj_move(o, gOmmObject->state.actionState, false, false);
-        if (pobj_jump(o, 0, 6) == POBJ_RESULT_JUMP_START) {
-            obj_play_sound(o, SOUND_OBJ_MR_BLIZZARD_ALERT);
+        if (pobj_jump(o, 6) == POBJ_RESULT_JUMP_START) {
+            obj_play_sound(o, POBJ_SOUND_JUMP_MR_BLIZZARD);
         }
 
         // Move through walls + small speed boost
@@ -154,7 +165,7 @@ s32 omm_cappy_boo_update(struct Object *o) {
         if (POBJ_B_BUTTON_PRESSED) {
             if (gOmmObject->state.actionTimer == 0) {
                 gOmmObject->state.actionTimer = 45;
-                obj_play_sound(o, SOUND_GENERAL_VANISH_SFX);
+                obj_play_sound(o, POBJ_SOUND_VANISH);
             }
         }
     }
@@ -166,32 +177,28 @@ s32 omm_cappy_boo_update(struct Object *o) {
 
     // Movement
     perform_object_step(o, POBJ_STEP_FLAGS);
-    pobj_decelerate(o, 0.80f, 0.95f);
+    pobj_decelerate(o);
     pobj_apply_gravity(o, 1.f);
     pobj_handle_special_floors(o);
     pobj_stop_if_unpossessed();
 
     // Interactions
-    o->oIntangibleTimer = -1 * gOmmObject->state.actionState;
     pobj_process_interactions();
     pobj_stop_if_unpossessed();
+
+    // OK
+    pobj_return_ok;
+}
+
+void omm_cappy_boo_update_gfx(struct Object *o) {
 
     // Gfx
     obj_update_gfx(o);
     omm_cappy_boo_update_opacity_and_scale(o);
-    if (o->oDistToFloor < 50.f) {
-        gOmmObject->boo.gfxOffsetY = (50.f - (o->oDistToFloor));
-    } else {
-        gOmmObject->boo.gfxOffsetY = max_f(0.f, gOmmObject->boo.gfxOffsetY - 2.f);
-    }
-    o->oGfxPos[1] += gOmmObject->boo.gfxOffsetY;
 
-    // Cappy values
-    gOmmObject->cappy.copyGfx   = true;
-    gOmmObject->cappy.offset[1] = 50.f;
-    gOmmObject->cappy.offset[2] = 8.f;
-    gOmmObject->cappy.scale     = 1.25f * !is_boo_with_cage(o);
-
-    // OK
-    pobj_return_ok;
+    // Cappy transform
+    gOmmObject->cappy.tra_y = 50.f;
+    gOmmObject->cappy.tra_z = 8.f;
+    gOmmObject->cappy.scale = 1.25f * !is_boo_with_cage(o);
+    gOmmObject->cappy.o_gfx = true;
 }

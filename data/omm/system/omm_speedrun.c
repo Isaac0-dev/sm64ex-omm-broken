@@ -31,8 +31,8 @@ typedef struct {
 
 static s32 omm_speedrun_get_split_frames(OmmSplit *split) {
     switch (split->type) {
-        case OMM_SPLIT_STAR:   return  1 * (omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE, COURSE_MIN - 1, COURSE_MAX - 1) >= split->value);
-        case OMM_SPLIT_EXIT:   return 30 * (omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE, COURSE_MIN - 1, COURSE_MAX - 1) >= split->value);
+        case OMM_SPLIT_STAR:   return  1 * (omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE) >= split->value);
+        case OMM_SPLIT_EXIT:   return 30 * (omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE) >= split->value);
         case OMM_SPLIT_BOWSER: return  1;
     }
     return false;
@@ -68,16 +68,15 @@ OMM_ROUTINE_UPDATE(omm_speedrun_update) {
 // Init
 //
 
-static const char *omm_speedrun_lss_get_data(const char *s, const char *beginsWith, const char *endsWith) {
-    static char data[1024];
-    const char *a = strstr(s, beginsWith);
-    const char *b = strstr(s, endsWith);
+static const char *omm_speedrun_lss_get_data(str_t dst, const char *buffer, const char *beginsWith, const char *endsWith) {
+    const char *a = strstr(buffer, beginsWith);
+    const char *b = strstr(buffer, endsWith);
     if (a && b) {
         a += strlen(beginsWith);
         s32 length = (s32) (b - a);
-        mem_clr(data, sizeof(data));
-        mem_cpy(data, a, max_s(0, length));
-        return data;
+        mem_zero(dst, sizeof(str_t));
+        mem_cpy(dst, a, clamp_s(length, 0, sizeof(str_t) - 1));
+        return dst;
     }
     return NULL;
 }
@@ -100,7 +99,8 @@ static OmmSplit *omm_speedrun_split_data_create_split(const char *s) {
     }
 
     // Bowser split
-    str_lwr_sa(lower, 1024, s);
+    str_t lower;
+    str_lwr(lower, sizeof(lower), s);
     if (strstr(lower, "bowser")) {
         OmmSplit *split = mem_new(OmmSplit, 1);
         split->type = OMM_SPLIT_BOWSER;
@@ -112,47 +112,50 @@ static OmmSplit *omm_speedrun_split_data_create_split(const char *s) {
 }
 
 OMM_AT_STARTUP static void omm_speedrun_init() {
-    str_cat_paths_sa(filename, SYS_MAX_PATH, sys_exe_path(), "splits.lss");
+    sys_path_t filename;
+    fs_cat_paths(filename, sys_exe_path(), "splits.lss");
     FILE *f = fopen(filename, "r");
     if (f) {
-        omm_log("Extracting split data from file: %s\n",, filename);
+        omm_log("Extracting split data from file: \"%s\"\n",, filename);
 
         // Looking for game info and splits
         OmmArray splits = omm_array_zero;
         bool isSegment = false;
-        char buffer[1024];
-        while (fgets(buffer, 1024, f)) {
+        str_t buffer;
+        while (fgets(buffer, sizeof(buffer), f)) {
 
             // Game name
-            const char *gameName = omm_speedrun_lss_get_data(buffer, "<GameName>", "</GameName>");
-            if (gameName) {
+            str_t gameName;
+            if (omm_speedrun_lss_get_data(gameName, buffer, "<GameName>", "</GameName>")) {
                 omm_printf("Game: %s\n",, gameName);
                 continue;
             }
-            
+
             // Category name
-            const char *categoryName = omm_speedrun_lss_get_data(buffer, "<CategoryName>", "</CategoryName>");
-            if (categoryName) {
+            str_t categoryName;
+            if (omm_speedrun_lss_get_data(categoryName, buffer, "<CategoryName>", "</CategoryName>")) {
                 omm_printf("Category: %s\n",, categoryName);
                 continue;
             }
 
             // Segment start
-            if (omm_speedrun_lss_get_data(buffer, "<Segment>", "")) {
+            str_t segmentStart;
+            if (omm_speedrun_lss_get_data(segmentStart, buffer, "<Segment>", "")) {
                 isSegment = true;
                 continue;
             }
-            
+
             // Segment end
-            if (omm_speedrun_lss_get_data(buffer, "</Segment>", "")) {
+            str_t segmentEnd;
+            if (omm_speedrun_lss_get_data(segmentEnd, buffer, "</Segment>", "")) {
                 isSegment = false;
                 continue;
             }
-            
+
             // Splits
             if (isSegment) {
-                const char *splitName = omm_speedrun_lss_get_data(buffer, "<Name>", "</Name>");
-                if (splitName) {
+                str_t splitName;
+                if (omm_speedrun_lss_get_data(splitName, buffer, "<Name>", "</Name>")) {
                     omm_array_add(splits, ptr, mem_dup(splitName, strlen(splitName) + 1));
                 }
             }
@@ -185,10 +188,12 @@ OMM_AT_STARTUP static void omm_speedrun_init() {
             } else {
                 omm_printf("[!] Invalid split format: %s\n",, s);
             }
+            mem_del(p->as_ptr);
         }
+        omm_array_delete(splits);
 
         // Done
-        omm_log("Data successfully extracted. Closing file.\n\n");
+        omm_printf("Data successfully extracted. Closing file.\n");
         fflush(stdout);
         fclose(f);
     }

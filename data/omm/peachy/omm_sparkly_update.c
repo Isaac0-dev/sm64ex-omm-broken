@@ -4,12 +4,12 @@
 
 OMM_ROUTINE_UPDATE(omm_sparkly_update) {
     struct MarioState *m = gMarioState;
-    
+
     // Check requirements
     if (omm_sparkly_check_requirements(m)) {
         return;
     }
-    
+
     // Update game state
     if (omm_sparkly_check_game_state(m)) {
         return;
@@ -29,7 +29,7 @@ OMM_ROUTINE_UPDATE(omm_sparkly_update) {
     if (omm_sparkly_check_bowser_4(m)) {
         return;
     }
-    
+
     // Update context
     omm_sparkly_context_update(m);
     omm_sparkly_context_spawn_star(m);

@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 OmmSparklyContext gOmmSparklyContext[1];
 
@@ -37,15 +38,15 @@ s32 omm_sparkly_context_get_remaining_boxes() {
 }
 
 s32 omm_sparkly_context_get_remaining_star_rings() {
-    return obj_get_count_with_behavior_and_field_s32(bhvOmmStarRing, 0x31, 1);
+    return obj_get_count_with_behavior_and_field_s32(bhvOmmStarRing, _FIELD(oAction), 1);
 }
 
 s32 omm_sparkly_context_get_remaining_enemies() {
     s32 remainingEnemies = 0;
-    omm_array_for_each(omm_obj_get_sparkly_enemy_behaviors(), p) {
-        const BehaviorScript *bhv = (const BehaviorScript *) p->as_ptr;
+    omm_array_for_each(omm_obj_get_sparkly_enemy_behaviors(), p_bhv) {
+        const BehaviorScript *bhv = (const BehaviorScript *) p_bhv->as_ptr;
         for_each_object_with_behavior(obj, bhv) {
-            remainingEnemies += !(obj_is_dormant(obj) || obj->unused1);
+            remainingEnemies += (!obj_is_dormant(obj) && !(obj->oFlags & OBJ_FLAG_SPARKLY_NOT_ENEMY));
         }
     }
     return remainingEnemies;
@@ -74,7 +75,7 @@ void omm_sparkly_context_spawn_star(struct MarioState *m) {
         // Spawn the star only if not condition star or condition is fulfilled
         bool isConditionStar = (gOmmSparklyContext->data->flags & OMM_SPARKLY_DATA_CONDITION) != 0;
         if (!isConditionStar || gOmmSparklyContext->successful) {
-            gOmmSparklyContext->star = omm_spawn_sparkly_star(m->marioObj,
+            gOmmSparklyContext->star = omm_obj_spawn_sparkly_star(m->marioObj,
                 gOmmSparklyMode,
                 gOmmSparklyContext->data->starX,
                 gOmmSparklyContext->data->starY,
@@ -86,20 +87,37 @@ void omm_sparkly_context_spawn_star(struct MarioState *m) {
     }
 }
 
+static s16 omm_sparkly_context_get_star_dialog_id(s32 starIndex) {
+    s16 dialogId;
+    if (OMM_SPARKLY_IS_MODE_COMPLETED) {
+        dialogId = OMM_DIALOG_SPARKLY_STAR_COMPLETED(gOmmSparklyMode, starIndex);
+        if (omm_dialog_get_entry(NULL, dialogId)) {
+            return dialogId;
+        }
+    }
+    dialogId = OMM_DIALOG_SPARKLY_STAR(gOmmSparklyMode, starIndex);
+    if (omm_dialog_get_entry(NULL, dialogId)) {
+        return dialogId;
+    }
+    return 0;
+}
+
 void omm_sparkly_context_spawn_sign(struct MarioState *m) {
     if (OMM_SPARKLY_STATE_IS_OK && gOmmSparklyContext->data) {
 
         // Spawn sign
-        s16 dialogId = OMM_DIALOG_SPARKLY_STAR + gOmmSparklyContext->data->dialogId;
-        if (!obj_get_first_with_behavior(bhvOmmSparklyStarHint) && omm_dialog_get_entry(NULL, dialogId, gOmmSparklyMode)) {
-            omm_spawn_sparkly_star_hint(m->marioObj,
-                gOmmSparklyMode,
-                gOmmSparklyContext->data->signX,
-                gOmmSparklyContext->data->signY,
-                gOmmSparklyContext->data->signZ,
-                gOmmSparklyContext->data->signA,
-                dialogId
-            );
+        if (!obj_get_first_with_behavior(bhvOmmSparklyStarHint)) {
+            s16 dialogId = omm_sparkly_context_get_star_dialog_id(gOmmSparklyContext->data->starIndex);
+            if (dialogId) {
+                omm_obj_spawn_sparkly_star_hint(m->marioObj,
+                    gOmmSparklyMode,
+                    gOmmSparklyContext->data->signX,
+                    gOmmSparklyContext->data->signY,
+                    gOmmSparklyContext->data->signZ,
+                    gOmmSparklyContext->data->signA,
+                    dialogId
+                );
+            }
         }
 
         // Make objects awake after Mario finishes reading the hint sign
@@ -137,8 +155,8 @@ static s32 omm_sparkly_context_display_hint_at_level_entry(struct MarioState *m,
             }
         }
     }
-    s16 dialogId = OMM_DIALOG_SPARKLY_STAR + data->dialogId;
-    if (omm_dialog_get_entry(NULL, dialogId, gOmmSparklyMode)) {
+    s16 dialogId = omm_sparkly_context_get_star_dialog_id(data->starIndex);
+    if (dialogId) {
         switch (data->hint) {
             case OMM_SPARKLY_HINT_NEVER: {
             } break;
@@ -151,22 +169,36 @@ static s32 omm_sparkly_context_display_hint_at_level_entry(struct MarioState *m,
             case OMM_SPARKLY_HINT_AREA_2:
             case OMM_SPARKLY_HINT_AREA_3:
             case OMM_SPARKLY_HINT_AREA_4: {
-                if ((OMM_SPARKLY_STARS_HINT_ALWAYS || (OMM_SPARKLY_STARS_HINT_NOT_COLLECTED && !omm_sparkly_is_star_collected(gOmmSparklyMode, data->starIndex))) &&
-                    (gCurrAreaIndex - 1) == (data->hint - OMM_SPARKLY_HINT_AREA_1)) {
-                    s32 entryDialogStarIndex = data->dialogId + 128 * gOmmSparklyMode;
-                    if (entryDialogStarIndex != lastEntryDialogStarIndex) {
+                s32 entryDialogStarIndex = data->starIndex + 128 * gOmmSparklyMode;
+                if (entryDialogStarIndex != lastEntryDialogStarIndex) {
+                    if (gCurrAreaIndex - 1 == data->hint - OMM_SPARKLY_HINT_AREA_1 && (
+                        OMM_SPARKLY_STARS_HINT_ALWAYS || (
+                        OMM_SPARKLY_STARS_HINT_NOT_COLLECTED &&
+                        !omm_sparkly_is_star_collected(gOmmSparklyMode, data->starIndex)))
+                    ) {
                         gPlayer1Controller->buttonPressed = 0;
                         gPlayer2Controller->buttonPressed = 0;
                         gPlayer3Controller->buttonPressed = 0;
                         level_set_transition(-1, NULL);
                         create_dialog_box(dialogId);
+                        return entryDialogStarIndex;
                     }
-                    return entryDialogStarIndex;
+                    return -1;
                 }
-            } break;
+                return lastEntryDialogStarIndex;
+            }
         }
     }
     return -1;
+}
+
+static void omm_sparkly_context_skip_regular_star_cutscene() {
+    if (OMM_SPARKLY_STATE_IS_OK && (gCamera->cutscene == CUTSCENE_STAR_SPAWN || gCamera->cutscene == CUTSCENE_RED_COIN_STAR_SPAWN) && gCutsceneFocus && gCutsceneFocus->behavior != bhvOmmSparklyStar) {
+        stop_cutscene(gCamera);
+        clear_time_stop_flags(TIME_STOP_ENABLED | TIME_STOP_MARIO_AND_DOORS);
+        gCutsceneFocus->activeFlags &= ~ACTIVE_FLAG_INITIATED_TIME_STOP;
+        gCutsceneFocus = NULL;
+    }
 }
 
 void omm_sparkly_context_update(struct MarioState *m) {
@@ -176,7 +208,6 @@ void omm_sparkly_context_update(struct MarioState *m) {
     // Area
     // Reset some values when entering a new area, unless the data->areaIndex is 0
     // Invalidate the context if a timer was started
-    // Restart the entire context inside the Castle
     static s32 sPrevAreaIndex = -1;
     if (sPrevAreaIndex != gCurrAreaIndex) {
         sPrevAreaIndex = gCurrAreaIndex;
@@ -185,36 +216,40 @@ void omm_sparkly_context_update(struct MarioState *m) {
                 omm_sparkly_state_set(OMM_SPARKLY_STATE_INVALID, 1);
                 gHudDisplay.flags &= ~HUD_DISPLAY_FLAG_TIMER;
             }
-            if (gCurrCourseNum == COURSE_NONE) {
-                omm_sparkly_context_reset();
-            } else {
-                gOmmSparklyContext->inited = false;
-                gOmmSparklyContext->successful = false;
-                gOmmSparklyContext->starSpawned = false;
-                gOmmSparklyContext->objectsSpawned = false;
-                gOmmSparklyContext->entryDialog = false;
-                gOmmSparklyContext->timerStarted = false;
-                gOmmSparklyContext->eventStarted = false;
-                gOmmSparklyContext->coinsYellow = 0;
-                gOmmSparklyContext->coinsLost = 0;
-                gOmmSparklyContext->coinsRed = 0;
-                gOmmSparklyContext->coinsBlue = 0;
-                gOmmSparklyContext->mushrooms = 0;
-                gOmmSparklyContext->secrets = 0;
-            }
+            gOmmSparklyContext->inited = false;
+            gOmmSparklyContext->successful = false;
+            gOmmSparklyContext->starSpawned = false;
+            gOmmSparklyContext->objectsSpawned = false;
+            gOmmSparklyContext->entryDialog = false;
+            gOmmSparklyContext->timerStarted = false;
+            gOmmSparklyContext->eventStarted = false;
+            gOmmSparklyContext->eventFlags = 0;
+            gOmmSparklyContext->coinsYellow = 0;
+            gOmmSparklyContext->coinsLost = 0;
+            gOmmSparklyContext->coinsRed = 0;
+            gOmmSparklyContext->coinsBlue = 0;
+            gOmmSparklyContext->mushrooms = 0;
+            gOmmSparklyContext->secrets = 0;
         }
     }
 
     // Data
     // If the data changes, unload the star and update the context data
+    // Leave the current capture if the specific flag is set
     if (gOmmSparklyContext->data != data || !data) {
         gOmmSparklyContext->data = data;
         gOmmSparklyContext->star = NULL;
+        if (data && (data->flags & OMM_SPARKLY_DATA_UNCAPTURE) && omm_mario_is_capture(m)) {
+            struct Object *capture = gOmmCapture;
+            omm_mario_unpossess_object(m, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
+            obj_mark_for_deletion(capture);
+        }
     }
 
     // Per level
     u64 dataFlags = 0llu;
     if (data) {
+        dataFlags = data->flags;
         gOmmSparklyContext->secrets = obj_get_count_with_behavior(bhvHiddenStarTrigger);
         gOmmSparklyContext->coinsYellowDiff = gOmmSparklyContext->coinsYellow - gOmmSparklyContext->coinsYellowPrev;
         gOmmSparklyContext->coinsLostDiff = gOmmSparklyContext->coinsLost - gOmmSparklyContext->coinsLostPrev;
@@ -222,8 +257,6 @@ void omm_sparkly_context_update(struct MarioState *m) {
         gOmmSparklyContext->coinsBlueDiff = gOmmSparklyContext->coinsBlue - gOmmSparklyContext->coinsBluePrev;
         gOmmSparklyContext->mushroomsDiff = gOmmSparklyContext->mushrooms - gOmmSparklyContext->mushroomsPrev;
         gOmmSparklyContext->secretsDiff = gOmmSparklyContext->secrets - gOmmSparklyContext->secretsPrev;
-        omm_sparkly_context_update_level(m, data);
-        dataFlags = data->flags;
 
         // Coin requirement
         s32 requiredCoins = OMM_SPARKLY_DATA_GET_COINS(dataFlags);
@@ -234,6 +267,7 @@ void omm_sparkly_context_update(struct MarioState *m) {
                 gOmmSparklyContext->coinsBlue * 5
             );
             gOmmSparklyContext->successful |= (collectedCoins >= requiredCoins);
+            omm_sparkly_context_skip_regular_star_cutscene();
         }
 
         // All red coins
@@ -241,7 +275,11 @@ void omm_sparkly_context_update(struct MarioState *m) {
         if (requiredRedCoins) {
             s32 collectedRedCoins = gOmmSparklyContext->coinsRed;
             gOmmSparklyContext->successful |= (collectedRedCoins >= requiredRedCoins);
+            omm_sparkly_context_skip_regular_star_cutscene();
         }
+
+        // Level update
+        omm_sparkly_context_update_level(m, data);
     }
 
     // Show the Sparkly Star hint on level entry
@@ -251,6 +289,9 @@ void omm_sparkly_context_update(struct MarioState *m) {
     if (OMM_SPARKLY_STATE_IS_OK && !gOmmSparklyContext->entryDialog && !gOmmSparkly->gamePaused && !gOmmSparkly->transition &&
         (((m->action & ACT_GROUP_MASK) != ACT_GROUP_CUTSCENE) || !(m->action & ACT_FLAG_AIR))) {
         sLastEntryDialogStarIndex = omm_sparkly_context_display_hint_at_level_entry(m, data, sLastEntryDialogStarIndex);
+        gPlayer1Controller->buttonPressed &= ~START_BUTTON;
+        gPlayer2Controller->buttonPressed &= ~START_BUTTON;
+        gPlayer3Controller->buttonPressed &= ~START_BUTTON;
         gOmmSparklyContext->entryDialog = true;
     }
 
@@ -268,24 +309,14 @@ void omm_sparkly_context_update(struct MarioState *m) {
             gOmmSparklyContext->cheatDetected = false;
             omm_sparkly_state_set(OMM_SPARKLY_STATE_INVALID, 0);
             omm_sparkly_turn_off_cheats();
-
-            // Wanna have a bad time?
-            omm_mario_unpossess_object(m, OMM_MARIO_UNPOSSESS_ACT_NONE, false, 0);
-            omm_spawn_problem(m->marioObj);
-            if (m->action & ACT_FLAG_AIR) {
-                omm_mario_set_action(m, (random_u16() & 1) ? ACT_HARD_FORWARD_AIR_KB : ACT_HARD_BACKWARD_AIR_KB, 1, 0);
-            } else if (m->action & (ACT_FLAG_SWIMMING | ACT_FLAG_METAL_WATER)) {
-                omm_mario_set_action(m, (random_u16() & 1) ? ACT_FORWARD_WATER_KB : ACT_BACKWARD_WATER_KB, 1, 0);
-            } else {
-                omm_mario_set_action(m, (random_u16() & 1) ? ACT_HARD_FORWARD_GROUND_KB : ACT_HARD_BACKWARD_GROUND_KB, 1, 0);
-            }
+            omm_obj_spawn_problem(m->marioObj);
         }
     }
 
     // Rules
-    // Collecting all Sparkly Stars of the current difficulty or spawning
-    // a star in Normal mode allows the player to bypass the rules
-    if (!omm_sparkly_is_completed(gOmmSparklyMode) && (!OMM_SPARKLY_MODE_IS_NORMAL || !gOmmSparklyContext->starSpawned)) {
+    // Collecting all Sparkly Stars of the current difficulty
+    // allows the player to bypass the rules
+    if (!OMM_SPARKLY_BYPASS_RULES) {
 
         // No caps
         if (((m->flags & MARIO_WING_CAP) && !(dataFlags & OMM_SPARKLY_DATA_WING_CAP)) ||
@@ -294,8 +325,19 @@ void omm_sparkly_context_update(struct MarioState *m) {
             omm_sparkly_state_set(OMM_SPARKLY_STATE_INVALID, 1);
         }
 
+        // No Yoshi summon
+        if (obj_get_first_with_behavior(bhvOmmYoshi) ||
+            obj_get_first_with_behavior(bhvOmmYoshiBubble) ||
+            obj_get_first_with_behavior(bhvOmmYoshiFire) ||
+            obj_get_first_with_behavior(bhvOmmYoshiFireball) ||
+            obj_get_first_with_behavior(bhvOmmYoshiEgg) ||
+            obj_get_first_with_behavior(bhvOmmYoshiTongue) ||
+            obj_get_first_with_behavior(bhvOmmYoshiWings)) {
+            omm_sparkly_state_set(OMM_SPARKLY_STATE_INVALID, 1);
+        }
+
         // No cannon outside Normal mode
-        if (!OMM_SPARKLY_MODE_IS_NORMAL && m->action == ACT_IN_CANNON) {
+        if (!OMM_SPARKLY_MODE_IS_NORMAL && (m->action == ACT_IN_CANNON || (omm_mario_is_capture(m) && gOmmObject->state._cannonTimer > 0))) {
             omm_sparkly_state_set(OMM_SPARKLY_STATE_INVALID, 1);
         }
 
@@ -305,9 +347,9 @@ void omm_sparkly_context_update(struct MarioState *m) {
         }
     }
 
-    // Requirements
-    // In Normal mode, no longer checks requirements after the star spawn
-    if (gOmmSparklyContext->inited && (!OMM_SPARKLY_MODE_IS_NORMAL || !gOmmSparklyContext->starSpawned)) {
+    // Restrictions
+    // In Normal mode, no longer checks restrictions after the star spawn
+    if (gOmmSparklyContext->inited && !OMM_SPARKLY_BYPASS_RESTRICTIONS) {
 
         // Only yellow coins
         if ((dataFlags & OMM_SPARKLY_DATA_ONLY_COIN_Y) && (gOmmSparklyContext->coinsRed || gOmmSparklyContext->coinsBlue)) {
@@ -371,5 +413,8 @@ void omm_sparkly_context_reset() {
     gPlayer1Controller->buttonPressed *= (gCurrCourseNum == COURSE_NONE);
     gPlayer1Controller->buttonDown *= (gCurrCourseNum == COURSE_NONE);
     gOmmSparklyMode = OMM_SPARKLY_STARS_MODE;
-    mem_clr(gOmmSparklyContext, sizeof(gOmmSparklyContext));
+    mem_zero(gOmmSparklyContext, sizeof(gOmmSparklyContext));
+    if (!OMM_SPARKLY_ALLOW_WARPS) {
+        gOmmWarp->state = POBJ_WARP_STATE_NOT_WARPING;
+    }
 }

@@ -2,6 +2,7 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 #if OMM_GAME_IS_SM64
+#include "behavior_commands.h"
 #include "levels/castle_grounds/header.h"
 #include "level_commands.h"
 
@@ -547,39 +548,31 @@ static const Collision omm_level_bowser_4_collision[] = {
 // Behavior
 //
 
-static void omm_level_bowser_4_update() {
-    gCurrentObject->oGraphNode = geo_layout_to_graph_node(NULL, omm_level_bowser_4_platform_geo);
-}
-
-static const BehaviorScript omm_level_bowser_4_bhv[] = {
-    0x00090000,
-    0x11010001,
-    0x2A000000, (uintptr_t) bowser_2_seg7_collision_tilting_platform,
-    0x0E434E20,
-    0x0E454E20,
-    0x2D000000,
-    0x08000000,
-    0x0C000000, (uintptr_t) omm_level_bowser_4_update,
-    0x0C000000, (uintptr_t) load_object_collision_model,
-    0x09000000,
-};
-
-//
-// Level entry
-//
-
-OMM_ROUTINE_UPDATE(omm_level_bowser_4_entry) {
-    static bool sCutsceneStarted = false;
-    if (omm_sparkly_is_bowser_4_battle()) {
-        if (gCamera && !sCutsceneStarted) {
+static void bhv_omm_level_bowser_4_update() {
+    struct Object *o = gCurrentObject;
+    o->oGraphNode = geo_layout_to_graph_node(NULL, omm_level_bowser_4_platform_geo);
+    if (gCamera) {
+        if (gCamera->cutscene == CUTSCENE_ENTER_BOWSER_ARENA) {
+            o->oAction = TRUE;
+        } else if (!o->oAction) {
             gCamera->cutscene = 0;
             start_cutscene(gCamera, CUTSCENE_ENTER_BOWSER_ARENA);
-            sCutsceneStarted = true;
         }
-    } else {
-        sCutsceneStarted = false;
     }
 }
+
+static const BehaviorScript bhvOmmLevelBowser4[] = {
+    OBJ_TYPE_SURFACE,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_LOAD_COLLISION_DATA(bowser_2_seg7_collision_tilting_platform),
+    BHV_SET_FLOAT(oCollisionDistance, 20000),
+    BHV_SET_FLOAT(oDrawingDistance, 20000),
+    BHV_SET_HOME(),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_level_bowser_4_update),
+        BHV_CALL_NATIVE(load_object_collision_model),
+    BHV_END_LOOP(),
+};
 
 //
 // Objects
@@ -587,7 +580,7 @@ OMM_ROUTINE_UPDATE(omm_level_bowser_4_entry) {
 
 static const LevelScript omm_level_bowser_4_objects[] = {
     OBJECT(MODEL_NONE, 0, 1307, 0, 0, 180, 0, 0x000A0000, bhvSpinAirborneCircleWarp),
-    OBJECT(MODEL_NONE, 0, -922, 0, 0,  90, 0, 0x00000000, omm_level_bowser_4_bhv),
+    OBJECT(MODEL_NONE, 0, -922, 0, 0,  90, 0, 0x00000000, bhvOmmLevelBowser4),
     RETURN(),
 };
 

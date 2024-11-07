@@ -7,7 +7,6 @@
 //
 
 bool omm_cappy_bobomb_buddy_init(UNUSED struct Object *o) {
-    gOmmObject->state.actionState = 0;
     gOmmObject->state.actionTimer = 15;
     return true;
 }
@@ -15,8 +14,12 @@ bool omm_cappy_bobomb_buddy_init(UNUSED struct Object *o) {
 void omm_cappy_bobomb_buddy_end(UNUSED struct Object *o) {
 }
 
+u64 omm_cappy_bobomb_buddy_get_type(UNUSED struct Object *o) {
+    return OMM_CAPTURE_BOBOMB_BUDDY_CANNON;
+}
+
 f32 omm_cappy_bobomb_buddy_get_top(struct Object *o) {
-    return 94.f * o->oScaleY;
+    return omm_capture_get_hitbox_height(o);
 }
 
 //
@@ -28,12 +31,17 @@ s32 omm_cappy_bobomb_buddy_update(struct Object *o) {
     // Hitbox
     o->hitboxRadius = omm_capture_get_hitbox_radius(o);
     o->hitboxHeight = omm_capture_get_hitbox_height(o);
-    o->hitboxDownOffset = omm_capture_get_hitbox_down_offset(o);
     o->oWallHitboxRadius = omm_capture_get_wall_hitbox_radius(o);
 
     // Properties
     POBJ_SET_ABOVE_WATER;
     POBJ_SET_UNDER_WATER;
+    POBJ_SET_INVULNERABLE;
+    POBJ_SET_IMMUNE_TO_FIRE;
+    POBJ_SET_IMMUNE_TO_LAVA;
+    POBJ_SET_IMMUNE_TO_QUICKSAND;
+    POBJ_SET_IMMUNE_TO_STRONG_WINDS;
+    POBJ_SET_TALKING;
 
     // States
     if (gOmmObject->state.actionTimer == 0) {
@@ -95,7 +103,7 @@ s32 omm_cappy_bobomb_buddy_update(struct Object *o) {
 
         // Release Mario
         else if (gOmmObject->state.actionState == 7 && omm_mario_unlock(gMarioState)) {
-            omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, false, 6);
+            omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, 6);
             gOmmObject->state.actionState = 8;
         }
 
@@ -104,14 +112,16 @@ s32 omm_cappy_bobomb_buddy_update(struct Object *o) {
     }
     pobj_stop_if_unpossessed();
 
+    // OK
+    pobj_return_ok;
+}
+
+void omm_cappy_bobomb_buddy_update_gfx(struct Object *o) {
+
     // Gfx
     obj_update_gfx(o);
     obj_random_blink(o, &o->oBobombBuddyBlinkTimer);
 
-    // Cappy values
-    gOmmObject->cappy.offset[1] = 94.f;
-    gOmmObject->cappy.scale     = 1.2f;
-
-    // OK
-    pobj_return_ok;
+    // Cappy transform
+    gOmmObject->cappy.object = o;
 }

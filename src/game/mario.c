@@ -49,6 +49,7 @@ s8 filler80339F1C[20];
 /**
  * Checks if Mario's animation has reached its end point.
  */
+#if 0 // mario.c [0]
 s32 is_anim_at_end(struct MarioState *m) {
     struct Object *o = m->marioObj;
 
@@ -185,6 +186,7 @@ s32 is_anim_past_frame(struct MarioState *m, s16 animFrame) {
  * Rotates the animation's translation into the global coordinate system
  * and returns the animation's flags.
  */
+#endif // mario.c [0]
 s16 find_mario_anim_flags_and_translation(struct Object *obj, s32 yaw, Vec3s translation) {
     f32 dx;
     f32 dz;
@@ -393,6 +395,7 @@ void mario_set_forward_vel(struct MarioState *m, f32 forwardVel) {
  * Returns the slipperiness class of Mario's floor.
  */
 s32 mario_get_floor_class(struct MarioState *m) {
+omm_patch__mario_get_floor_class__cheat_walk_on_slope
     s32 floorClass;
 
     // The slide terrain type defaults to slide slipperiness.
@@ -526,6 +529,7 @@ u32 mario_get_terrain_sound_addend(struct MarioState *m) {
 /**
  * Collides with walls and returns the most recent wall.
  */
+#if 0 // mario.c [1]
 struct Surface *resolve_and_return_wall_collisions(Vec3f pos, f32 offset, f32 radius) {
     struct WallCollisionData collisionData;
     struct Surface *wall = NULL;
@@ -561,6 +565,7 @@ f32 vec3f_find_ceil(Vec3f pos, f32 height, struct Surface **ceil) {
 /**
  * Determines if Mario is facing "downhill."
  */
+#endif // mario.c [1]
 s32 mario_facing_downhill(struct MarioState *m, s32 turnYaw) {
     s16 faceAngleYaw = m->faceAngle[1];
 
@@ -579,6 +584,7 @@ s32 mario_facing_downhill(struct MarioState *m, s32 turnYaw) {
  * Determines if a surface is slippery based on the surface class.
  */
 u32 mario_floor_is_slippery(struct MarioState *m) {
+omm_patch__mario_floor_is_slippery__cheat_walk_on_slope
     f32 normY;
 
     if ((m->area->terrainType & TERRAIN_MASK) == TERRAIN_SLIDE
@@ -1182,6 +1188,7 @@ s32 transition_submerged_to_walking(struct MarioState *m) {
  * non-submerged action. This also applies the water surface camera preset.
  */
 s32 set_water_plunge_action(struct MarioState *m) {
+omm_patch__set_water_plunge_action__check_flooded
     m->forwardVel = m->forwardVel / 4.0f;
     m->vel[1] = m->vel[1] / 2.0f;
 

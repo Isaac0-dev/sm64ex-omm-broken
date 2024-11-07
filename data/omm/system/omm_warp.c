@@ -2,17 +2,17 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 
-//
-// Data
-//
-
-static struct OmmWarpState {
+static struct {
     s32 levelNum;
     s32 areaIndex;
     s32 actNum;
     bool exit;
     bool active;
-} sOmmWarpState = { 0 };
+    bool instant;
+    s32 exitTimer;
+    s32 targetArea;
+    Warp *targetWarp;
+} sOmmWarpState[1];
 
 //
 // Warps
@@ -20,11 +20,11 @@ static struct OmmWarpState {
 
 bool omm_warp_to_level(s32 levelNum, s32 areaIndex, s32 actNum) {
     if (omm_level_can_warp(levelNum) && omm_level_get_entry_warp(levelNum, areaIndex)) {
-        sOmmWarpState.levelNum = levelNum;
-        sOmmWarpState.areaIndex = areaIndex;
-        sOmmWarpState.actNum = actNum;
-        sOmmWarpState.exit = false;
-        sOmmWarpState.active = true;
+        sOmmWarpState->levelNum = levelNum;
+        sOmmWarpState->areaIndex = areaIndex;
+        sOmmWarpState->actNum = actNum;
+        sOmmWarpState->exit = false;
+        sOmmWarpState->active = true;
         return true;
     }
     return false;
@@ -57,8 +57,8 @@ bool omm_restart_area() {
     return false;
 }
 
-bool omm_exit_level() {
-    if (omm_level_can_warp(gCurrLevelNum)) {
+bool omm_exit_level(s32 levelNum, s32 areaIndex, bool instant) {
+    if (omm_level_can_warp(levelNum)) {
 
         // Close the pause menu if it was open
         if (optmenu_open) optmenu_toggle();
@@ -80,15 +80,17 @@ bool omm_exit_level() {
 
         // Play a fade-out transition, and trigger a "fake" warp
         omm_speedrun_split(OMM_SPLIT_EXIT);
-        play_transition(WARP_TRANSITION_FADE_INTO_COLOR, 16, 0, 0, 0);
-        level_set_transition(30, 0);
-        warp_special(0);
+        if (!instant) {
+            play_transition(WARP_TRANSITION_FADE_INTO_COLOR, 16, 0, 0, 0);
+            level_set_transition(30, NULL);
+            warp_special(0);
+        }
         sWarpDest.type = 0;
-        sOmmWarpState.levelNum = gCurrLevelNum;
-        sOmmWarpState.areaIndex = gCurrAreaIndex;
-        sOmmWarpState.actNum = gCurrActNum;
-        sOmmWarpState.exit = true;
-        sOmmWarpState.active = true;
+        sOmmWarpState->levelNum = levelNum;
+        sOmmWarpState->areaIndex = areaIndex;
+        sOmmWarpState->exit = true;
+        sOmmWarpState->active = true;
+        sOmmWarpState->instant = instant;
         return true;
     }
     return false;
@@ -111,7 +113,7 @@ bool omm_return_to_castle(bool fadeOut, bool force) {
 }
 
 bool omm_is_warping() {
-    return sOmmWarpState.active;
+    return sOmmWarpState->active;
 }
 
 //
@@ -122,11 +124,13 @@ static void omm_exit_level_find_position(f32 *x0, f32 *y0, f32 *z0, s16 yaw, f32
     for (f32 d = dist; d > 0.f; d -= 10.f) {
         f32 x = *x0 + d * sins(yaw + 0x8000);
         f32 z = *z0 + d * coss(yaw + 0x8000);
+        f32 waterLevel = find_water_level(x, z);
         for (f32 dy = 0.f; dy <= 5000.f; dy += 100.f) {
             f32 y = *y0 + dy;
             struct Surface *floor;
             f32 floorY = find_floor(x, y, z, &floor);
             if (floor &&
+                floorY > waterLevel &&
                 floor->type != SURFACE_WARP &&
                 floor->type != SURFACE_BURNING &&
                 floor->type != SURFACE_DEATH_PLANE &&
@@ -144,37 +148,40 @@ static void omm_exit_level_find_position(f32 *x0, f32 *y0, f32 *z0, s16 yaw, f32
 }
 
 void *omm_update_warp(void *cmd, bool inited) {
-    static s32 sExitTimer = 0;
-    static s32 sTargetArea = -1;
-    static Warp *sTargetWarp = NULL;
-    if (sOmmWarpState.active) {
+    if (sOmmWarpState->active) {
 
         // Exit level
-        if (sOmmWarpState.exit) {
+        if (sOmmWarpState->exit) {
+
+            // Close the pause menu if it was open
+            if (optmenu_open) optmenu_toggle();
+            level_set_transition(0, NULL);
+            gDialogBoxState = 0;
+            gMenuMode = -1;
 
             // Phase 0 - Wait for the transition to end
-            if (sTargetArea == -1 && omm_is_transition_active()) {
-                sExitTimer = 14;
+            if (sOmmWarpState->targetArea == -1 && !sOmmWarpState->instant && omm_is_transition_active()) {
+                sOmmWarpState->exitTimer = 14;
                 return NULL;
             }
 
             // Phase 1 - Clear the previous level and set up the new level
-            if (sTargetArea == -1) {
+            if (sOmmWarpState->targetArea == -1) {
                 
                 // Wait 14 more frames...
-                if (sExitTimer-- > 0) {
+                if (sOmmWarpState->exitTimer-- > 0) {
                     return NULL;
                 }
 
                 // Bowser levels
-                if (sOmmWarpState.levelNum == LEVEL_BOWSER_1) sOmmWarpState.levelNum = LEVEL_BITDW;
-                if (sOmmWarpState.levelNum == LEVEL_BOWSER_2) sOmmWarpState.levelNum = LEVEL_BITFS;
-                if (sOmmWarpState.levelNum == LEVEL_BOWSER_3) sOmmWarpState.levelNum = LEVEL_BITS;
+                if (sOmmWarpState->levelNum == LEVEL_BOWSER_1) sOmmWarpState->levelNum = LEVEL_BITDW;
+                if (sOmmWarpState->levelNum == LEVEL_BOWSER_2) sOmmWarpState->levelNum = LEVEL_BITFS;
+                if (sOmmWarpState->levelNum == LEVEL_BOWSER_3) sOmmWarpState->levelNum = LEVEL_BITS;
 
                 // Exit warp to Castle warp
                 // Uses the death warp, as it's the only warp that exists for every stage in the game
-                Warp *warp = omm_level_get_death_warp(sOmmWarpState.levelNum, sOmmWarpState.areaIndex);
-                sTargetWarp = omm_level_get_warp(warp->dstLevelNum, warp->dstAreaIndex, warp->dstId);
+                Warp *warp = omm_level_get_death_warp(sOmmWarpState->levelNum, sOmmWarpState->areaIndex);
+                sOmmWarpState->targetWarp = omm_level_get_warp(warp->dstLevelNum, warp->dstAreaIndex, warp->dstId);
 
                 // Free everything from the current level
                 clear_objects();
@@ -196,9 +203,8 @@ void *omm_update_warp(void *cmd, bool inited) {
                 gCurrLevelNum = warp->dstLevelNum;
                 gCurrCourseNum = omm_level_get_course(gCurrLevelNum);
                 gSavedCourseNum = gCurrCourseNum;
-                gDialogCourseActNum = gCurrActNum;
                 gCurrAreaIndex = warp->dstAreaIndex;
-                sTargetArea = warp->dstAreaIndex;
+                sOmmWarpState->targetArea = warp->dstAreaIndex;
 
                 // Set up new level script
                 sWarpDest.type = 0;
@@ -212,18 +218,18 @@ void *omm_update_warp(void *cmd, bool inited) {
     
                 // Phase 2 - Set Mario spawn info after the MARIO_POS command
                 if (*((u8 *) cmd) == 0x2B) {
-                    gMarioSpawnInfo->areaIndex = sTargetArea;
-                    gCurrAreaIndex = sTargetArea;
+                    gMarioSpawnInfo->areaIndex = sOmmWarpState->targetArea;
+                    gCurrAreaIndex = sOmmWarpState->targetArea;
                 }
 
                 // Phase 3 - End level initialization
-                if (sTargetWarp && inited) {
-            
+                if (sOmmWarpState->targetWarp && inited) {
+
                     // Find target position
-                    f32 x = sTargetWarp->x;
-                    f32 y = sTargetWarp->y;
-                    f32 z = sTargetWarp->z;
-                    s16 yaw = sTargetWarp->yaw;
+                    f32 x = sOmmWarpState->targetWarp->x;
+                    f32 y = sOmmWarpState->targetWarp->y;
+                    f32 z = sOmmWarpState->targetWarp->z;
+                    s16 yaw = sOmmWarpState->targetWarp->yaw;
                     omm_exit_level_find_position(&x, &y, &z, yaw, OMM_LEVEL_EXIT_DISTANCE);
 
                     // Init Mario
@@ -241,6 +247,7 @@ void *omm_update_warp(void *cmd, bool inited) {
                     // Init transition
                     reset_camera(gCurrentArea->camera);
                     init_camera(gCurrentArea->camera);
+                    omm_camera_init();
                     sDelayedWarpOp = WARP_OP_NONE;
                     gTimeStopState &= ~(TIME_STOP_ENABLED | TIME_STOP_MARIO_AND_DOORS);
                     play_transition(WARP_TRANSITION_FADE_FROM_STAR, 15, 0, 0, 0);
@@ -249,22 +256,22 @@ void *omm_update_warp(void *cmd, bool inited) {
                     // Set music
                     music_stop();
                     set_background_music(gCurrentArea->musicParam, gCurrentArea->musicParam2, 0);
-                    sTargetWarp = NULL;
+                    sOmmWarpState->targetWarp = NULL;
                 }
 
                 // Phase 4 - Unlock Mario as soon as the second transition is ended
-                if (!sTargetWarp && !omm_is_transition_active()) {
-                    sOmmWarpState.active = false;
-                    sTargetArea = -1;
+                if (!sOmmWarpState->targetWarp && !omm_is_transition_active()) {
+                    sOmmWarpState->active = false;
+                    sOmmWarpState->targetArea = -1;
                 }
             }
         }
-        
+
         // Warp to level
         else {
-        
+
             // Phase 1 - Clear the previous level and set up the new level
-            if (sTargetArea == -1) {
+            if (sOmmWarpState->targetArea == -1) {
 
                 // Close the pause menu if it was open
                 if (optmenu_open) optmenu_toggle();
@@ -302,13 +309,12 @@ void *omm_update_warp(void *cmd, bool inited) {
                 gOmmData->reset();
 
                 // Set up new level values
-                gCurrLevelNum = sOmmWarpState.levelNum;
+                gCurrLevelNum = sOmmWarpState->levelNum;
                 gCurrCourseNum = omm_level_get_course(gCurrLevelNum);
                 gSavedCourseNum = gCurrCourseNum;
-                gCurrActNum = max_s(1, sOmmWarpState.actNum * (gCurrCourseNum <= COURSE_STAGES_MAX));
-                gDialogCourseActNum = gCurrActNum;
-                gCurrAreaIndex = sOmmWarpState.areaIndex;
-                sTargetArea = gCurrAreaIndex;
+                gCurrActNum = max_s(1, sOmmWarpState->actNum * (gCurrCourseNum <= COURSE_STAGES_MAX));
+                gCurrAreaIndex = sOmmWarpState->areaIndex;
+                sOmmWarpState->targetArea = gCurrAreaIndex;
 
                 // Set up new level script
                 sWarpDest.type = 0;
@@ -319,11 +325,11 @@ void *omm_update_warp(void *cmd, bool inited) {
                 return (void *) omm_level_get_script(gCurrLevelNum);
 
             } else {
-    
+
                 // Phase 2 - Set Mario spawn info after the MARIO_POS command
                 if (*((u8 *) cmd) == 0x2B) {
-                    gMarioSpawnInfo->areaIndex = sTargetArea;
-                    gCurrAreaIndex = sTargetArea;
+                    gMarioSpawnInfo->areaIndex = sOmmWarpState->targetArea;
+                    gCurrAreaIndex = sOmmWarpState->targetArea;
                 }
 
                 // Phase 3 - End level initialization
@@ -346,6 +352,7 @@ void *omm_update_warp(void *cmd, bool inited) {
                     // Init transition
                     reset_camera(gCurrentArea->camera);
                     init_camera(gCurrentArea->camera);
+                    omm_camera_init();
                     sDelayedWarpOp = WARP_OP_NONE;
                     switch (spawnType) {
                         case MARIO_SPAWN_UNKNOWN_03:           play_transition(WARP_TRANSITION_FADE_FROM_STAR,   0x10, 0x00, 0x00, 0x00); break;
@@ -364,18 +371,20 @@ void *omm_update_warp(void *cmd, bool inited) {
                     if (gMarioState->flags & MARIO_METAL_CAP)  audio_play_metal_cap_music();
                     if (gMarioState->flags & MARIO_VANISH_CAP) audio_play_vanish_cap_music();
 
-                    if (gCurrLevelNum == LEVEL_BOWSER_1 ||
-                        gCurrLevelNum == LEVEL_BOWSER_2 ||
-                        gCurrLevelNum == LEVEL_BOWSER_3) {
+                    if (OMM_LEVEL_IS_BOWSER_FIGHT(gCurrLevelNum)) {
                         sound_banks_enable(0, 0xFFFF); // Bowser levels sound fix
                     }
 
                     // Reset values
-                    sOmmWarpState.active = false;
-                    sTargetArea = -1;
+                    sOmmWarpState->active = false;
+                    sOmmWarpState->targetArea = -1;
                 }
             }
         }
+    } else {
+        sOmmWarpState->exitTimer = 0;
+        sOmmWarpState->targetArea = -1;
+        sOmmWarpState->targetWarp = NULL;
     }
     return NULL;
 }

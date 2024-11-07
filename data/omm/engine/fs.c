@@ -4,8 +4,13 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #if WINDOWS_BUILD
+#include <windows.h>
 #include <direct.h>
 #endif
+
+static sys_path_t fs_gamedir;
+static sys_path_t fs_gamepath;
+static sys_path_t fs_savepath;
 
 //
 // Packers
@@ -21,9 +26,6 @@ static fs_packtype_t *fs_packers[] = {
 //
 // Directories
 //
-
-char fs_gamedir[SYS_MAX_PATH] = "";
-char fs_writepath[SYS_MAX_PATH] = "";
 
 struct fs_dir_s {
     u8 flags;
@@ -45,7 +47,8 @@ static fs_dir_t *fs_dir_find(const char *realpath) {
 }
 
 static void fs_dir_scan(const char *ropath, const char *dir, u8 flags) {
-    str_cat_paths_sa(dirpath, SYS_MAX_PATH, ropath, dir);
+    sys_path_t dirpath;
+    fs_cat_paths(dirpath, ropath, dir);
     if (fs_sys_dir_exists(dirpath)) {
         fs_pathlist_t plist = fs_sys_enumerate(dirpath, false);
         for (s32 i = 0; i != plist.numpaths; ++i) {
@@ -57,11 +60,11 @@ static void fs_dir_scan(const char *ropath, const char *dir, u8 flags) {
 }
 
 static bool fs_dir_is_custom_zip(fs_dir_t *dir) {
-    return dir->packer == &fs_packtype_zip && !strstr(dir->realpath, FS_BASEPACK_PREFIX);
+    return dir->packer == &fs_packtype_zip && !(strstr(dir->realpath, FS_BASEPACK) || strstr(dir->realpath, FS_OMM_BASEPACK));
 }
 
 static bool fs_dir_is_base_zip(fs_dir_t *dir) {
-    return dir->packer == &fs_packtype_zip && strstr(dir->realpath, FS_BASEPACK_PREFIX);
+    return dir->packer == &fs_packtype_zip && (strstr(dir->realpath, FS_BASEPACK) || strstr(dir->realpath, FS_OMM_BASEPACK));
 }
 
 static bool fs_dir_is_dir(fs_dir_t *dir) {
@@ -83,18 +86,16 @@ static fs_dir_f fs_dir_types[] = {
 struct finddata_s {
     const char *pattern;
     char *dst;
-    u64 dst_len;
 };
 
 static bool fs_find_walk(void *user, const char *path) {
     struct finddata_s *data = (struct finddata_s *) user;
     if (strstr(path, data->pattern)) {
-        str_cpy(data->dst, data->dst_len, path);
+        str_cpy(data->dst, sizeof(sys_path_t), path);
         return false;
     }
     return true;
 }
-
 
 //
 // Match
@@ -104,13 +105,12 @@ struct matchdata_s {
     const char *prefix;
     u64 prefix_len;
     char *dst;
-    u64 dst_len;
 };
 
 static bool fs_match_walk(void *user, const char *path) {
     struct matchdata_s *data = (struct matchdata_s *) user;
     if (!strncmp(path, data->prefix, data->prefix_len)) {
-        str_cpy(data->dst, data->dst_len, path);
+        str_cpy(data->dst, sizeof(sys_path_t), path);
         return false;
     }
     return true;
@@ -136,63 +136,92 @@ static bool fs_enumerate_walk(void *user, const char *path) {
 // File system
 //
 
-bool fs_init(const char **rodirs, const char *gamedir, const char *writepath) {
-    char buf[SYS_MAX_PATH];
+// __argc, __argv are Windows only
+// The following only works on non-Windows platforms
+#if !WINDOWS_BUILD
 
-    // Game dir
-    fs_convert_path(fs_gamedir, SYS_MAX_PATH, gamedir);
-    omm_log("Gamedir set to '%s'\n",, fs_gamedir);
+static int __argc;
+static char **__argv;
 
-    // Write path
-    fs_convert_path(fs_writepath, SYS_MAX_PATH, writepath);
-    omm_log("Writepath set to '%s'\n",, fs_writepath);
+OMM_AT_STARTUP static void fs_init_args(int argc, char *argv[]) {
+    __argc = argc;
+    __argv = argv;
+}
 
-    // Mount all dirs from rodirs
-    for (const char **p = rodirs; p && *p; ++p) {
-        fs_dir_scan(fs_convert_path(buf, sizeof(buf), *p), FS_BASEDIR, FS_DIR_READ);
+#endif
+
+static void fs_init_paths() {
+    OMM_DO_ONCE {
+        parse_cli_opts(__argc, __argv);
+        fs_convert_path(fs_gamedir, *gCLIOpts.gamedir ? gCLIOpts.gamedir : FS_BASEDIR);
+        fs_convert_path(fs_savepath, *gCLIOpts.savepath ? gCLIOpts.savepath : sys_user_path());
+        fs_cat_paths(fs_gamepath, sys_exe_path(), fs_gamedir);
+        omm_log("Game directory set to \"%s\"\n",, fs_gamedir);
+        omm_log("Save path set to \"%s\"\n",, fs_savepath);
     }
-    fs_dir_scan(fs_writepath, FS_BASEDIR, FS_DIR_WRITE);
+}
 
-    // Do the same if the game dir isn't the 'res' directory
-    if (sys_strcasecmp(FS_BASEDIR, fs_gamedir)) {
-        for (const char **p = rodirs; p && *p; ++p) {
-            fs_dir_scan(fs_convert_path(buf, sizeof(buf), *p), fs_gamedir, FS_DIR_READ);
-        }
-        fs_dir_scan(fs_writepath, fs_gamedir, FS_DIR_WRITE);
-    }
+#define fs_mount_dirs(path, flags, dir1, dir2) { \
+    sys_path_t basepath, dirpath; \
+    fs_convert_path(basepath, path); \
+    fs_cat_paths(dirpath, dir1, dir2); \
+    fs_dir_scan(basepath, dirpath, flags); \
+}
 
-    // Finally, mount writepath
-    fs_mount(fs_writepath, FS_DIR_WRITE);
-    
-    // Sort fs_searchpaths:
-    // - custom zips are first
-    // - base.zip are next
-    // - directories are last
-    fs_dir_t *paths = NULL;
-    for_each_until_null(fs_dir_f, fs_dir_is, fs_dir_types) {
-        for_each_dir_in_search_paths {
-            if ((*fs_dir_is)(dir)) {
-                fs_dir_t *path = mem_dup(dir, sizeof(fs_dir_t));
-                path->prev = NULL;
-                path->next = paths;
-                if (paths) paths->prev = path;
-                paths = path;
-                omm_log("Mounting '%s'\n",, path->realpath);
+bool fs_init(UNUSED const char **rodirs, UNUSED const char *gamedir, UNUSED const char *writepath) {
+    OMM_DO_ONCE {
+        fs_init_paths();
+        omm_log("Initializing file system\n");
+
+        // Mount fs_gamedir and packs dirs from exe path
+        fs_mount_dirs("!", FS_DIR_READ, fs_gamedir, "");
+        fs_mount_dirs("!", FS_DIR_PACKS, fs_gamedir, "packs");
+        fs_mount_dirs("!", FS_DIR_PACKS, "dynos", "packs");
+
+        // Mount res and packs dirs from save path
+        fs_mount_dirs(fs_savepath, FS_DIR_READ, FS_BASEDIR, "");
+        fs_mount_dirs(fs_savepath, FS_DIR_PACKS, FS_BASEDIR, "packs");
+        fs_mount_dirs(fs_savepath, FS_DIR_PACKS, "dynos", "packs");
+
+        // Mount save path
+        fs_mount(fs_savepath, FS_DIR_WRITE);
+
+        // Sort fs_searchpaths:
+        // - custom zips are first
+        // - base.*.zip and omm.zip are next
+        // - directories are last
+        fs_dir_t *paths = NULL;
+        for_each_until_null(fs_dir_f, fs_dir_is, fs_dir_types) {
+            for_each_dir_in_search_paths {
+                if ((*fs_dir_is)(dir)) {
+                    fs_dir_t *path = mem_dup(dir, sizeof(fs_dir_t));
+                    path->prev = NULL;
+                    path->next = paths;
+                    if (paths) paths->prev = path;
+                    paths = path;
+                    omm_printf("Mounting: \"%s\"\n",, path->realpath);
+                }
             }
         }
-    }
-    fs_searchpaths = paths;
+        fs_searchpaths = paths;
 
-    // Other inits
-    omm_audio_init();
+        // Other inits
+        omm_audio_init();
 #if OMM_GAME_IS_R96X
-    extern void omm_r96x_generate_json();
-    omm_r96x_generate_json();
+        extern void omm_r96x_generate_json();
+        omm_r96x_generate_json();
 #endif
+    }
 
     // Done
     return true;
 }
+
+static const char *FS_GAME_CODES[] = {
+#define OMM_GAME(code, ...) "." code ".",
+#include "data/omm/omm_games.inl"
+#undef OMM_GAME
+};
 
 bool fs_mount(const char *realpath, u8 flags) {
     if (!fs_dir_find(realpath)) {
@@ -213,6 +242,20 @@ bool fs_mount(const char *realpath, u8 flags) {
 
         // Add to search paths
         if (pack && packer) {
+
+            // Ignore packs intended for other games
+            if (packer == &fs_packtype_zip) {
+                const char *filename = sys_file_name(realpath);
+                for (u32 i = 0; i != array_length(FS_GAME_CODES); ++i) {
+                    if (!strstr(FS_GAME_CODES[i], OMM_GAME_CODE) && strstr(filename, FS_GAME_CODES[i])) {
+                        omm_printf("(!) Skipping: \"%s\"\n",, filename);
+                        packer->unmount(pack);
+                        return false;
+                    }
+                }
+            }
+
+            // Add path to search paths
             fs_dir_t *dir = mem_new(fs_dir_t, 1);
             if (OMM_LIKELY(dir)) {
                 dir->flags = flags;
@@ -303,7 +346,7 @@ bool fs_seek(fs_file_t *file, const s64 ofs) {
     if (file) {
         return file->parent->packer->seek(file->parent->pack, file, ofs);
     }
-    return -1;
+    return false;
 }
 
 s64 fs_tell(fs_file_t *file) {
@@ -327,27 +370,35 @@ bool fs_eof(fs_file_t *file) {
     return true;
 }
 
-const char *fs_find(char *outname, const u64 outlen, const char *pattern, u8 flags) {
+s64 fs_fsize(const char *vpath) {
+    for_each_dir_in_search_paths {
+        s64 fsize = dir->packer->fsize(dir->pack, vpath);
+        if (fsize >= 0) {
+            return fsize;
+        }
+    }
+    return -1;
+}
+
+const char *fs_find(sys_path_t dst, const char *pattern, u8 flags) {
     struct finddata_s data = {
         .pattern = pattern,
-        .dst = outname,
-        .dst_len = outlen,
+        .dst = dst,
     };
     if (fs_walk("", fs_find_walk, &data, true, flags) == FS_WALK_INTERRUPTED) {
-        return outname;
+        return dst;
     }
     return NULL;
 }
 
-const char *fs_match(char *outname, const u64 outlen, const char *prefix, u8 flags) {
+const char *fs_match(sys_path_t dst, const char *prefix, u8 flags) {
     struct matchdata_s data = {
         .prefix = prefix,
         .prefix_len = strlen(prefix),
-        .dst = outname,
-        .dst_len = outlen,
+        .dst = dst,
     };
     if (fs_walk("", fs_match_walk, &data, true, flags) == FS_WALK_INTERRUPTED) {
-        return outname;
+        return dst;
     }
     return NULL;
 }
@@ -416,40 +467,49 @@ u8 *fs_load_png(const char *vpath, s32 *w, s32 *h) {
     return NULL;
 }
 
-const char *fs_get_write_path(const char *vpath) {
-    static char path[SYS_MAX_PATH];
-    fs_cat_paths(path, sizeof(path), fs_writepath, vpath);
-    return path;
-}
-
-const char *fs_convert_path(char *buf, const u64 bufsiz, const char *path)  {
+const char *fs_convert_path(sys_path_t dst, const char *path)  {
     if (path[0] == '!') {
-        str_cat(buf, bufsiz, sys_exe_path(), path + 1);
+        str_cat(dst, sizeof(sys_path_t), sys_exe_path(), path + 1);
     } else {
-        str_cpy(buf, bufsiz, path);
+        str_cpy(dst, sizeof(sys_path_t), path);
     }
-    str_rep(buf, bufsiz, buf, '\\', '/');
-    return buf;
+    str_rep(dst, sizeof(sys_path_t), dst, '\\', '/');
+    return dst;
 }
 
-const char *fs_cat_paths(char *buf, const u64 bufsiz, const char *path1, const char *path2) {
+const char *fs_cat_paths(sys_path_t dst, const char *path1, const char *path2) {
 
     // Sanitize path1, remove the trailing separators
-    char cpath1[SYS_MAX_PATH];
-    fs_convert_path(cpath1, SYS_MAX_PATH, path1);
+    sys_path_t cpath1;
+    fs_convert_path(cpath1, path1);
     for (char *ppath1 = cpath1 + strlen(cpath1) - 1; ppath1 >= cpath1 && *ppath1 == '/'; *(ppath1--) = 0);
 
     // Sanitize path2, remove the heading separators
-    char cpath2[SYS_MAX_PATH];
-    fs_convert_path(cpath2, SYS_MAX_PATH, path2);
+    sys_path_t cpath2;
+    fs_convert_path(cpath2, path2);
     char *ppath2 = cpath2; for (; *ppath2 == '/'; ++ppath2);
 
     // Concatenate the two, separate them by a slash
     if (*cpath1 && *ppath2) {
-        str_cat(buf, bufsiz, cpath1, "/", ppath2);
+        str_cat(dst, sizeof(sys_path_t), cpath1, "/", ppath2);
     } else {
-        str_cat(buf, bufsiz, cpath1, ppath2);
+        str_cat(dst, sizeof(sys_path_t), cpath1, ppath2);
     }
+    return dst;
+}
+
+const char *fs_get_game_path(sys_path_t dst, const char *vpath) {
+    fs_init_paths();
+    return fs_cat_paths(dst, fs_gamepath, vpath);
+}
+
+const char *fs_get_save_path(sys_path_t dst, const char *vpath) {
+    fs_init_paths();
+    return fs_cat_paths(dst, fs_savepath, vpath);
+}
+
+const char *fs_get_write_path(const char *vpath) {
+    return vpath;
 }
 
 //
@@ -472,7 +532,8 @@ bool fs_sys_walk(const char *base, walk_fn_t walk, void *user, const bool recur)
         struct dirent *ent;
         while ((ent = readdir(dir)) != NULL) {
             if (ent->d_name[0] != 0 && ent->d_name[0] != '.') {
-                str_cat_paths_sa(fullpath, SYS_MAX_PATH, base, ent->d_name);
+                sys_path_t fullpath;
+                fs_cat_paths(fullpath, base, ent->d_name);
                 if (fs_sys_dir_exists(fullpath)) {
                     if (recur && !fs_sys_walk(fullpath, walk, user, recur)) {
                         closedir(dir);
@@ -507,25 +568,25 @@ bool fs_sys_mkdir(const char *name) {
 #endif
 }
 
-bool fs_sys_copy_file(const char *oldname, const char *newname) {
-    bool ret = false;
-    FILE *fin = fopen(oldname, "rb");
-    if (fin) {
-        FILE *fout = fopen(newname, "wb");
-        if (fout) {
+bool fs_sys_copy_file(const char *from, const char *to) {
+    bool success = false;
+    FILE *f_from = fopen(from, "rb");
+    if (f_from) {
+        FILE *f_to = fopen(to, "wb");
+        if (f_to) {
             u8 buf[0x1000];
-            u64 rx;
-            for (ret = true; (rx = fread(buf, 1, sizeof(buf), fin)) > 0;) {
-                if (!fwrite(buf, rx, 1, fout)) {
-                    ret = false;
+            u64 bytes;
+            for (success = true; (bytes = fread(buf, 1, sizeof(buf), f_from)) > 0;) {
+                if (fwrite(buf, 1, bytes, f_to) < bytes) {
+                    success = false;
                     break;
                 }
             }
-            fclose(fout);
+            fclose(f_to);
         }
-        fclose(fin);
+        fclose(f_from);
     }
-    return ret;
+    return success;
 }
 
 bool fs_sys_delete_file(const char *name) {

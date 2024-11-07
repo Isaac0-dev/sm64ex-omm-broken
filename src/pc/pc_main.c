@@ -83,13 +83,6 @@ void send_display_list(struct SPTask *spTask) {
 #define SAMPLES_LOW 528
 #endif
 
-u8 holdingTab = 0;
-bool holdingReturn = false;
-bool holdingBackspace = false;
-
-void tas_init(void);
-FILE *tas_init_off_start(void);
-
 void produce_one_frame(void) {
     gfx_start_frame();
 
@@ -98,46 +91,7 @@ void produce_one_frame(void) {
     set_sequence_player_volume(SEQ_PLAYER_SFX, (f32)configSfxVolume / 127.0f * master_mod);
     set_sequence_player_volume(SEQ_PLAYER_ENV, (f32)configEnvVolume / 127.0f * master_mod);
 
-    const u8 *state = SDL_GetKeyboardState(NULL);
-    if (state[SDL_SCANCODE_RETURN] && !holdingReturn) {
-        if (gTas.stop == 1) {
-            gTas.stop = 0;
-        } else {
-            gTas.stop = 1;
-        }
-        holdingReturn = true;
-    } else {
-        holdingReturn = false;
-    }
-
-    if (state[SDL_SCANCODE_BACKSPACE] && !holdingBackspace && gTas.onStart == 0 && gTas.controllerType != 0) {
-        tas_init();
-        holdingBackspace = true;
-    } else if (state[SDL_SCANCODE_BACKSPACE] && !holdingBackspace && gTas.onStart == 0) {
-        tas_init_off_start();
-        holdingBackspace = true;
-    } else {
-        holdingBackspace = false;
-    }
-
-    if ((state[SDL_SCANCODE_TAB] || SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT)) && holdingTab > 4) {
-        if (gTas.progress == 1) {
-            gTas.progress = 0;
-        } else {
-            gTas.progress = 1;
-        }
-        holdingTab = 0;
-    } else {
-        if (holdingTab < 5) {
-            holdingTab++;
-        }
-    }
-
-    if ((!gTas.stop && gTas.progress) || (gTas.stop && gTas.progress)) {
-        game_loop_one_iteration();
-        gTas.progress = 0;
-    }
-    if (!gTas.stop) { gTas.progress = 1; }
+    game_loop_one_iteration();
     thread6_rumble_loop(NULL);
 
     int samples_left = audio_api->buffered();
@@ -266,9 +220,6 @@ void main_func(void) {
     " nightly " GIT_HASH
     #endif
     ;
-
-    gTas.stop = 0;
-    gTas.progress = 1;
 
     gfx_init(wm_api, rendering_api, window_title);
     wm_api->set_keyboard_callbacks(keyboard_on_key_down, keyboard_on_key_up, keyboard_on_all_keys_up);

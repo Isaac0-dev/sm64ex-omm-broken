@@ -2,39 +2,25 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 
-enum {
-    OMM_CAPPY_KOOPA_STATE_SHELLED_IDLE,
-    OMM_CAPPY_KOOPA_STATE_SHELLED_WALKING,
-    OMM_CAPPY_KOOPA_STATE_SHELLED_SLIDING,
-    OMM_CAPPY_KOOPA_STATE_SHELLED_JUMPING,
-    OMM_CAPPY_KOOPA_STATE_UNSHELLED_IDLE,
-    OMM_CAPPY_KOOPA_STATE_UNSHELLED_WALKING,
-    OMM_CAPPY_KOOPA_STATE_UNSHELLED_RUNNING,
-    OMM_CAPPY_KOOPA_STATE_UNSHELLED_JUMPING,
-};
+#define OMM_CAPPY_KOOPA_STATE_SHELLED_IDLE          (0)
+#define OMM_CAPPY_KOOPA_STATE_SHELLED_WALKING       (1)
+#define OMM_CAPPY_KOOPA_STATE_SHELLED_SLIDING       (2)
+#define OMM_CAPPY_KOOPA_STATE_SHELLED_JUMPING       (3)
+#define OMM_CAPPY_KOOPA_STATE_UNSHELLED_IDLE        (4)
+#define OMM_CAPPY_KOOPA_STATE_UNSHELLED_WALKING     (5)
+#define OMM_CAPPY_KOOPA_STATE_UNSHELLED_RUNNING     (6)
+#define OMM_CAPPY_KOOPA_STATE_UNSHELLED_JUMPING     (7)
 
-/* AnimIndex, Accel, Sfx, Model */
-static s32 sCappyKoopaStateData[][4] = {
-    {  7,   0, 0, MODEL_KOOPA_WITH_SHELL    },
-    {  9,   1, 1, MODEL_KOOPA_WITH_SHELL    },
-    {  0,   0, 2, MODEL_KOOPA_SHELL         },
-    { 12, 100, 0, MODEL_KOOPA_WITH_SHELL    },
-    {  7,   0, 0, MODEL_KOOPA_WITHOUT_SHELL },
-    {  9,   1, 1, MODEL_KOOPA_WITHOUT_SHELL },
-    {  3,   0, 1, MODEL_KOOPA_WITHOUT_SHELL },
-    { 12, 100, 0, MODEL_KOOPA_WITHOUT_SHELL }
-};
-
-/* fdist, ldist, vdist, pitch, yaw, roll, scale */
-static s32 sCappyKoopaCappyParams[][7] = {
-    { 33, 0, 68, 0xE000, 0x0000, 0x0000, 65 },
-    { 26, 0, 74, 0xDC00, 0x0000, 0x0000, 65 },
-    {  0, 0,  0, 0x0000, 0x0000, 0x0000,  0 },
-    {  6, 0, 70, 0xB400, 0x0000, 0x0000, 65 },
-    { 33, 0, 68, 0xE000, 0x0000, 0x0000, 65 },
-    { 26, 0, 74, 0xDC00, 0x0000, 0x0000, 65 },
-    { -4, 0, 82, 0xD400, 0x0000, 0x0000, 65 },
-    {  6, 0, 70, 0xB400, 0x0000, 0x0000, 65 },
+typedef struct { s32 animID; f32 animAccel; s32 sfx; const GeoLayout *georef; } OmmCappyKoopaAnimData;
+static const OmmCappyKoopaAnimData OMM_CAPPY_KOOPA_ANIM_DATA[] = {
+    [OMM_CAPPY_KOOPA_STATE_SHELLED_IDLE]      = {  7,   0, 0, koopa_with_shell_geo    },
+    [OMM_CAPPY_KOOPA_STATE_SHELLED_WALKING]   = {  9,   1, 1, koopa_with_shell_geo    },
+    [OMM_CAPPY_KOOPA_STATE_SHELLED_SLIDING]   = {  0,   0, 2, koopa_shell_geo         },
+    [OMM_CAPPY_KOOPA_STATE_SHELLED_JUMPING]   = { 12, 100, 0, koopa_with_shell_geo    },
+    [OMM_CAPPY_KOOPA_STATE_UNSHELLED_IDLE]    = {  7,   0, 0, koopa_without_shell_geo },
+    [OMM_CAPPY_KOOPA_STATE_UNSHELLED_WALKING] = {  9,   1, 1, koopa_without_shell_geo },
+    [OMM_CAPPY_KOOPA_STATE_UNSHELLED_RUNNING] = {  3,   0, 1, koopa_without_shell_geo },
+    [OMM_CAPPY_KOOPA_STATE_UNSHELLED_JUMPING] = { 12, 100, 0, koopa_without_shell_geo }
 };
 
 //
@@ -44,8 +30,7 @@ static s32 sCappyKoopaCappyParams[][7] = {
 bool omm_cappy_koopa_init(struct Object *o) {
 
     // Can't possess KTQ
-    if (o->oBehParams2ndByte == KOOPA_BP_KOOPA_THE_QUICK_BOB ||
-        o->oBehParams2ndByte == KOOPA_BP_KOOPA_THE_QUICK_THI) {
+    if (omm_obj_is_koopa_the_quick(o)) {
         return false;
     }
 
@@ -56,15 +41,20 @@ bool omm_cappy_koopa_init(struct Object *o) {
 void omm_cappy_koopa_end(struct Object *o) {
     if (gOmmObject->state.actionState < OMM_CAPPY_KOOPA_STATE_UNSHELLED_IDLE) {
         o->oKoopaMovementType = KOOPA_BP_NORMAL;
-        o->oGraphNode = gLoadedGraphNodes[MODEL_KOOPA_WITH_SHELL];
+        o->oGraphNode = geo_layout_to_graph_node(NULL, koopa_with_shell_geo);
     } else {
         o->oKoopaMovementType = KOOPA_BP_UNSHELLED;
-        o->oGraphNode = gLoadedGraphNodes[MODEL_KOOPA_WITHOUT_SHELL];
+        o->oGraphNode = geo_layout_to_graph_node(NULL, koopa_without_shell_geo);
     }
+    o->oBehParams2ndByte = o->oKoopaMovementType;
+}
+
+u64 omm_cappy_koopa_get_type(struct Object *o) {
+    return !omm_obj_is_koopa_the_quick(o) ? OMM_CAPTURE_KOOPA : 0;
 }
 
 f32 omm_cappy_koopa_get_top(struct Object *o) {
-    return 70.f * o->oScaleY;
+    return omm_capture_get_hitbox_height(o);
 }
 
 //
@@ -75,11 +65,11 @@ s32 omm_cappy_koopa_update(struct Object *o) {
     obj_scale(o, gOmmObject->koopa.scale);
 
     // Inputs
-    if (!obj_update_door(o) && !omm_mario_is_locked(gMarioState)) {
+    if (pobj_process_inputs(o)) {
         bool shelled = (o->oKoopaMovementType != KOOPA_BP_UNSHELLED);
         pobj_move(o, !shelled && POBJ_B_BUTTON_DOWN, shelled && POBJ_B_BUTTON_DOWN, false);
-        if (pobj_jump(o, 0, 1) == POBJ_RESULT_JUMP_START) {
-            obj_play_sound(o, SOUND_OBJ_GOOMBA_ALERT);
+        if (pobj_jump(o, 1) == POBJ_RESULT_JUMP_START) {
+            obj_play_sound(o, POBJ_SOUND_JUMP_1);
         }
     }
 
@@ -88,7 +78,7 @@ s32 omm_cappy_koopa_update(struct Object *o) {
         if (POBJ_B_BUTTON_DOWN) {
             gOmmObject->state.actionState = OMM_CAPPY_KOOPA_STATE_SHELLED_SLIDING;
         } else if (obj_is_on_ground(o)) {
-            if (o->oForwardVel > 1.f) {
+            if (POBJ_IS_WALKING) {
                 gOmmObject->state.actionState = OMM_CAPPY_KOOPA_STATE_SHELLED_WALKING;
             } else {
                 gOmmObject->state.actionState = OMM_CAPPY_KOOPA_STATE_SHELLED_IDLE;
@@ -98,9 +88,9 @@ s32 omm_cappy_koopa_update(struct Object *o) {
         }
     } else {
         if (obj_is_on_ground(o)) {
-            if (o->oForwardVel > omm_capture_get_walk_speed(o)) {
+            if (POBJ_IS_RUNNING) {
                 gOmmObject->state.actionState = OMM_CAPPY_KOOPA_STATE_UNSHELLED_RUNNING;
-            } else if (o->oForwardVel > 1.f) {
+            } else if (POBJ_IS_WALKING) {
                 gOmmObject->state.actionState = OMM_CAPPY_KOOPA_STATE_UNSHELLED_WALKING;
             } else {
                 gOmmObject->state.actionState = OMM_CAPPY_KOOPA_STATE_UNSHELLED_IDLE;
@@ -113,21 +103,23 @@ s32 omm_cappy_koopa_update(struct Object *o) {
     // Hitbox
     o->hitboxRadius = omm_capture_get_hitbox_radius(o);
     o->hitboxHeight = omm_capture_get_hitbox_height(o);
-    o->hitboxDownOffset = omm_capture_get_hitbox_down_offset(o);
     o->oWallHitboxRadius = omm_capture_get_wall_hitbox_radius(o);
 
     // Properties
     bool shellSlide = (gOmmObject->state.actionState == OMM_CAPPY_KOOPA_STATE_SHELLED_SLIDING);
     POBJ_SET_ABOVE_WATER;
+    POBJ_SET_AFFECTED_BY_VERTICAL_WIND;
+    POBJ_SET_AFFECTED_BY_CANNON;
     POBJ_SET_IMMUNE_TO_LAVA * shellSlide;
-    POBJ_SET_IMMUNE_TO_SAND * shellSlide;
+    POBJ_SET_IMMUNE_TO_QUICKSAND * shellSlide;
     POBJ_SET_ABLE_TO_MOVE_ON_WATER * shellSlide;
     POBJ_SET_ABLE_TO_MOVE_ON_SLOPES * shellSlide;
-    POBJ_SET_ATTACKING * shellSlide;
+    POBJ_SET_ABLE_TO_OPEN_DOORS;
+    POBJ_SET_ATTACKING_BREAKABLE * shellSlide;
 
     // Movement
     perform_object_step(o, POBJ_STEP_FLAGS);
-    pobj_decelerate(o, 0.80f, 0.95f);
+    pobj_decelerate(o);
     pobj_apply_gravity(o, 1.f);
     pobj_handle_special_floors(o);
     pobj_stop_if_unpossessed();
@@ -135,14 +127,11 @@ s32 omm_cappy_koopa_update(struct Object *o) {
     // Interactions
     pobj_process_interactions(
 
-    // Doors
-    obj_open_door(o, obj);
-
     // Koopa shell
     if (obj->behavior == bhvKoopaShell && o->oKoopaMovementType == KOOPA_BP_UNSHELLED) {
         if (obj_detect_hitbox_overlap(o, obj, OBJ_OVERLAP_FLAG_HITBOX, OBJ_OVERLAP_FLAG_HITBOX)) {
             o->oKoopaMovementType = KOOPA_BP_NORMAL;
-            obj_spawn_white_puff(obj, SOUND_MENU_STAR_SOUND);
+            obj_spawn_white_puff(obj, POBJ_SOUND_STAR);
             obj_mark_for_deletion(obj);
             obj->oInteractStatus = INT_STATUS_INTERACTED;
         }
@@ -151,74 +140,43 @@ s32 omm_cappy_koopa_update(struct Object *o) {
     );
     pobj_stop_if_unpossessed();
 
+    // Animation
+    const OmmCappyKoopaAnimData *animData = &OMM_CAPPY_KOOPA_ANIM_DATA[gOmmObject->state.actionState];
+    o->oGraphNode = geo_layout_to_graph_node(NULL, animData->georef);
+    obj_anim_play(o, animData->animID, max_f(1.f, animData->animAccel * max_f(1.f, POBJ_ABS_FORWARD_VEL * 2.f / pobj_get_walk_speed(o))));
+
+    // Sound and particles
+    switch (animData->sfx) {
+        case 1: {
+            if (obj_is_on_ground(o)) {
+                obj_make_step_sound_and_particle(o, &gOmmObject->state.walkDistance, pobj_get_walk_speed(o) * 8.f, POBJ_ABS_FORWARD_VEL, POBJ_SOUND_WALK_KOOPA, OBJ_PARTICLE_NONE);
+            }
+        } break;
+
+        case 2: {
+            if (o->oFloorType == OBJ_FLOOR_TYPE_GROUND) {
+                obj_make_step_sound_and_particle(o, NULL, 0, 0, POBJ_SOUND_RIDING_SHELL_GROUND, OBJ_PARTICLE_MIST);
+            }
+        } break;
+    }
+
+    // OK
+    pobj_return_ok;
+}
+
+void omm_cappy_koopa_update_gfx(struct Object *o) {
+
     // Gfx
+    obj_set_angle(o, 0, o->oFaceAngleYaw, 0);
     obj_update_gfx(o);
+    obj_update_blink_state(o, &o->oKoopaBlinkTimer, 20, 50, 4);
     if (gOmmObject->state.actionState == OMM_CAPPY_KOOPA_STATE_SHELLED_SLIDING) {
         obj_scale(o, gOmmObject->koopa.scale / 1.5f);
-        o->oGfxAngle[0] = 0;
-        o->oGfxAngle[1] = o->oTimer * 0x2000;
-        o->oGfxAngle[2] = 0;
+        o->oGfxAngle[1] = gGlobalTimer * 0x2000;
     } else {
         obj_scale(o, gOmmObject->koopa.scale);
     }
 
-    // Animation
-    s32 *animData = sCappyKoopaStateData[gOmmObject->state.actionState];
-    o->oGraphNode = gLoadedGraphNodes[animData[3]];
-    obj_anim_play(o, animData[0], max_f(1.f, animData[1] * max_f(1.f, o->oForwardVel * 2.f / (omm_capture_get_walk_speed(o)))));
-    obj_update_blink_state(o, &o->oKoopaBlinkTimer, 20, 50, 4);
-
-    // Sound effect
-    switch (animData[2]) {
-        case 1:
-            if (obj_is_on_ground(o)) {
-                obj_make_step_sound_and_particle(o,
-                    &gOmmObject->state.walkDistance,
-                    omm_capture_get_walk_speed(o) * 8.f, o->oForwardVel,
-                    SOUND_OBJ_KOOPA_WALK, OBJ_PARTICLE_NONE
-                );
-            }
-            break;
-
-        case 2:
-            switch (o->oFloorType) {
-                case OBJ_FLOOR_TYPE_GROUND:
-                    obj_make_step_sound_and_particle(o,
-                        &gOmmObject->state.walkDistance, 0.f, 0.f,
-                        SOUND_MOVING_TERRAIN_RIDING_SHELL + gMarioState->terrainSoundAddend,
-                        OBJ_PARTICLE_MIST
-                    );
-                    break;
-
-                case OBJ_FLOOR_TYPE_WATER:
-                    obj_make_step_sound_and_particle(o,
-                        &gOmmObject->state.walkDistance, 0.f, 0.f,
-                        SOUND_MOVING_TERRAIN_RIDING_SHELL + SOUND_TERRAIN_WATER,
-                        OBJ_PARTICLE_WATER_TRAIL | OBJ_PARTICLE_WATER_DROPLET
-                    );
-                    break;
-
-                case OBJ_FLOOR_TYPE_LAVA:
-                    obj_make_step_sound_and_particle(o,
-                        &gOmmObject->state.walkDistance, 0.f, 0.f,
-                        SOUND_MOVING_RIDING_SHELL_LAVA,
-                        OBJ_PARTICLE_FLAME
-                    );
-                    break;
-            }
-            break;
-    }
-
-    // Cappy values
-    s32 *cappyParams = sCappyKoopaCappyParams[gOmmObject->state.actionState];
-    gOmmObject->cappy.offset[0] = (f32) cappyParams[1];
-    gOmmObject->cappy.offset[1] = (f32) cappyParams[2];
-    gOmmObject->cappy.offset[2] = (f32) cappyParams[0];
-    gOmmObject->cappy.angle[0]  = (s16) cappyParams[3];
-    gOmmObject->cappy.angle[1]  = (s16) cappyParams[4];
-    gOmmObject->cappy.angle[2]  = (s16) cappyParams[5];
-    gOmmObject->cappy.scale     = (f32) cappyParams[6] / 100.f;
-
-    // OK
-    pobj_return_ok;
+    // Cappy transform
+    gOmmObject->cappy.object = o;
 }

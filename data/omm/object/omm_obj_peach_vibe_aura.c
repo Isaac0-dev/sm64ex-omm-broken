@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -9,6 +10,12 @@
 static const Lights1 omm_peach_vibe_aura_light = gdSPDefLights1(
     0xFF, 0x80, 0xFF,
     0xFF, 0x80, 0xFF,
+    0x28, 0x28, 0x28
+);
+
+static const Lights1 omm_peach_vibe_aura_full_light = gdSPDefLights1(
+    0xFF, 0xFF, 0x40,
+    0xFF, 0xFF, 0x40,
     0x28, 0x28, 0x28
 );
 
@@ -96,28 +103,50 @@ static const Gfx omm_peach_vibe_aura_gfx[] = {
     gsSPEndDisplayList(),
 };
 
+static const Gfx omm_peach_vibe_aura_full_gfx[] = {
+    gsSPClearGeometryMode(G_CULL_BOTH),
+    gsSPSetGeometryMode(G_CULL_BACK | G_LIGHTING),
+    gsDPSetCombineLERP(SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0, SHADE, 0, ENVIRONMENT, 0),
+    gsSPLight(&omm_peach_vibe_aura_full_light.l, 1),
+    gsSPLight(&omm_peach_vibe_aura_full_light.a, 2),
+    gsSPDisplayList(omm_peach_vibe_aura_triangles),
+    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
+    gsSPEndDisplayList(),
+};
+
 //
 // Geo layout
 //
-
-static Gfx *omm_geo_peach_vibe_aura_translate(s32 callContext, struct GraphNode *node, UNUSED void *context) {
-    if (callContext == GEO_CONTEXT_RENDER) {
-        geo_move_from_camera(gCurGraphNodeObject, (struct GraphNodeTranslation *) node->next, -80.f * gMarioObject->oScaleY);
-    }
-    return NULL;
-}
 
 const GeoLayout omm_geo_peach_vibe_aura[] = {
     GEO_NODE_START(),
     GEO_OPEN_NODE(),
         GEO_BILLBOARD(),
         GEO_OPEN_NODE(),
-            GEO_ASM(1, omm_geo_peach_vibe_aura_translate),
+            GEO_ASM(-80, geo_move_from_camera_mario_scale),
             GEO_TRANSLATE_NODE(0, 0, 0, 0),
             GEO_OPEN_NODE(),
                 GEO_ASM(10, geo_update_layer_transparency),
                 GEO_OPEN_NODE(),
                     GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_peach_vibe_aura_gfx),
+                GEO_CLOSE_NODE(),
+            GEO_CLOSE_NODE(),
+        GEO_CLOSE_NODE(),
+    GEO_CLOSE_NODE(),
+    GEO_END(),
+};
+
+const GeoLayout omm_geo_peach_vibe_aura_full[] = {
+    GEO_NODE_START(),
+    GEO_OPEN_NODE(),
+        GEO_BILLBOARD(),
+        GEO_OPEN_NODE(),
+            GEO_ASM(-80, geo_move_from_camera_mario_scale),
+            GEO_TRANSLATE_NODE(0, 0, 0, 0),
+            GEO_OPEN_NODE(),
+                GEO_ASM(10, geo_update_layer_transparency),
+                GEO_OPEN_NODE(),
+                    GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_peach_vibe_aura_full_gfx),
                 GEO_CLOSE_NODE(),
             GEO_CLOSE_NODE(),
         GEO_CLOSE_NODE(),
@@ -133,7 +162,7 @@ static void bhv_omm_peach_vibe_aura_update() {
     struct Object *o = gCurrentObject;
     f32 *marioRootPos = geo_get_marios_root_pos();
     f32 t = invlerp_0_1_s(o->oTimer, 0, 30);
-    obj_set_pos(o, marioRootPos[0], marioRootPos[1], marioRootPos[2]);
+    obj_set_xyz(o, marioRootPos[0], marioRootPos[1], marioRootPos[2]);
     obj_scale(o, gMarioObject->oScaleY * sqrtf(t) * 5.f);
     o->oOpacity = 0xC0 * sqr(1.f - t);
     if (t == 1.f) {
@@ -143,18 +172,18 @@ static void bhv_omm_peach_vibe_aura_update() {
 
 const BehaviorScript bhvOmmPeachVibeAura[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_peach_vibe_aura_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_peach_vibe_aura_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_peach_vibe_aura(struct Object *o) {
-    struct Object *aura = obj_spawn_from_geo(o, omm_geo_peach_vibe_aura, bhvOmmPeachVibeAura);
+struct Object *omm_obj_spawn_peach_vibe_aura(struct Object *o, bool full) {
+    struct Object *aura = obj_spawn_from_geo(o, full ? omm_geo_peach_vibe_aura_full : omm_geo_peach_vibe_aura, bhvOmmPeachVibeAura);
     obj_set_always_rendered(aura, true);
     obj_set_angle(aura, 0, 0, 0);
     return aura;

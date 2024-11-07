@@ -6,10 +6,6 @@
 #include "level_commands.h"
 s32 gDemoInputListID_2;
 #define WHIRLPOOL_COND_BOWSER2 1
-#if LEVEL_SCRIPT_PRESSED_START
-extern s32 gPressedStart;
-#define VAR_PRESSED_START 5
-#endif
 
 #undef level_cmd_get
 #define __shift                         (sizeof(void *) >> 3)
@@ -221,7 +217,7 @@ static void level_cmd_load_mio0(void) {
 }
 
 static void level_cmd_load_mario_head(void) {
-    sLevelCommand = (struct LevelCommand *) level_main_menu_entry_1;
+    sLevelCommand = (struct LevelCommand *) level_script_file_select;
 }
 
 static void level_cmd_load_mio0_texture(void) {
@@ -313,7 +309,7 @@ static void level_cmd_23(void) {
 
 // It's-a me, Mario!
 static void level_cmd_init_mario(void) {
-    mem_clr(gMarioSpawnInfo, sizeof(*gMarioSpawnInfo));
+    mem_zero(gMarioSpawnInfo, sizeof(*gMarioSpawnInfo));
     gMarioSpawnInfo->activeAreaIndex = -1;
     gMarioSpawnInfo->behaviorArg = 1;
     gMarioSpawnInfo->behaviorScript = (void *) bhvMario;
@@ -550,9 +546,6 @@ static void level_cmd_get_or_set_var(void) {
             case VAR_CURR_ACT_NUM:       sRegister = gCurrActNum; break;
             case VAR_CURR_LEVEL_NUM:     sRegister = gCurrLevelNum; break;
             case VAR_CURR_AREA_INDEX:    sRegister = gCurrAreaIndex; break;
-#if LEVEL_SCRIPT_PRESSED_START
-            case VAR_PRESSED_START:      sRegister = gPressedStart; break;
-#endif
         } break;
         case OP_SET: switch (var) {
             case VAR_CURR_SAVE_FILE_NUM: gCurrSaveFileNum = sRegister; break;
@@ -560,9 +553,6 @@ static void level_cmd_get_or_set_var(void) {
             case VAR_CURR_ACT_NUM:       gCurrActNum = sRegister; break;
             case VAR_CURR_LEVEL_NUM:     gCurrLevelNum = sRegister; break;
             case VAR_CURR_AREA_INDEX:    gCurrAreaIndex = sRegister; break;
-#if LEVEL_SCRIPT_PRESSED_START
-            case VAR_PRESSED_START:      gPressedStart = sRegister; break;
-#endif
         } break;
     }
     sLevelCommand = level_cmd_next;
@@ -616,70 +606,70 @@ static void level_cmd_branch() {
 
 typedef void (*LevelCommandProc)(void);
 static LevelCommandProc sLevelCmdTable[] = {
-    level_cmd_load_and_execute,
-    level_cmd_exit_and_execute,
-    level_cmd_exit,
-    level_cmd_sleep,
-    level_cmd_sleep,
-    level_cmd_jump,
-    level_cmd_jump_and_link,
-    level_cmd_return,
-    level_cmd_jump_and_link_push_arg,
-    level_cmd_jump_repeat,
-    level_cmd_loop_begin,
-    level_cmd_loop_until,
-    level_cmd_jump_if,
-    level_cmd_jump_and_link_if,
-    level_cmd_skip_if,
-    level_cmd_skip,
-    level_cmd_skippable_nop,
-    level_cmd_call,
-    level_cmd_call_loop,
-    level_cmd_set_register,
-    level_cmd_push_pool_state,
-    level_cmd_pop_pool_state,
-    level_cmd_load_to_fixed_address,
-    level_cmd_load_raw,
-    level_cmd_load_mio0,
-    level_cmd_load_mario_head,
-    level_cmd_load_mio0_texture,
-    level_cmd_init_level,
-    level_cmd_clear_level,
-    level_cmd_alloc_level_pool,
-    level_cmd_free_level_pool,
-    level_cmd_begin_area,
-    level_cmd_end_area,
-    level_cmd_load_model_from_dl,
-    level_cmd_load_model_from_geo,
-    level_cmd_23,
-    level_cmd_place_object,
-    level_cmd_init_mario,
-    level_cmd_create_warp_node,
-    level_cmd_create_painting_warp_node,
-    level_cmd_create_instant_warp,
-    level_cmd_load_area,
-    level_cmd_unload_area,
-    level_cmd_set_mario_start_pos,
-    level_cmd_2C,
-    level_cmd_2D,
-    level_cmd_set_terrain_data,
-    level_cmd_set_rooms,
-    level_cmd_show_dialog,
-    level_cmd_set_terrain_type,
-    level_cmd_nop,
-    level_cmd_set_transition,
-    level_cmd_set_blackout,
-    level_cmd_set_gamma,
-    level_cmd_set_music,
-    level_cmd_set_menu_music,
-    level_cmd_38,
-    level_cmd_set_macro_objects,
-    level_cmd_3A,
-    level_cmd_create_whirlpool,
-    level_cmd_get_or_set_var,
-    level_cmd_advdemo,
-    level_cmd_cleardemoptr,
-    level_cmd_jump_area,
+/* 0x00 */ level_cmd_load_and_execute,
+/* 0x01 */ level_cmd_exit_and_execute,
+/* 0x02 */ level_cmd_exit,
+/* 0x03 */ level_cmd_sleep,
+/* 0x04 */ level_cmd_sleep,
+/* 0x05 */ level_cmd_jump,
+/* 0x06 */ level_cmd_jump_and_link,
+/* 0x07 */ level_cmd_return,
+/* 0x08 */ level_cmd_jump_and_link_push_arg,
+/* 0x09 */ level_cmd_jump_repeat,
+/* 0x0A */ level_cmd_loop_begin,
+/* 0x0B */ level_cmd_loop_until,
+/* 0x0C */ level_cmd_jump_if,
+/* 0x0D */ level_cmd_jump_and_link_if,
+/* 0x0E */ level_cmd_skip_if,
+/* 0x0F */ level_cmd_skip,
+/* 0x10 */ level_cmd_skippable_nop,
+/* 0x11 */ level_cmd_call,
+/* 0x12 */ level_cmd_call_loop,
+/* 0x13 */ level_cmd_set_register,
+/* 0x14 */ level_cmd_push_pool_state,
+/* 0x15 */ level_cmd_pop_pool_state,
+/* 0x16 */ level_cmd_load_to_fixed_address,
+/* 0x17 */ level_cmd_load_raw,
+/* 0x18 */ level_cmd_load_mio0,
+/* 0x19 */ level_cmd_load_mario_head,
+/* 0x1A */ level_cmd_load_mio0_texture,
+/* 0x1B */ level_cmd_init_level,
+/* 0x1C */ level_cmd_clear_level,
+/* 0x1D */ level_cmd_alloc_level_pool,
+/* 0x1E */ level_cmd_free_level_pool,
+/* 0x1F */ level_cmd_begin_area,
+/* 0x20 */ level_cmd_end_area,
+/* 0x21 */ level_cmd_load_model_from_dl,
+/* 0x22 */ level_cmd_load_model_from_geo,
+/* 0x23 */ level_cmd_23,
+/* 0x24 */ level_cmd_place_object,
+/* 0x25 */ level_cmd_init_mario,
+/* 0x26 */ level_cmd_create_warp_node,
+/* 0x27 */ level_cmd_create_painting_warp_node,
+/* 0x28 */ level_cmd_create_instant_warp,
+/* 0x29 */ level_cmd_load_area,
+/* 0x2A */ level_cmd_unload_area,
+/* 0x2B */ level_cmd_set_mario_start_pos,
+/* 0x2C */ level_cmd_2C,
+/* 0x2D */ level_cmd_2D,
+/* 0x2E */ level_cmd_set_terrain_data,
+/* 0x2F */ level_cmd_set_rooms,
+/* 0x30 */ level_cmd_show_dialog,
+/* 0x31 */ level_cmd_set_terrain_type,
+/* 0x32 */ level_cmd_nop,
+/* 0x33 */ level_cmd_set_transition,
+/* 0x34 */ level_cmd_set_blackout,
+/* 0x35 */ level_cmd_set_gamma,
+/* 0x36 */ level_cmd_set_music,
+/* 0x37 */ level_cmd_set_menu_music,
+/* 0x38 */ level_cmd_38,
+/* 0x39 */ level_cmd_set_macro_objects,
+/* 0x3A */ level_cmd_3A,
+/* 0x3B */ level_cmd_create_whirlpool,
+/* 0x3C */ level_cmd_get_or_set_var,
+/* 0x3D */ level_cmd_advdemo,
+/* 0x3E */ level_cmd_cleardemoptr,
+/* 0x3F */ level_cmd_jump_area,
 };
 
 struct LevelCommand *level_script_execute(struct LevelCommand *cmd) {
@@ -698,13 +688,9 @@ struct LevelCommand *level_script_execute(struct LevelCommand *cmd) {
         sLevelCmdTable[sLevelCommand->type & 0x3F]();
         void *nextCommand = omm_update_cmd(currCommand, sRegister);
         if (nextCommand) sLevelCommand = nextCommand;
-#if OMM_CODE_DYNOS
-        nextCommand = dynos_update_cmd(currCommand);
-        if (nextCommand) sLevelCommand = nextCommand;
-#endif
     }
     omm_profiler_stop(OMM_PRF_LVL);
-    init_scene_rendering();
+    init_render_image();
 
     // OMM pre-render routines
     omm_profiler_start(OMM_PRF_PRE);

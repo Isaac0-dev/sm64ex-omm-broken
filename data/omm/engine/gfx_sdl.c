@@ -31,7 +31,7 @@ static kb_callback_t sOnKeyDown = NULL;
 static kb_callback_t sOnKeyUp   = NULL;
 static s32 sInvertedScancodeTable[0x200];
 
-static const SDL_Scancode sWindowsScancodeTable[] = {
+static const SDL_Scancode WINDOWS_SCANCODE_TABLE[] = {
     /*  0                        1                            2                         3                            4                     5                            6                            7  */
     /*  8                        9                            A                         B                            C                     D                            E                            F  */
     SDL_SCANCODE_UNKNOWN,        SDL_SCANCODE_ESCAPE,         SDL_SCANCODE_1,           SDL_SCANCODE_2,              SDL_SCANCODE_3,       SDL_SCANCODE_4,              SDL_SCANCODE_5,              SDL_SCANCODE_6,          /* 0 */
@@ -59,14 +59,14 @@ static const SDL_Scancode sWindowsScancodeTable[] = {
     SDL_SCANCODE_UNKNOWN,        SDL_SCANCODE_INTERNATIONAL4, SDL_SCANCODE_UNKNOWN,     SDL_SCANCODE_INTERNATIONAL5, SDL_SCANCODE_UNKNOWN, SDL_SCANCODE_INTERNATIONAL3, SDL_SCANCODE_UNKNOWN,        SDL_SCANCODE_UNKNOWN     /* 7 */
 };
 
-static const SDL_Scancode sScancodeRmappingExtended[][2] = {
+static const SDL_Scancode SCANCODE_RMAPPING_EXTENDED[][2] = {
     { SDL_SCANCODE_KP_ENTER, SDL_SCANCODE_RETURN },
     { SDL_SCANCODE_RALT, SDL_SCANCODE_LALT },
     { SDL_SCANCODE_RCTRL, SDL_SCANCODE_LCTRL },
     { SDL_SCANCODE_KP_DIVIDE, SDL_SCANCODE_SLASH },
 };
 
-static const SDL_Scancode sScancodeRmappingNonExtended[][2] = {
+static const SDL_Scancode SCANCODE_RMAPPING_NON_EXTENDED[][2] = {
     { SDL_SCANCODE_KP_7, SDL_SCANCODE_HOME },
     { SDL_SCANCODE_KP_8, SDL_SCANCODE_UP },
     { SDL_SCANCODE_KP_9, SDL_SCANCODE_PAGEUP },
@@ -133,15 +133,15 @@ static void gfx_sdl_init(const char *title) {
     sGLContext = SDL_GL_CreateContext(sWindow);
     SDL_GL_SetSwapInterval(configWindow.vsync);
     gfx_sdl_set_fullscreen();
-    for (u64 i = 0; i < sizeof(sWindowsScancodeTable) / sizeof(sWindowsScancodeTable[0]); i++) {
-        sInvertedScancodeTable[sWindowsScancodeTable[i]] = i;
+    for (u64 i = 0; i < sizeof(WINDOWS_SCANCODE_TABLE) / sizeof(WINDOWS_SCANCODE_TABLE[0]); i++) {
+        sInvertedScancodeTable[WINDOWS_SCANCODE_TABLE[i]] = i;
     }
-    for (u64 i = 0; i < sizeof(sScancodeRmappingExtended) / sizeof(sScancodeRmappingExtended[0]); i++) {
-        sInvertedScancodeTable[sScancodeRmappingExtended[i][0]] = sInvertedScancodeTable[sScancodeRmappingExtended[i][1]] + 0x100;
+    for (u64 i = 0; i < sizeof(SCANCODE_RMAPPING_EXTENDED) / sizeof(SCANCODE_RMAPPING_EXTENDED[0]); i++) {
+        sInvertedScancodeTable[SCANCODE_RMAPPING_EXTENDED[i][0]] = sInvertedScancodeTable[SCANCODE_RMAPPING_EXTENDED[i][1]] + 0x100;
     }
-    for (u64 i = 0; i < sizeof(sScancodeRmappingNonExtended) / sizeof(sScancodeRmappingNonExtended[0]); i++) {
-        sInvertedScancodeTable[sScancodeRmappingNonExtended[i][0]] = sInvertedScancodeTable[sScancodeRmappingNonExtended[i][1]];
-        sInvertedScancodeTable[sScancodeRmappingNonExtended[i][1]] += 0x100;
+    for (u64 i = 0; i < sizeof(SCANCODE_RMAPPING_NON_EXTENDED) / sizeof(SCANCODE_RMAPPING_NON_EXTENDED[0]); i++) {
+        sInvertedScancodeTable[SCANCODE_RMAPPING_NON_EXTENDED[i][0]] = sInvertedScancodeTable[SCANCODE_RMAPPING_NON_EXTENDED[i][1]];
+        sInvertedScancodeTable[SCANCODE_RMAPPING_NON_EXTENDED[i][1]] += 0x100;
     }
 }
 
@@ -174,17 +174,24 @@ static void gfx_sdl_onkeyup(s32 scancode) {
 }
 
 static void gfx_sdl_handle_events(void) {
+    gOmmGlobals->mouseWheelX = 0;
+    gOmmGlobals->mouseWheelY = 0;
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
             case SDL_KEYDOWN: {
                 gfx_sdl_onkeydown(event.key.keysym.scancode);
             } break;
-            
+
             case SDL_KEYUP: {
                 gfx_sdl_onkeyup(event.key.keysym.scancode);
             } break;
-            
+
+            case SDL_MOUSEWHEEL: {
+                gOmmGlobals->mouseWheelX = event.wheel.x;
+                gOmmGlobals->mouseWheelY = event.wheel.y;
+            } break;
+
             case SDL_WINDOWEVENT: {
                 if (!IS_FULLSCREEN()) {
                     switch (event.window.event) {

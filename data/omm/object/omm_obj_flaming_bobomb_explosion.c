@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Geo layout
@@ -32,22 +33,22 @@ static void bhv_omm_flaming_bobomb_explosion_update(void) {
 
 const BehaviorScript bhvOmmFlamingBobombExplosion[] = {
     OBJ_TYPE_SPECIAL,
-    0x110100C1,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_flaming_bobomb_explosion_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE | OBJ_FLAG_COMPUTE_DIST_TO_MARIO | OBJ_FLAG_ACTIVE_FROM_AFAR),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_flaming_bobomb_explosion_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_flaming_bobomb_explosion(struct Object *o) {
+struct Object *omm_obj_spawn_flaming_bobomb_explosion(struct Object *o) {
     struct Object *explosion  = obj_spawn_from_geo(o, omm_geo_flaming_bobomb_explosion, bhvOmmFlamingBobombExplosion);
     explosion->oAnimState     = -1;
     explosion->oGraphYOffset += 100;
     explosion->oOpacity       = 255;
-    create_sound_spawner(SOUND_GENERAL2_BOBOMB_EXPLOSION);
+    obj_create_sound_spawner(o, SOUND_GENERAL2_BOBOMB_EXPLOSION);
     set_environmental_camera_shake(SHAKE_ENV_EXPLOSION);
     return explosion;
 }

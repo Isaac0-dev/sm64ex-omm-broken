@@ -61,8 +61,13 @@ static const Gfx omm_sparkle_gfx_4[] = {
 //
 
 typedef struct {
+    Gfx *displayLists[1];
     Gfx gfx[array_length(omm_sparkle_gfx)];
 } OmmSparkleGeoData;
+
+static const u32 sOmmSparkleGeoDataDisplayListsOffsets[] = {
+    offsetof(OmmSparkleGeoData, gfx),
+};
 
 //
 // Geo layout
@@ -96,11 +101,16 @@ const GeoLayout omm_geo_sparkle[] = {
 // Spawner
 //
 
-struct Object *omm_spawn_sparkle(struct Object *o, u8 r, u8 g, u8 b, f32 translationRange, f32 minScale, f32 maxScale) {
+struct Object *omm_obj_spawn_sparkle(struct Object *o, u8 r, u8 g, u8 b, f32 translationRange, f32 minScale, f32 maxScale) {
     struct Object *sparkle = obj_spawn_from_geo(o, omm_geo_sparkle, bhvSparkle);
     obj_translate_xyz_random(sparkle, translationRange * 2.f);
     obj_scale_random(sparkle, maxScale - minScale, minScale);
-    OmmSparkleGeoData *data = geo_get_geo_data(sparkle, sizeof(OmmSparkleGeoData), omm_sparkle_gfx, sizeof(omm_sparkle_gfx));
-    data->gfx[0].words.w1 = (uintptr_t) (((r & 0xFF) << 24llu) | ((g & 0xFF) << 16llu) | ((b & 0xFF) << 8llu) | 0xFF);
+    OmmSparkleGeoData *data = geo_get_geo_data(sparkle,
+        sizeof(OmmSparkleGeoData),
+        sOmmSparkleGeoDataDisplayListsOffsets,
+        array_length(sOmmSparkleGeoDataDisplayListsOffsets)
+    );
+    gfx_copy_and_fill_null(data->gfx, omm_sparkle_gfx, sizeof(omm_sparkle_gfx), NULL);
+    gDPSetEnvColor(data->gfx, r, g, b, 0xFF);
     return sparkle;
 }

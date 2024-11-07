@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -138,20 +139,20 @@ static void bhv_omm_peach_vibe_gloom_tear_small_update() {
 
 const BehaviorScript bhvOmmPeachVibeGloomTearSmall[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_peach_vibe_gloom_tear_small_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_peach_vibe_gloom_tear_small_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_peach_vibe_gloom_tear_small(struct Object *o, f32 x, f32 y, f32 z) {
+struct Object *omm_obj_spawn_peach_vibe_gloom_tear_small(struct Object *o, f32 x, f32 y, f32 z) {
     struct Object *small = obj_spawn_from_geo(o, omm_geo_peach_vibe_gloom_tear_small, bhvOmmPeachVibeGloomTearSmall);
     obj_scale(small, 0.1f + random_float() * 0.1f);
-    obj_set_pos(small, x, y, z);
+    obj_set_xyz(small, x, y, z);
     obj_set_vel(small, random_f32_around_zero(16.f), 10.f + random_float() * 10.f, random_f32_around_zero(16.f));
     obj_set_home(small, x, y, z);
     obj_set_angle(small, 0, 0, 0);

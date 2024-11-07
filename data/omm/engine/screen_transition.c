@@ -227,12 +227,10 @@ s32 render_screen_transition(UNUSED s8 fadeTimer, s8 transType, u8 transTime, st
 // Cannon circle
 //
 
-static Gfx *render_cannon_circle_base(void) {
-    static Vtx sCannonCircleVtx[8];
-    static Gfx sCannonCircleGfx[20];
+static Gfx *render_cannon_circle_base() {
 
     // Vertices
-    Vtx *vtx = sCannonCircleVtx;
+    Vtx *vtx = omm_alloc_vtx(8);
     make_vertex(vtx, 0, 0, 0, -1, -1152, 1824, 0, 0, 0, 255);
     make_vertex(vtx, 1, SCREEN_WIDTH, 0, -1, 1152, 1824, 0, 0, 0, 255);
     make_vertex(vtx, 2, SCREEN_WIDTH, SCREEN_HEIGHT, -1, 1152, 192, 0, 0, 0, 255);
@@ -243,22 +241,23 @@ static Gfx *render_cannon_circle_base(void) {
     make_vertex(vtx, 7, GFX_DIMENSIONS_FROM_LEFT_EDGE(0), SCREEN_HEIGHT, -1, 0, 0, 0, 0, 0, 255);
 
     // Display list
-    Gfx *gfx = sCannonCircleGfx;
-    gSPDisplayList(gfx++, dl_proj_mtx_fullscreen);
-    gDPSetCombineLERP(gfx++, TEXEL0, 0, SHADE, 0, 0, 0, 0, TEXEL0, TEXEL0, 0, SHADE, 0, 0, 0, 0, TEXEL0);
-    gDPSetTextureFilter(gfx++, G_TF_BILERP);
-    gDPLoadTextureBlock(gfx++, sTransitionTextures[TEX_TRANS_CIRCLE], G_IM_FMT_IA, G_IM_SIZ_8b, 32, 64, 0, G_TX_WRAP | G_TX_MIRROR, G_TX_WRAP | G_TX_MIRROR, 5, 6, G_TX_NOLOD, G_TX_NOLOD);
-    gSPTexture(gfx++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-    gSPVertex(gfx++, VIRTUAL_TO_PHYSICAL(vtx), 4, 0);
-    gSPDisplayList(gfx++, dl_draw_quad_verts_0123);
-    gSPTexture(gfx++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
-    gDPSetCombineLERP(gfx++, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE);
-    gSPVertex(gfx++, VIRTUAL_TO_PHYSICAL(vtx + 4), 4, 4);
-    gSP2Triangles(gfx++, 4, 0, 3, 0, 4, 3, 7, 0);
-    gSP2Triangles(gfx++, 1, 5, 6, 0, 1, 6, 2, 0);
-    gSPDisplayList(gfx++, dl_screen_transition_end);
-    gSPEndDisplayList(gfx);
-    return sCannonCircleGfx;
+    Gfx *gfx = omm_alloc_gfx(20);
+    Gfx *head = gfx;
+    gSPDisplayList(head++, dl_proj_mtx_fullscreen);
+    gDPSetCombineLERP(head++, TEXEL0, 0, SHADE, 0, 0, 0, 0, TEXEL0, TEXEL0, 0, SHADE, 0, 0, 0, 0, TEXEL0);
+    gDPSetTextureFilter(head++, G_TF_BILERP);
+    gDPLoadTextureBlock(head++, sTransitionTextures[TEX_TRANS_CIRCLE], G_IM_FMT_IA, G_IM_SIZ_8b, 32, 64, 0, G_TX_WRAP | G_TX_MIRROR, G_TX_WRAP | G_TX_MIRROR, 5, 6, G_TX_NOLOD, G_TX_NOLOD);
+    gSPTexture(head++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+    gSPVertex(head++, vtx, 4, 0);
+    gSPDisplayList(head++, dl_draw_quad_verts_0123);
+    gSPTexture(head++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
+    gDPSetCombineLERP(head++, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE);
+    gSPVertex(head++, vtx + 4, 4, 4);
+    gSP2Triangles(head++, 4, 0, 3, 0, 4, 3, 7, 0);
+    gSP2Triangles(head++, 1, 5, 6, 0, 1, 6, 2, 0);
+    gSPDisplayList(head++, dl_screen_transition_end);
+    gSPEndDisplayList(head);
+    return gfx;
 }
 
 Gfx *geo_cannon_circle_base(s32 callContext, struct GraphNode *node, UNUSED Mat4 mtx) {

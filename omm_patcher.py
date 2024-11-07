@@ -1,5 +1,6 @@
-import os
-import sys
+#!/usr/bin/env python3
+
+import os, sys
 
 FILE_PATHS      = []
 FILE_EXTENSIONS = [".c", ".h"]
@@ -105,6 +106,8 @@ def process_command(filename: str, function, *args) -> bool:
         sys.exit(0)
 
     unpatch = COMMANDS[sys.argv[1]]["unpatch"]
+    if filename in FILE_PATHS:
+        return function(filename, *args, unpatch)
     for filepath in FILE_PATHS:
         if ("/" + filename) in filepath:
             return function(filepath, *args, unpatch)
@@ -118,12 +121,17 @@ def do_patch_file(filename: str, location: str, where: str, what: str, how: int)
     return process_command(filename, patch_string_in_file, location, where, what, how)
 
 def do_undef_code(filename: str, start: str, end: str, index: int = 0) -> bool:
-    if (do_patch_file(filename, start, start, "#if 0 // {} [{}]\n".format(filename, index), PATCH_BEFORE)):
+    if do_patch_file(filename, start, start, "#if 0 // {} [{}]\n".format(filename, index), PATCH_BEFORE):
         return do_patch_file(filename, end, end, "#endif // {} [{}]\n".format(filename, index), PATCH_BEFORE)
     return False
 
 def do_delete_file(filename: str) -> bool:
     return process_command(filename, delete_file)
+
+def do_delete_dir(dirname: str) -> bool:
+    for filepath in FILE_PATHS:
+        if ("/" + dirname + "/") in filepath:
+            do_delete_file(filepath)
 
 #
 # Entry point
@@ -132,15 +140,22 @@ def do_delete_file(filename: str) -> bool:
 if __name__ == "__main__":
 
     # Gather all source filepaths
-    for root, _, files in os.walk("."):
-        if not any([x in root for x in EXCLUDE_DIRS]):
-            for file in files:
-                if any([ x in file for x in FILE_EXTENSIONS]) and not any([x in file for x in EXCLUDE_FILES]):
-                    FILE_PATHS.append(root + "/" + file)
+    for dirpath, _, filenames in os.walk("."):
+        if not any([x in dirpath for x in EXCLUDE_DIRS]):
+            for filename in filenames:
+                if any([x in filename for x in FILE_EXTENSIONS]) and not any([x in filename for x in EXCLUDE_FILES]):
+                    FILE_PATHS.append(dirpath + "/" + filename)
+
+    # Dir deletion
+    do_delete_dir("goddard")
 
     # File deletion
+    do_delete_file("actors/mr_i_eyeball/model.inc.c")
     do_delete_file("behavior_script.c")
     do_delete_file("behavior_script.h")
+    do_delete_file("blue_coin.inc.c")
+    do_delete_file("cliopts.c")
+    do_delete_file("cliopts.h")
     do_delete_file("config_camera.h")
     do_delete_file("config_collision.h")
     do_delete_file("config_graphics.h")
@@ -152,6 +167,24 @@ if __name__ == "__main__":
     do_delete_file("dirtree.c")
     do_delete_file("dirtree.h")
     do_delete_file("donut_platform.inc.c")
+    do_delete_file("dorrie.inc.c")
+    do_delete_file("dynos_c.cpp")
+    do_delete_file("dynos_gfx_init.cpp")
+    do_delete_file("dynos_gfx_load.cpp")
+    do_delete_file("dynos_gfx_read.cpp")
+    do_delete_file("dynos_gfx_texture.cpp")
+    do_delete_file("dynos_gfx_update.cpp")
+    do_delete_file("dynos_gfx_write.cpp")
+    do_delete_file("dynos_level.cpp")
+    do_delete_file("dynos_main.cpp")
+    do_delete_file("dynos_misc.cpp")
+    do_delete_file("dynos_opt_config.cpp")
+    do_delete_file("dynos_opt_cont.cpp")
+    do_delete_file("dynos_opt_render.cpp")
+    do_delete_file("dynos_opt_vanilla_c.c")
+    do_delete_file("dynos_opt_vanilla.cpp")
+    do_delete_file("dynos_opt.cpp")
+    do_delete_file("dynos_warps.cpp")
     do_delete_file("extended_bounds.h")
     do_delete_file("file_select.c")
     do_delete_file("file_select.h")
@@ -169,16 +202,24 @@ if __name__ == "__main__":
     do_delete_file("graph_node.c")
     do_delete_file("graph_node.h")
     do_delete_file("graph_node_manager.c")
+    do_delete_file("heave_ho.inc.c")
+    do_delete_file("hidden_star.inc.c")
+    do_delete_file("level_geo.c")
     do_delete_file("level_script.c")
     do_delete_file("level_script.h")
+    do_delete_file("levels/ending/leveldata.c")
     do_delete_file("levels/menu/script.c")
     do_delete_file("levels/menu/custom.script.c")
     do_delete_file("mario_step.c")
     do_delete_file("math_util.c")
     do_delete_file("math_util.h")
+    do_delete_file("moneybag.inc.c")
     do_delete_file("monty_mole.inc.c")
+    do_delete_file("motos.inc.c")
+    do_delete_file("mushroom_1up.inc.c")
     do_delete_file("qol_defines.h")
     do_delete_file("r96_character_swap.c")
+    do_delete_file("red_coin.inc.c")
     do_delete_file("rendering_graph_node.c")
     do_delete_file("rendering_graph_node.h")
     do_delete_file("save_file.c")
@@ -186,6 +227,7 @@ if __name__ == "__main__":
     do_delete_file("screen_transition.c")
     do_delete_file("shadow.c")
     do_delete_file("shadow.h")
+    do_delete_file("skybox.c")
     do_delete_file("star_select.c")
     do_delete_file("surface_collision.c")
     do_delete_file("surface_collision.h")
@@ -193,28 +235,30 @@ if __name__ == "__main__":
     do_delete_file("surface_load.h")
     do_delete_file("surface_terrains.h")
     do_delete_file("text_save.inc.h")
+    do_delete_file("ukiki.inc.c")
 
     # Code deletion
     do_undef_code("bettercamera.c",            "s32 ray_surface_intersect(",                          "static s32 puppycam_check_volume_bounds(")
     do_undef_code("ingame_menu.c",             "void render_dialog_box_type(",                        "void change_and_flash_dialog_text_color_lines(")
     do_undef_code("interaction.c",             "u32 determine_interaction(",                          "u32 attack_object(", 0)
     do_undef_code("interaction.c",             "void push_mario_out_of_object(",                      "void bounce_back_from_attack(", 1)
-    do_undef_code("mario.c",                   "struct Surface *resolve_and_return_wall_collisions(", "s32 mario_facing_downhill(", 0)
-    do_undef_code("mario.c",                   "#ifdef BETTER_WALL_COLLISION",                        "f32 vec3f_find_ceil(", 1)
+    do_undef_code("mario.c",                   "s32 is_anim_at_end(",                                 "s16 find_mario_anim_flags_and_translation(", 0)
+    do_undef_code("mario.c",                   "struct Surface *resolve_and_return_wall_collisions(", "s32 mario_facing_downhill(", 1)
+    do_undef_code("mario.c",                   "#ifdef BETTER_WALL_COLLISION",                        "f32 vec3f_find_ceil(", 2)
     do_undef_code("mario_actions_submerged.c", "static f32 get_buoyancy(",                            "static BAD_RETURN(u32) update_water_pitch(")
 
     # Header patches
-    do_patch_file("behavior_data.c", "const BehaviorScript bhvStarDoor[]", "const BehaviorScript bhvStarDoor[]", "#include \"data/omm/engine/behavior_commands.inl\"\n",                                                             PATCH_BEFORE)
-    do_patch_file("dynos_audio.cpp", "bool EndJingle = 0;",                "bool EndJingle = 0;",                "\n#include \"data/omm/peachy/omm_peach_vibes_r96.inl\"",                                                           PATCH_AFTER)
-    do_patch_file("dynos_misc.cpp",  "&__Actors()",                        "define_actor(yoshi_egg_geo),",       "\n#define OMM_GEO_(geo) define_actor(geo),\n#include \"data/omm/object/omm_object_data_geo.inl\"\n#undef OMM_GEO", PATCH_AFTER)
-    do_patch_file("gd_memory.c",     "#ifndef USE_SYSTEM_MALLOC",          "#ifndef USE_SYSTEM_MALLOC",          "#undef USE_SYSTEM_MALLOC\n",                                                                                       PATCH_BEFORE)
-    do_patch_file("gfx_dxgi.cpp",    "static struct {",                    "} dxgi;",                            "\n#include \"data/omm/engine/gfx_dxgi.inl\"",                                                                      PATCH_AFTER)
-    do_patch_file("options_menu.c",  "SubMenu *currentMenu = &menuMain",   ";",                                  "\n#include \"data/omm/system/omm_options_menu.inl\"",                                                              PATCH_AFTER)
-    do_patch_file("sm64.h",          "SM64_H",                             "#include \"macros.h\"",              "\n#include \"data/omm/omm_includes.h\"",                                                                           PATCH_AFTER)
-    do_patch_file("types.h",         "_SM64_TYPES_H_",                     "struct GraphNode *children;",        "\nomm_GraphNode_extra_fields",                                                                                     PATCH_AFTER)
-    do_patch_file("types.h",         "_SM64_TYPES_H_",                     "s32 animAccel;",                     "\nomm_AnimInfo_extra_fields",                                                                                      PATCH_AFTER)
-    do_patch_file("types.h",         "_SM64_TYPES_H_",                     "Vec3f cameraToObject;",              "\nomm_GraphNodeObject_extra_fields",                                                                               PATCH_AFTER)
-    do_patch_file("ultra64.h",       "_ULTRA64_H_",                        "#include <PR/libultra.h>",           "\n#include \"data/omm/omm_macros.h\"",                                                                             PATCH_AFTER)
+    do_patch_file("behavior_data.c", "const BehaviorScript bhvStarDoor[]", "const BehaviorScript bhvStarDoor[]", "#include \"data/omm/engine/behavior_commands.inl\"\n",   PATCH_BEFORE)
+    do_patch_file("configfile.c",    "const char *configfile_name(",       "const char *configfile_name(",       "#include \"data/omm/engine/configfile.inl\"\n",          PATCH_BEFORE)
+    do_patch_file("dynos_audio.cpp", "bool EndJingle = 0;",                "bool EndJingle = 0;",                "\n#include \"data/omm/peachy/omm_peach_vibes_r96.inl\"", PATCH_AFTER)
+    do_patch_file("gfx_dxgi.cpp",    "static struct {",                    "} dxgi;",                            "\n#include \"data/omm/engine/gfx_dxgi.inl\"",            PATCH_AFTER)
+    do_patch_file("options_menu.c",  "SubMenu *currentMenu = &menuMain",   ";",                                  "\n#include \"data/omm/system/omm_options_menu.inl\"",    PATCH_AFTER)
+    do_patch_file("txtconv.c",       "struct Character charmap",           "{",                                  "\n#include \"data/omm/system/omm_text_charmap.inl\"",    PATCH_AFTER)
+    do_patch_file("sm64.h",          "SM64_H",                             "#include \"macros.h\"",              "\n#include \"data/omm/omm_includes.h\"",                 PATCH_AFTER)
+    do_patch_file("ultra64.h",       "_ULTRA64_H_",                        "#include <PR/libultra.h>",           "\n#include \"data/omm/omm_macros.h\"",                   PATCH_AFTER)
+    do_patch_file("types.h",         "_SM64_TYPES_H_",                     "struct GraphNode *children;",        "\nomm_GraphNode_extra_fields",                           PATCH_AFTER)
+    do_patch_file("types.h",         "_SM64_TYPES_H_",                     "s32 animAccel;",                     "\nomm_AnimInfo_extra_fields",                            PATCH_AFTER)
+    do_patch_file("types.h",         "_SM64_TYPES_H_",                     "Vec3f cameraToObject;",              "\nomm_GraphNodeObject_extra_fields",                     PATCH_AFTER)
 
     # Actors patches
     do_patch_file("mario/model.inc.c",      "", "", "#define static\n#define const\n", PATCH_AFTER)
@@ -222,31 +266,34 @@ if __name__ == "__main__":
     do_patch_file("text/define_text.inc.c", "", "", "#define const\n",                 PATCH_AFTER)
 
     # Game patches
-    do_patch_file("camera.c",                 "s16 find_in_bounds_yaw_wdw_bob_thi(",       "{",                                            "\nomm_patch__find_in_bounds_yaw_wdw_bob_thi__return_yaw",                   PATCH_AFTER)
-    do_patch_file("dynos_c.cpp",              "void dynos_sound_play(",                    "{",                                            "\nomm_patch__dynos_sound_play__play_character_sound",                       PATCH_AFTER)
-    do_patch_file("dynos_opt.cpp",            "void DynOS_Opt_AddAction(",                 "",                                             "  omm_patch__dynos__dynos_cpp_to_c\n",                                      PATCH_BEFORE)
-    do_patch_file("external.c",               "void play_sound(",                          "{",                                            "\nomm_patch__play_sound__play_character_sound",                             PATCH_AFTER)
-    do_patch_file("external.c",               "void stop_background_music(",               "foundIndex = sBackgroundMusicQueueSize;",      "\nomm_patch__stop_background_music__fix_boss_music",                        PATCH_AFTER)
-    do_patch_file("ingame_menu.c",            "void render_dialog_entries(",               "dialog->linesPerBox * 2;",                     "\nomm_patch__render_dialog_entries__fix_dialog_box_text_lower_bound",       PATCH_AFTER)
-    do_patch_file("interaction.c",            "void check_death_barrier(",                 "{",                                            "\nomm_patch__check_death_barrier__cheat_walk_on_death_barrier",             PATCH_AFTER)
-    do_patch_file("interaction.c",            "void check_lava_boost(",                    "{",                                            "\nomm_patch__check_lava_boost__cheat_walk_on_lava",                         PATCH_AFTER)
-    do_patch_file("level_update.c",           "s16 level_trigger_warp(",                   "{",                                            "\nomm_patch__level_trigger_warp__check_death_warp",                         PATCH_AFTER)
-    do_patch_file("mario.c",                  "s32 mario_get_floor_class(",                "{",                                            "\nomm_patch__mario_get_floor_class__cheat_walk_on_slope",                   PATCH_AFTER)
-    do_patch_file("mario.c",                  "u32 mario_floor_is_slippery(",              "{",                                            "\nomm_patch__mario_floor_is_slippery__cheat_walk_on_slope",                 PATCH_AFTER)
-    do_patch_file("mario_actions_airborne.c", "void update_air_with_turn(",                "{",                                            "\nomm_patch__update_air_with_turn__update_air_with_turn",                   PATCH_AFTER)
-    do_patch_file("mario_actions_airborne.c", "void update_air_without_turn(",             "{",                                            "\nomm_patch__update_air_without_turn__update_air_without_turn",             PATCH_AFTER)
-    do_patch_file("mario_actions_airborne.c", "u32 common_air_action_step(",               "case AIR_STEP_HIT_WALL:",                      "\nomm_patch__common_air_action_step__wall_slide_check",                     PATCH_AFTER)
-    do_patch_file("mario_actions_cutscene.c", "s32 set_mario_npc_dialog(",                 "{",                                            "\nomm_patch__set_mario_npc_dialog__skip_if_capture",                        PATCH_AFTER)
-    do_patch_file("mario_actions_cutscene.c", "s32 check_for_instant_quicksand(",          "&& m->action != ACT_QUICKSAND_DEATH) {",       "\nomm_patch__check_for_instant_quicksand__fix_downwarp",                    PATCH_AFTER)
-    do_patch_file("mario_actions_moving.c",   "void apply_slope_accel(",                   "} else",                                       "  omm_patch__apply_slope_accel__not_peach_vibe_gloom",                      PATCH_AFTER)
-    do_patch_file("mario_actions_moving.c",   "void update_walking_speed(",                "{",                                            "\nomm_patch__update_walking_speed__update_walking_speed",                   PATCH_AFTER)
-    do_patch_file("mario_cheats.c",           "s32 cheats_play_as(",                       "{",                                            "\nomm_patch__cheats_play_as__disable",                                      PATCH_AFTER)
-    do_patch_file("memory.c",                 "static struct MainPoolState",               "*gMainPoolState = NULL;",                      "\nomm_patch__memory__main_pool_state",                                      PATCH_AFTER)
-    do_patch_file("object_helpers.c",         "s32 cur_obj_has_model(",                    "} else",                                       "  omm_patch__cur_obj_has_model__check_georef",                              PATCH_AFTER)
-    do_patch_file("object_helpers.c",         "s32 cur_obj_update_dialog(",                "{",                                            "\nomm_patch__cur_obj_update_dialog__skip_if_capture",                       PATCH_AFTER)
-    do_patch_file("object_helpers.c",         "s32 cur_obj_update_dialog_with_cutscene(",  "{",                                            "\nomm_patch__cur_obj_update_dialog_with_cutscene__skip_if_capture",         PATCH_AFTER)
-    do_patch_file("paintings.c",              "Gfx *render_painting(",                     "// Draw the triangles individually",           "\nomm_patch__render_painting__interpolate_painting",                        PATCH_AFTER)
-    do_patch_file("paintings.c",              "Gfx *geo_painting_update(",                 "= gPaintingUpdateCounter;",                    "\nomm_patch__geo_painting_update__fix_floor_pointer",                       PATCH_AFTER)
-    do_patch_file("r96_audio.c",              "const char *r96_get_intended_level_music(", "if (gCurrLevelNum == LEVEL_CASTLE_GROUNDS) {", "\nomm_patch__r96_get_intended_level_music__bowser_4_music",                 PATCH_AFTER)
-    do_patch_file("seqplayer.c",              "void sequence_channel_process_script(",     "case 0x00: // chan_testlayerfinished",         "\nif (loBits >= LAYERS_MAX) break;",                                        PATCH_AFTER)
-    do_patch_file("spawn_object.c",           "struct Object *allocate_object(",           "obj->numCollidedObjs = 0;",                    "\nmemset(&obj->header.gfx._oFields, 0, sizeof(obj->header.gfx._oFields));", PATCH_AFTER)
+    do_patch_file("camera.c",                 "s16 find_in_bounds_yaw_wdw_bob_thi(",       "{",                                              "\nomm_patch__find_in_bounds_yaw_wdw_bob_thi__return_yaw",                 PATCH_AFTER)
+    do_patch_file("chuckya.inc.c",            "void common_anchor_mario_behavior(",        "{",                                              "\nomm_patch__common_anchor_mario_behavior__obj_update_held_mario",        PATCH_AFTER)
+    do_patch_file("external.c",               "void play_sound(",                          "{",                                              "\nomm_patch__play_sound__play_character_sound",                           PATCH_AFTER)
+    do_patch_file("external.c",               "void stop_background_music(",               "foundIndex = sBackgroundMusicQueueSize;",        "\nomm_patch__stop_background_music__fix_boss_music",                      PATCH_AFTER)
+    do_patch_file("ingame_menu.c",            "void render_dialog_entries(",               "dialog->linesPerBox * 2;",                       "\nomm_patch__render_dialog_entries__fix_dialog_box_text_lower_bound",     PATCH_AFTER)
+    do_patch_file("interaction.c",            "void check_death_barrier(",                 "{",                                              "\nomm_patch__check_death_barrier__cheat_walk_on_death_barrier",           PATCH_AFTER)
+    do_patch_file("interaction.c",            "void check_lava_boost(",                    "{",                                              "\nomm_patch__check_lava_boost__cheat_walk_on_lava",                       PATCH_AFTER)
+    do_patch_file("level_update.c",           "s16 level_trigger_warp(",                   "{",                                              "\nomm_patch__level_trigger_warp__check_death_warp",                       PATCH_AFTER)
+    do_patch_file("mario.c",                  "s32 mario_get_floor_class(",                "{",                                              "\nomm_patch__mario_get_floor_class__cheat_walk_on_slope",                 PATCH_AFTER)
+    do_patch_file("mario.c",                  "u32 mario_floor_is_slippery(",              "{",                                              "\nomm_patch__mario_floor_is_slippery__cheat_walk_on_slope",               PATCH_AFTER)
+    do_patch_file("mario.c",                  "s32 set_water_plunge_action(",              "{",                                              "\nomm_patch__set_water_plunge_action__check_flooded",                     PATCH_AFTER)
+    do_patch_file("mario_actions_airborne.c", "void update_air_with_turn(",                "{",                                              "\nomm_patch__update_air_with_turn__update_air_with_turn",                 PATCH_AFTER)
+    do_patch_file("mario_actions_airborne.c", "void update_air_without_turn(",             "{",                                              "\nomm_patch__update_air_without_turn__update_air_without_turn",           PATCH_AFTER)
+    do_patch_file("mario_actions_airborne.c", "u32 common_air_action_step(",               "case AIR_STEP_HIT_WALL:",                        "\nomm_patch__common_air_action_step__check_wall_slide",                   PATCH_AFTER)
+    do_patch_file("mario_actions_airborne.c", "s32 act_lava_boost(",                       "if (m->floor->type == SURFACE_BURNING",          "  omm_patch__act_lava_boost__cheat_walk_on_lava",                         PATCH_AFTER)
+    do_patch_file("mario_actions_cutscene.c", "s32 set_mario_npc_dialog(",                 ";",                                              "\nomm_patch__set_mario_npc_dialog__check_npc_dialog",                     PATCH_AFTER)
+    do_patch_file("mario_actions_cutscene.c", "s32 check_for_instant_quicksand(",          "&& m->action != ACT_QUICKSAND_DEATH) {",         "\nomm_patch__check_for_instant_quicksand__fix_downwarp",                  PATCH_AFTER)
+    do_patch_file("mario_actions_moving.c",   "void apply_slope_accel(",                   "} else",                                         "  omm_patch__apply_slope_accel__not_peach_vibe_gloom",                    PATCH_AFTER)
+    do_patch_file("mario_actions_moving.c",   "void update_walking_speed(",                "{",                                              "\nomm_patch__update_walking_speed__update_walking_speed",                 PATCH_AFTER)
+    do_patch_file("mario_cheats.c",           "s32 cheats_play_as(",                       "{",                                              "\nomm_patch__cheats_play_as__disable",                                    PATCH_AFTER)
+    do_patch_file("obj_behaviors_2.c",        "static s32 obj_resolve_object_collisions(", "if (otherObject != gMarioObject",                "  omm_patch__obj_resolve_object_collisions__ignore_capture_goomba_stack", PATCH_AFTER)
+    do_patch_file("object_helpers.c",         "void obj_set_hitbox(",                      "obj->header.gfx.scale[1] * hitbox->downOffset;", "\nomm_patch__obj_set_hitbox__obj_fix_hitbox",                             PATCH_AFTER)
+    do_patch_file("object_helpers.c",         "s32 cur_obj_update_dialog(",                "{",                                              "\nomm_patch__cur_obj_update_dialog__skip_if_capture",                     PATCH_AFTER)
+    do_patch_file("object_helpers.c",         "s32 cur_obj_update_dialog_with_cutscene(",  "{",                                              "\nomm_patch__cur_obj_update_dialog_with_cutscene__skip_if_capture",       PATCH_AFTER)
+    do_patch_file("object_helpers.c",         "s32 cur_obj_has_model(",                    "} else",                                         "  omm_patch__cur_obj_has_model__check_georef",                            PATCH_AFTER)
+    do_patch_file("object_list_processor.c",  "void unload_objects_from_area(",            "gObjectLists = gObjectListArray;",               "\nomm_patch__unload_objects_from_area__keep_held_ridden_capture_alive",   PATCH_AFTER)
+    do_patch_file("level_update.c",           "void load_level_init_text(",                "if (!gotAchievement",                            "  omm_patch__load_level_init_text__skip_entry_dialog_if_non_stop",        PATCH_AFTER)
+    do_patch_file("paintings.c",              "Gfx *render_painting(",                     "// Draw the triangles individually",             "\nomm_patch__render_painting__interpolate_painting",                      PATCH_AFTER)
+    do_patch_file("paintings.c",              "Gfx *geo_painting_update(",                 "= gPaintingUpdateCounter;",                      "\nomm_patch__geo_painting_update__fix_floor_pointer",                     PATCH_AFTER)
+    do_patch_file("r96_audio.c",              "const char *r96_get_intended_level_music(", "if (gCurrLevelNum == LEVEL_CASTLE_GROUNDS) {",   "\nomm_patch__r96_get_intended_level_music__bowser_4_music",               PATCH_AFTER)
+    do_patch_file("seqplayer.c",              "void sequence_channel_process_script(",     "case 0x00: // chan_testlayerfinished",           "\nif (loBits >= LAYERS_MAX) break;",                                      PATCH_AFTER)

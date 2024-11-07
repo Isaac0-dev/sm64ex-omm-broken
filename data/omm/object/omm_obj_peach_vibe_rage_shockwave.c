@@ -1,13 +1,14 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
-#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_POINTS        128
-#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_SPEED         40.f
-#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_WIDTH         40.f
-#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_HEIGHT        120.f
-#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_DURATION      45
-#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_TEX_WIDTH     64
+#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_POINTS        (128)
+#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_SPEED         (40.f)
+#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_WIDTH         (40.f)
+#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_HEIGHT        (120.f)
+#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_DURATION      (45)
+#define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_TEX_WIDTH     (64)
 #define OMM_PEACH_VIBE_RAGE_SHOCKWAVE_TEX_HEIGHT    (8 * OMM_PEACH_VIBE_RAGE_SHOCKWAVE_TEX_WIDTH)
 
 //
@@ -19,7 +20,7 @@ static const Gfx omm_peach_vibe_rage_shockwave_gfx[] = {
     gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
     gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsSPDisplayList(null),
+    gsSPDisplayList(NULL),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
     gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
     gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
@@ -37,11 +38,16 @@ typedef struct {
 } State;
 
 typedef struct {
+    Gfx *displayLists[1];
     Gfx gfx[array_length(omm_peach_vibe_rage_shockwave_gfx)];
     Gfx tri[2 * (2 * OMM_PEACH_VIBE_RAGE_SHOCKWAVE_POINTS + 8) + 1];
     Vtx vtx[2 * (2 * (OMM_PEACH_VIBE_RAGE_SHOCKWAVE_POINTS + 1))];
     State state[OMM_PEACH_VIBE_RAGE_SHOCKWAVE_POINTS + 1];
 } OmmPeachVibeRageShockwaveGeoData;
+
+static const u32 sOmmPeachVibeRageShockwaveGeoDataDisplayListsOffsets[] = {
+    offsetof(OmmPeachVibeRageShockwaveGeoData, gfx),
+};
 
 //
 // Geo layout
@@ -62,7 +68,11 @@ const GeoLayout omm_geo_peach_vibe_rage_shockwave[] = {
 
 static void bhv_omm_peach_vibe_rage_shockwave_update() {
     struct Object *o = gCurrentObject;
-    OmmPeachVibeRageShockwaveGeoData *data = geo_get_geo_data(o, sizeof(OmmPeachVibeRageShockwaveGeoData), omm_peach_vibe_rage_shockwave_gfx, sizeof(omm_peach_vibe_rage_shockwave_gfx));
+    OmmPeachVibeRageShockwaveGeoData *data = geo_get_geo_data(o,
+        sizeof(OmmPeachVibeRageShockwaveGeoData),
+        sOmmPeachVibeRageShockwaveGeoDataDisplayListsOffsets,
+        array_length(sOmmPeachVibeRageShockwaveGeoDataDisplayListsOffsets)
+    );
     f32 r = o->oTimer * OMM_PEACH_VIBE_RAGE_SHOCKWAVE_SPEED;
 
     // Update state
@@ -210,7 +220,8 @@ static void bhv_omm_peach_vibe_rage_shockwave_update() {
             gSP2Triangles(tri++, 0, 1, 2, 0, 2, 1, 3, 0);
         }
     }
-    gSPEndDisplayList(tri);
+    gSPEndDisplayList(tri++);
+    gfx_copy_and_fill_null(data->gfx, omm_peach_vibe_rage_shockwave_gfx, sizeof(omm_peach_vibe_rage_shockwave_gfx), data->tri);
 
     // Update object
     obj_set_angle(o, 0, 0, 0);
@@ -229,45 +240,47 @@ static void bhv_omm_peach_vibe_rage_shockwave_update() {
     obj_set_params(&hitbox, 0, 0, 0, 0, true);
     obj_reset_hitbox(&hitbox, OMM_PEACH_VIBE_RAGE_SHOCKWAVE_WIDTH, OMM_PEACH_VIBE_RAGE_SHOCKWAVE_HEIGHT, 0, 0, 0, 0);
     for_each_object_in_interaction_lists(obj) {
+        if (obj->activeFlags) {
 
-        // Check horizontal distance
-        f32 hdist = obj_get_horizontal_distance(o, obj);
-        if (hdist + obj->hitboxRadius < r - OMM_PEACH_VIBE_RAGE_SHOCKWAVE_WIDTH ||
-            hdist - obj->hitboxRadius > r + OMM_PEACH_VIBE_RAGE_SHOCKWAVE_WIDTH) {
-            continue;
+            // Check horizontal distance
+            f32 hdist = obj_get_horizontal_distance(o, obj);
+            if (hdist + obj->hitboxRadius < r - OMM_PEACH_VIBE_RAGE_SHOCKWAVE_WIDTH ||
+                hdist - obj->hitboxRadius > r + OMM_PEACH_VIBE_RAGE_SHOCKWAVE_WIDTH) {
+                continue;
+            }
+
+            // Check vertical distance
+            u16 angle = (u16) atan2s(obj->oPosZ - o->oPosZ, obj->oPosX - o->oPosX);
+            s32 index = (s32) (((f32) (angle * OMM_PEACH_VIBE_RAGE_SHOCKWAVE_POINTS) / (f32) 0x10000) + 0.5f);
+            State *point = &data->state[index % OMM_PEACH_VIBE_RAGE_SHOCKWAVE_POINTS];
+            if (obj->oPosY - obj->hitboxDownOffset + obj->hitboxHeight < o->oPosY + point->y ||
+                obj->oPosY - obj->hitboxDownOffset > o->oPosY + point->y + OMM_PEACH_VIBE_RAGE_SHOCKWAVE_HEIGHT) {
+                continue;
+            }
+
+            // Process one object interaction with a reduced hitbox
+            obj_set_xyz(&hitbox, o->oPosX + point->x, o->oPosY + point->y, o->oPosZ + point->z);
+            omm_obj_process_one_object_interaction(&hitbox, obj, OBJ_INT_PRESET_PEACH_VIBE_RAGE_SHOCKWAVE);
         }
-
-        // Check vertical distance
-        u16 angle = (u16) atan2s(obj->oPosZ - o->oPosZ, obj->oPosX - o->oPosX);
-        s32 index = (s32) (((f32) (angle * OMM_PEACH_VIBE_RAGE_SHOCKWAVE_POINTS) / (f32) 0x10000) + 0.5f);
-        State *point = &data->state[index % OMM_PEACH_VIBE_RAGE_SHOCKWAVE_POINTS];
-        if (obj->oPosY - obj->hitboxDownOffset + obj->hitboxHeight < o->oPosY + point->y ||
-            obj->oPosY - obj->hitboxDownOffset > o->oPosY + point->y + OMM_PEACH_VIBE_RAGE_SHOCKWAVE_HEIGHT) {
-            continue;
-        }
-
-        // Process one object interaction with a reduced hitbox
-        obj_set_pos(&hitbox, o->oPosX + point->x, o->oPosY + point->y, o->oPosZ + point->z);
-        omm_obj_process_one_object_interaction(&hitbox, obj, OBJ_INT_PRESET_PEACH_VIBE_RAGE_SHOCKWAVE);
     }
 }
 
 const BehaviorScript bhvOmmPeachVibeRageShockwave[] = {
     OBJ_TYPE_SPECIAL,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_peach_vibe_rage_shockwave_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_peach_vibe_rage_shockwave_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_peach_vibe_rage_shockwave(struct Object *o) {
+struct Object *omm_obj_spawn_peach_vibe_rage_shockwave(struct Object *o) {
     struct Object *wave = obj_spawn_from_geo(o, omm_geo_peach_vibe_rage_shockwave, bhvOmmPeachVibeRageShockwave);
     obj_set_always_rendered(wave, true);
-    obj_set_pos(wave, o->oPosX, o->oPosY, o->oPosZ);
+    obj_set_xyz(wave, o->oPosX, o->oPosY, o->oPosZ);
     obj_set_home(wave, o->oPosX, o->oPosY, o->oPosZ);
     obj_set_scale(wave, 0.f, 0.f, 0.f);
     return wave;

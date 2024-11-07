@@ -5,7 +5,7 @@
 
 bool omm_sparkly_check_requirements(struct MarioState *m) {
 #if OMM_GAME_IS_SM64
-    sAcousticReachPerLevel[LEVEL_GROUNDS] = 25000 + 35000 * (gCurrAreaIndex == 2);
+    gAcousticReachPerLevel[LEVEL_CASTLE_GROUNDS] = 25000 + 35000 * (gCurrAreaIndex == 2);
     omm_sparkly_ending_cutscene();
 #endif
 
@@ -16,15 +16,15 @@ bool omm_sparkly_check_requirements(struct MarioState *m) {
         OMM_SPARKLY_MODE_COUNT,
         omm_sparkly_is_selectible(OMM_SPARKLY_STARS_MODE)
     );
-    
+
     // Check Sparkly Stars reward option
     omm_opt_select_available(
-        OMM_EXTRAS_SPARKLY_STARS_REWARD,
+        OMM_SPARKLY_STARS_COMPLETION_REWARD,
         OMM_SPARKLY_MODE_DISABLED,
         OMM_SPARKLY_MODE_COUNT,
-        omm_sparkly_is_completed(OMM_EXTRAS_SPARKLY_STARS_REWARD)
+        omm_sparkly_is_completed(OMM_SPARKLY_STARS_COMPLETION_REWARD)
     );
-    
+
     // Reset the Sparkly Stars mode in the main menu, and return
     if (omm_is_main_menu()) {
         omm_sparkly_disable();
@@ -36,7 +36,7 @@ bool omm_sparkly_check_requirements(struct MarioState *m) {
     }
 
     // If Bowser 3 was never defeated, disable the Sparkly Stars mode, sets the option to 0 and return
-    if (!omm_sparkly_is_unlocked(OMM_SPARKLY_MODE_NORMAL)) {
+    if (!OMM_REWARD_IS_SPARKLY_STARS_UNLOCKED) {
         omm_sparkly_set_mode(OMM_SPARKLY_MODE_DISABLED);
         omm_sparkly_disable();
         return true;
@@ -75,9 +75,7 @@ bool omm_sparkly_check_requirements(struct MarioState *m) {
     }
 
     // Immediately return during regular Bowser fights
-    if (gCurrLevelNum == LEVEL_BOWSER_1 ||
-        gCurrLevelNum == LEVEL_BOWSER_2 ||
-        gCurrLevelNum == LEVEL_BOWSER_3) {
+    if (OMM_LEVEL_IS_BOWSER_FIGHT(gCurrLevelNum)) {
         return true;
     }
 
@@ -99,9 +97,9 @@ bool omm_sparkly_check_game_state(struct MarioState *m) {
                     f32 x = OMM_SPARKLY_BLOCK_X + 360.f * d * sins(OMM_SPARKLY_BLOCK_ANGLE);
                     f32 y = OMM_SPARKLY_BLOCK_Y + 300.f;
                     f32 z = OMM_SPARKLY_BLOCK_Z + 360.f * d * coss(OMM_SPARKLY_BLOCK_ANGLE);
-                    block = omm_spawn_sparkly_star_block(m->marioObj, sparklyMode, x, y, z);
+                    block = omm_obj_spawn_sparkly_star_block(m->marioObj, sparklyMode, x, y, z);
                 }
-                
+
                 // If the block has been hit, change the current Sparkly Star mode
                 if (block->oAction == 2) {
                     gOmmSparkly->starBlock = true;
@@ -110,6 +108,8 @@ bool omm_sparkly_check_game_state(struct MarioState *m) {
                     omm_sparkly_set_mode(sparklyMode);
                     omm_sparkly_context_reset();
                     omm_sparkly_turn_off_cheats();
+                    omm_mario_unpossess_object(m, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
+                    obj_unload_all_with_behavior(bhvOmmYoshi);
                     block->oAction = 3;
                     block->oTimer = 0;
                 }
@@ -125,7 +125,6 @@ bool omm_sparkly_check_game_state(struct MarioState *m) {
         }
         obj_deactivate_all_with_behavior(bhvOmmSparklyStar);
         obj_deactivate_all_with_behavior(bhvOmmSparklyStarHint);
-        obj_deactivate_all_with_behavior(bhvOmmSparklyStarSparkle);
         omm_sparkly_state_set(OMM_SPARKLY_STATE_INVALID, 0);
         omm_sparkly_context_reset_data();
         gOmmSparklyCheats->currMsg = 0;
@@ -144,9 +143,6 @@ bool omm_sparkly_check_game_state(struct MarioState *m) {
     gOmmSparkly->transition = omm_is_transition_active();
     gOmmSparkly->marioUpdated = ((m->marioObj->oTimer != sPrevMarioTimer) && m->floor && m->action); // Mario does not update if he's out of bounds
     sPrevMarioTimer = m->marioObj->oTimer;
-    gPlayer1Controller->buttonPressed &= ~(gOmmSparkly->cheatDetected * START_BUTTON);
-    gPlayer2Controller->buttonPressed &= ~(gOmmSparkly->cheatDetected * START_BUTTON);
-    gPlayer3Controller->buttonPressed &= ~(gOmmSparkly->cheatDetected * START_BUTTON);
     return false;
 }
 
@@ -160,7 +156,7 @@ bool omm_sparkly_check_star_block(struct MarioState *m) {
             omm_sparkly_start_timer(gOmmSparklyMode);
         }
 #if OMM_GAME_IS_SM64
-        if (gCurrLevelNum == LEVEL_GROUNDS) {
+        if (gCurrLevelNum == LEVEL_CASTLE_GROUNDS) {
             if (!gOmmSparkly->gamePaused &&
                 !gOmmSparkly->transition &&
                  gOmmSparkly->marioUpdated &&
@@ -180,8 +176,6 @@ bool omm_sparkly_check_star_block(struct MarioState *m) {
                 }
             }
         } else
-#else
-        OMM_UNUSED(m);
 #endif
         gOmmSparkly->starBlock = false;
     }
@@ -205,42 +199,10 @@ bool omm_sparkly_check_anti_cheat(struct MarioState *m) {
     }
 
     // Anti-cheat trigger
-    // Kill Mario, disable the Pause menu, eject him from the current level
-    // (bypassing the Non-Stop mode) and display a special dialog...
-    static bool sDeathState = false;
     if (gOmmSparkly->cheatDetected) {
-
-        // Turn off cheats, disable caps and reduce Mario's health to 0...
-        if (!sDeathState) {
-            gOmmSparklyContext->cheatDetected = false;
-            omm_sparkly_turn_off_cheats();
-            m->capTimer = 0;
-            m->flags &= ~(MARIO_WING_CAP | MARIO_METAL_CAP | MARIO_VANISH_CAP);
-            if (OMM_MOVESET_ODYSSEY) {
-                gOmmStats->hitsTaken += (m->health > OMM_HEALTH_ODYSSEY_DEAD);
-                m->health = OMM_HEALTH_ODYSSEY_DEAD;
-            } else {
-                m->healCounter = 0;
-                m->hurtCounter = 30;
-            }
-        }
-
-        // ...until Mario is in a death state
-        if (m->action == ACT_STANDING_DEATH ||
-            m->action == ACT_QUICKSAND_DEATH ||
-            m->action == ACT_ELECTROCUTION ||
-            m->action == ACT_SUFFOCATION ||
-            m->action == ACT_DEATH_ON_STOMACH ||
-            m->action == ACT_DEATH_ON_BACK ||
-            m->action == ACT_EATEN_BY_BUBBA ||
-            m->action == ACT_DROWNING ||
-            m->action == ACT_WATER_DEATH) {
-            sDeathState = true;
-        }
-
-        // When warped back to Castle, trigger a random Bowser anti-cheat dialog
+        omm_sparkly_turn_off_cheats();
         if (!omm_mario_is_dead(m) &&
-             gCurrCourseNum == COURSE_NONE &&
+             gCurrCourseNum == COURSE_NONE && // TODO: nebulas: check if this is valid in other games (probably not)
             !omm_sparkly_is_bowser_4_battle() &&
             !gOmmSparkly->gamePaused &&
             !gOmmSparkly->transition &&
@@ -254,10 +216,8 @@ bool omm_sparkly_check_anti_cheat(struct MarioState *m) {
             gOmmSparklyCheats->messageId = OMM_DIALOG_SPARKLY_ANTI_CHEAT_0 + (random_u16() % 8);
             gOmmSparklyCheats->endingId = OMM_DIALOG_SPARKLY_ANTI_CHEAT_END_0 + (random_u16() % 3);
             gOmmSparkly->cheatDetected = false;
-            sDeathState = false;
         }
         return true;
     }
-    sDeathState = false;
     return false;
 }

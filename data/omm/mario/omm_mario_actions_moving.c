@@ -17,7 +17,7 @@ static void omm_act_walking_anim_and_audio(struct MarioState *m) {
 
         // Start tip-toe
         {
-            .condToTipToe = m->marioObj->oCurrAnim && obj_anim_get_frame(m->marioObj) >= 23,
+            .condToTipToe = m->marioObj->oCurrAnim && m->marioObj->oAnimFrame >= 23,
             .condToWalk = walkingSpeed > 8.f,
             .condToRun = false,
             .tiltBody = false,
@@ -90,10 +90,39 @@ static void omm_act_walking_anim_and_audio(struct MarioState *m) {
             s16 targetPitch = walkAnimAndAudio[index].tiltBody * -((find_floor_slope(m, 0) * m->forwardVel) / 40.f);
             m->marioObj->oMarioWalkingPitch = (s16) approach_s32(m->marioObj->oMarioWalkingPitch, targetPitch, 0x800, 0x800);
             m->marioObj->oGfxAngle[0] = m->marioObj->oMarioWalkingPitch;
-            obj_anim_play(m->marioObj, walkAnimAndAudio[index].animID, max_f(walkingSpeed * walkAnimAndAudio[index].animAccel, 0.1f));
+            ANM(walkAnimAndAudio[index].animID, max_f(walkingSpeed * walkAnimAndAudio[index].animAccel, 0.1f));
             play_step_sound(m, walkAnimAndAudio[index].soundStep1, walkAnimAndAudio[index].soundStep2);
             break;
         }
+    }
+}
+
+static void omm_act_roll_audio_and_particles(struct MarioState *m, s16 prevAngle) {
+
+    // Terrain
+    m->actionState += (u16) m->forwardVel;
+    if (m->actionState > OMM_MARIO_ROLL_MAX_SPEED) {
+        m->actionState -= OMM_MARIO_ROLL_MAX_SPEED;
+        if (m->quicksandDepth > 50.f) {
+            obj_play_sound(m->marioObj, SOUND_ACTION_QUICKSAND_STEP);
+        } else {
+            switch (m->terrainSoundAddend >> 16) {
+                case SOUND_TERRAIN_WATER: PFX(PARTICLE_SHALLOW_WATER_WAVE); break;
+                case SOUND_TERRAIN_SAND:  PFX(PARTICLE_DIRT); break;
+                case SOUND_TERRAIN_SNOW:  PFX(PARTICLE_SNOW); break;
+            }
+            if (m->flags & MARIO_METAL_CAP) {
+                obj_play_sound(m->marioObj, SOUND_ACTION_METAL_STEP);
+            } else {
+                obj_play_sound(m->marioObj, SOUND_ACTION_TERRAIN_STEP + m->terrainSoundAddend);
+            }
+        }
+    }
+
+    // Spin
+    PFX(PARTICLE_DUST);
+    if (prevAngle > m->faceAngle[0]) {
+        SFX(SOUND_ACTION_TWIRL + 0x1100);
     }
 }
 
@@ -133,19 +162,19 @@ static s32 omm_act_walking(struct MarioState *m) {
     switch (perform_ground_step(m)) {
         case GROUND_STEP_NONE: {
             if (omm_peach_vibe_is_gloom()) {
-                obj_anim_play(m->marioObj, MARIO_ANIM_RUNNING, max_f(1.f, abs_f(m->forwardVel / 2.f)));
+                ANM(MARIO_ANIM_RUNNING, max_f(1.f, abs_f(m->forwardVel / 2.f)));
                 play_step_sound(m, 9, 45);
             } else {
                 omm_act_walking_anim_and_audio(m);
             }
             if (m->intendedMag - m->forwardVel > 16.f) {
-                m->particleFlags |= PARTICLE_DUST;
+                PFX(PARTICLE_DUST);
             }
         } break;
 
         case GROUND_STEP_LEFT_GROUND: {
             omm_mario_set_action(m, ACT_FREEFALL, 0, 0);
-            obj_anim_play(m->marioObj, MARIO_ANIM_GENERAL_FALL, 1.f);
+            ANM(MARIO_ANIM_GENERAL_FALL, 1.f);
         } break;
 
         case GROUND_STEP_HIT_WALL: {
@@ -206,16 +235,16 @@ static s32 omm_act_riding_shell_ground(struct MarioState *m) {
     action_condition(step == GROUND_STEP_LEFT_GROUND, ACT_RIDING_SHELL_FALL, 0, RETURN_BREAK, play_mario_sound(m, SOUND_ACTION_TERRAIN_JUMP, 0););
     action_condition(step == GROUND_STEP_HIT_WALL && m->forwardVel > OMM_MARIO_SHELL_RIDE_BONK_SPEED, ACT_BACKWARD_GROUND_KB, 0, RETURN_BREAK,
         mario_stop_riding_object(m);
-        obj_play_sound(m->marioObj, (m->flags & MARIO_METAL_CAP) ? SOUND_ACTION_METAL_BONK : SOUND_ACTION_BONK);
-        m->particleFlags |= PARTICLE_VERTICAL_STAR;
+        SFX((m->flags & MARIO_METAL_CAP) ? SOUND_ACTION_METAL_BONK : SOUND_ACTION_BONK);
+        PFX(PARTICLE_VERTICAL_STAR);
     );
 
     // Animation and sound
     if (m->actionArg != 0xFF) {
 #if OMM_GAME_IS_R96X
-        obj_anim_play(m->marioObj, OMM_PLAYER_IS_WARIO ? MARIO_ANIM_RIDING_SHELL : MARIO_ANIM_BEND_KNESS_RIDING_SHELL, 1.f);
+        ANM(OMM_PLAYER_IS_WARIO ? MARIO_ANIM_RIDING_SHELL : MARIO_ANIM_BEND_KNESS_RIDING_SHELL, 1.f);
 #else
-        obj_anim_play(m->marioObj, MARIO_ANIM_BEND_KNESS_RIDING_SHELL, 1.f);
+        ANM(MARIO_ANIM_BEND_KNESS_RIDING_SHELL, 1.f);
 #endif
         obj_anim_loop(m->marioObj);
         tilt_body_ground_shell(m, m->faceAngle[1] - currTilt);
@@ -225,9 +254,9 @@ static s32 omm_act_riding_shell_ground(struct MarioState *m) {
         vec3s_zero(m->marioBodyState->headAngle);
     }
     if (m->floor->type == SURFACE_BURNING) {
-        obj_play_sound(m->marioObj, SOUND_MOVING_RIDING_SHELL_LAVA);
+        SFX(SOUND_MOVING_RIDING_SHELL_LAVA);
     } else {
-        obj_play_sound(m->marioObj, SOUND_MOVING_TERRAIN_RIDING_SHELL + m->terrainSoundAddend);
+        SFX(SOUND_MOVING_TERRAIN_RIDING_SHELL + m->terrainSoundAddend);
     }
     adjust_sound_for_speed(m);
     return OMM_MARIO_ACTION_RESULT_BREAK;
@@ -257,8 +286,8 @@ static s32 omm_act_decelerating(struct MarioState *m) {
 static s32 omm_act_slide(struct MarioState *m) {
     action_condition(omm_mario_is_roll_landing(m), ACT_OMM_ROLL, 0, RETURN_CANCEL);
     if (!m->heldObj && !(m->input & INPUT_ABOVE_SLIDE) && (m->action & ACT_FLAG_DIVING)) {
-        action_a_pressed(OMM_MOVESET_ODYSSEY, m->forwardVel > 0 ? ACT_FORWARD_ROLLOUT : ACT_BACKWARD_ROLLOUT, 0, RETURN_CANCEL);
-        action_b_pressed(OMM_MOVESET_ODYSSEY, m->forwardVel > 0 ? ACT_FORWARD_ROLLOUT : ACT_BACKWARD_ROLLOUT, 0, RETURN_CANCEL);
+        action_a_pressed(OMM_MOVESET_ODYSSEY, m->forwardVel >= 0 ? ACT_FORWARD_ROLLOUT : ACT_BACKWARD_ROLLOUT, 0, RETURN_CANCEL);
+        action_b_pressed(OMM_MOVESET_ODYSSEY, m->forwardVel >= 0 ? ACT_FORWARD_ROLLOUT : ACT_BACKWARD_ROLLOUT, 0, RETURN_CANCEL);
     }
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }
@@ -275,7 +304,7 @@ static s32 omm_act_knockback_ground(struct MarioState *m, s32 animID, u16 landin
     }
 
     // Animation
-    obj_anim_play(m->marioObj, animID, 1.25f);
+    ANM(animID, 1.25f);
     m->actionTimer++;
 
     // Heavy landing sound
@@ -290,7 +319,7 @@ static s32 omm_act_knockback_ground(struct MarioState *m, s32 animID, u16 landin
 
     // Death exit sound
     if (m->actionTimer == 43 && m->prevAction == ACT_SPECIAL_DEATH_EXIT) {
-        obj_play_sound(m->marioObj, SOUND_MARIO_MAMA_MIA);
+        SFX(SOUND_MARIO_MAMA_MIA);
     }
 
     // Attacked sound
@@ -339,7 +368,7 @@ static s32 omm_act_wario_charge(struct MarioState *m) {
 static s32 omm_act_roll(struct MarioState *m) {
     bool superRoll = (m->prevAction == ACT_GROUND_POUND_LAND) || (m->prevAction == ACT_OMM_SPIN_POUND_LAND) || ((m->prevAction == ACT_OMM_ROLL) && (m->forwardVel >= 45.f));
     action_init(max_f(m->forwardVel, superRoll ? 75.f : 60.f), 0, superRoll ? PARTICLE_HORIZONTAL_STAR : PARTICLE_MIST_CIRCLE, 0, m->faceAngle[0] *= (m->prevAction == ACT_OMM_ROLL););
-    action_cappy(m->actionTimer >= 6, ACT_OMM_CAPPY_THROW_GROUND, 0, RETURN_CANCEL);
+    action_cappy(1, ACT_OMM_CAPPY_THROW_GROUND, 0, RETURN_CANCEL);
     action_a_pressed(OMM_MOVESET_ODYSSEY, ACT_LONG_JUMP, 0, RETURN_CANCEL);
     action_b_pressed(OMM_MOVESET_ODYSSEY && m->actionTimer >= 6, ACT_OMM_ROLL, 0, RETURN_CANCEL);
     m->actionTimer++;
@@ -393,20 +422,40 @@ static s32 omm_act_roll(struct MarioState *m) {
     f32 speed = m->forwardVel / 60.f;
     s16 prevAngle = m->faceAngle[0];
     m->faceAngle[0] += (s16) (0x1C00 * speed);
-    obj_anim_play(m->marioObj, MARIO_ANIM_FORWARD_SPINNING, 0.01f);
+    ANM(MARIO_ANIM_FORWARD_SPINNING, 0.01f);
     obj_anim_set_frame(m->marioObj, 0);
-    Vec3f v = { 0, -60, -10 };
+    Vec3f v = { 0, -60, -20 };
     vec3f_rotate_zxy(v, v, m->faceAngle[0], m->faceAngle[1], 0);
     m->marioObj->oGfxPos[0] += v[0];
-    m->marioObj->oGfxPos[1] += v[1] + 50;
+    m->marioObj->oGfxPos[1] += v[1] + 50.f + 10.f * sins(m->faceAngle[0]);
     m->marioObj->oGfxPos[2] += v[2];
     m->marioObj->oGfxAngle[0] = m->faceAngle[0];
-    obj_set_shadow_pos_to_object_pos(gMarioObject);
-    m->particleFlags |= PARTICLE_DUST;
-    if (prevAngle > m->faceAngle[0]) {
-        obj_play_sound(m->marioObj, SOUND_ACTION_TWIRL);
-    }
+    m->marioObj->oFlags |= OBJ_FLAG_SHADOW_COPY_OBJ_POS;
+    omm_act_roll_audio_and_particles(m, prevAngle);
 
+    return OMM_MARIO_ACTION_RESULT_CONTINUE;
+}
+
+static s32 omm_act_spin_ground(struct MarioState *m) {
+    action_init(m->forwardVel, 0.f, 0, 0);
+    action_cappy(1, ACT_OMM_CAPPY_THROW_GROUND, 0, RETURN_CANCEL);
+    action_zb_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_ROLL, 0, RETURN_CANCEL);
+    action_a_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_SPIN_JUMP, 0, RETURN_CANCEL);
+    action_b_pressed(OMM_MOVESET_ODYSSEY, ACT_MOVE_PUNCHING, 0, RETURN_CANCEL);
+    action_off_floor(OMM_MOVESET_ODYSSEY, ACT_OMM_SPIN_AIR, 0, RETURN_CANCEL);
+    action_off_floor(1, ACT_FREEFALL, 0, RETURN_CANCEL);
+    action_condition(gOmmMario->spin.timer == 0, ACT_IDLE, 0, RETURN_CANCEL);
+
+    s32 step = perform_ground_step(m);
+    action_condition(step == GROUND_STEP_LEFT_GROUND, ACT_OMM_SPIN_AIR, 0, RETURN_BREAK);
+
+    mario_set_forward_vel(m, max_f(0, m->forwardVel - 1.f));
+    ANM(MARIO_ANIM_TWIRL, 1.f);
+    SFX(SOUND_MOVING_TERRAIN_SLIDE + m->terrainSoundAddend);
+    gOmmMario->spin.yaw += min_s(0x31E9, 0x280 * gOmmMario->spin.timer);
+    m->marioObj->oGfxAngle[1] = m->faceAngle[1] - gOmmMario->spin.yaw;
+    m->marioBodyState->handState = MARIO_HAND_OPEN;
+    PFX(PARTICLE_DUST);
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }
 
@@ -472,7 +521,7 @@ s32 omm_mario_execute_moving_action(struct MarioState *m) {
 
     // In water
     if (m->input & INPUT_IN_WATER) {
-        m->particleFlags |= PARTICLE_WAVE_TRAIL;
+        PFX(PARTICLE_WAVE_TRAIL);
         m->particleFlags &= ~PARTICLE_DUST;
     }
 
@@ -526,9 +575,11 @@ s32 omm_mario_execute_moving_action(struct MarioState *m) {
 
         // Odyssey
         case ACT_OMM_ROLL:                  return omm_act_roll(m);
+        case ACT_OMM_SPIN_GROUND:           return omm_act_spin_ground(m);
         case ACT_OMM_CAPPY_THROW_GROUND:    return omm_act_cappy_throw_ground(m);
 
         // Peach
+        case ACT_OMM_PEACH_ATTACK_GROUND:   return omm_act_peach_attack_ground(m);
         case ACT_OMM_PEACH_ATTACK_FAST:     return omm_act_peach_attack_fast(m);
     }
 

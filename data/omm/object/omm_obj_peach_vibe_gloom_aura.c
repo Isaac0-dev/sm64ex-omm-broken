@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -100,19 +101,12 @@ static const Gfx omm_peach_vibe_gloom_aura_gfx[] = {
 // Geo layout
 //
 
-static Gfx *omm_geo_peach_vibe_gloom_aura_translate(s32 callContext, struct GraphNode *node, UNUSED void *context) {
-    if (callContext == GEO_CONTEXT_RENDER) {
-        geo_move_from_camera(gCurGraphNodeObject, (struct GraphNodeTranslation *) node->next, -80.f * gMarioObject->oScaleY);
-    }
-    return NULL;
-}
-
 const GeoLayout omm_geo_peach_vibe_gloom_aura[] = {
     GEO_NODE_START(),
     GEO_OPEN_NODE(),
         GEO_BILLBOARD(),
         GEO_OPEN_NODE(),
-            GEO_ASM(1, omm_geo_peach_vibe_gloom_aura_translate),
+            GEO_ASM(-80, geo_move_from_camera_mario_scale),
             GEO_TRANSLATE_NODE(0, 0, 0, 0),
             GEO_OPEN_NODE(),
                 GEO_ASM(10, geo_update_layer_transparency),
@@ -143,11 +137,11 @@ static void bhv_omm_peach_vibe_gloom_aura_update() {
         // Gfx
         o->oOpacity = 0xFF * (1.f - t);
         obj_scale(o, gMarioObject->oScaleY * t * 8.f);
-        obj_set_pos(o, marioRootPos[0], marioRootPos[1], marioRootPos[2]);
+        obj_set_xyz(o, marioRootPos[0], marioRootPos[1], marioRootPos[2]);
         obj_update_gfx(o);
 
         // Interactions
-        obj_set_pos(o, gMarioState->pos[0], gMarioState->pos[1], gMarioState->pos[2]);
+        obj_set_xyz(o, gMarioState->pos[0], gMarioState->pos[1], gMarioState->pos[2]);
         omm_obj_process_interactions(o, OBJ_INT_PRESET_PEACH_VIBE_GLOOM_AURA);
     } else {
         obj_mark_for_deletion(o);
@@ -156,16 +150,16 @@ static void bhv_omm_peach_vibe_gloom_aura_update() {
 
 const BehaviorScript bhvOmmPeachVibeGloomAura[] = {
     OBJ_TYPE_SPECIAL,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_peach_vibe_gloom_aura_update,
-    0x09000000,
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_peach_vibe_gloom_aura_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_peach_vibe_gloom_aura(struct Object *o) {
+struct Object *omm_obj_spawn_peach_vibe_gloom_aura(struct Object *o) {
     struct Object *aura = obj_get_first_with_behavior(bhvOmmPeachVibeGloomAura);
     if (!aura) {
         aura = obj_spawn_from_geo(o, omm_geo_peach_vibe_gloom_aura, bhvOmmPeachVibeGloomAura);

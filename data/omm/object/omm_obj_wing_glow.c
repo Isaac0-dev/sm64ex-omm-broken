@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Behavior
@@ -23,25 +24,38 @@ static void omm_wing_set_vertex_color(Vtx *vertex, f32 ratio, u8 *alpha) {
     if (alpha) vertex->v.cn[3] = *alpha;
 }
 
+static void omm_wing_compute_mario_hand_pos(struct MarioState *m, Vec3f dest, bool isLeft) {
+    Vec3f fpos; vec3f_copy(fpos, geo_get_marios_forearm_pos(isLeft));
+    Vec3f hpos; vec3f_copy(hpos, geo_get_marios_hand_pos(isLeft));
+    Vec3f dpos; vec3f_dif(dpos, hpos, fpos);
+    vec3f_normalize(dpos);
+    vec3f_mult(dpos, dpos, m->marioObj->oGfxScale);
+    vec3f_mul(dpos, OMM_PLAYER_IS_PEACH ? 10.f : 15.f);
+    vec3f_sum(dest, hpos, dpos);
+}
+
 //
 // Wing glow
 //
 
-#define OMM_WING_GLOW_NUM_POINTS 32
-#define OMM_WING_GLOW_RADIUS_0 12.f
-#define OMM_WING_GLOW_RADIUS_1 20.f
-#define OMM_WING_GLOW_RADIUS_2 40.f
+#define OMM_WING_GLOW_NUM_POINTS (32)
+#define OMM_WING_GLOW_RADIUS_0   (12.f)
+#define OMM_WING_GLOW_RADIUS_1   (20.f)
+#define OMM_WING_GLOW_RADIUS_2   (40.f)
 
-static Vtx sOmmWingGlowVertices[(OMM_WING_GLOW_NUM_POINTS + 1) * 4];
-static Gfx sOmmWingGlowTriangles[OMM_WING_GLOW_NUM_POINTS * 4 + 1];
-static Gfx sOmmWingGlowDisplayList[8];
-static GeoLayout sOmmWingGlowGeoLayout[16];
+static Vtx omm_wing_glow_vtx[(OMM_WING_GLOW_NUM_POINTS + 1) * 4];
+
+static Gfx omm_wing_glow_tri[OMM_WING_GLOW_NUM_POINTS * 4 + 1];
+
+static Gfx omm_wing_glow_gfx[8];
+
+static GeoLayout omm_geo_wing_glow[16];
 
 OMM_AT_STARTUP static void bhv_omm_wing_glow_init() {
 
     // Glow vertices and triangles
-    Vtx *vtx = sOmmWingGlowVertices;
-    Gfx *tri = sOmmWingGlowTriangles;
+    Vtx *vtx = omm_wing_glow_vtx;
+    Gfx *tri = omm_wing_glow_tri;
     for (s32 i = 0; i <= OMM_WING_GLOW_NUM_POINTS; ++i) {
         s16 a = (s16) ((65536.f / OMM_WING_GLOW_NUM_POINTS) * i);
         Vec3f dir = { sins(a), coss(a), 0 };
@@ -59,10 +73,10 @@ OMM_AT_STARTUP static void bhv_omm_wing_glow_init() {
     gSPEndDisplayList(tri);
 
     // Gfx
-    Gfx *gfx = sOmmWingGlowDisplayList;
+    Gfx *gfx = omm_wing_glow_gfx;
     gSPClearGeometryMode(gfx++, G_LIGHTING | G_CULL_BOTH);
     gDPSetCombineLERP(gfx++, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE);
-    gSPDisplayList(gfx++, sOmmWingGlowTriangles);
+    gSPDisplayList(gfx++, omm_wing_glow_tri);
     gSPSetGeometryMode(gfx++, G_LIGHTING | G_CULL_BACK);
     gSPEndDisplayList(gfx);
 
@@ -72,12 +86,12 @@ OMM_AT_STARTUP static void bhv_omm_wing_glow_init() {
         GEO_OPEN_NODE(),
             GEO_BILLBOARD(),
             GEO_OPEN_NODE(),
-                GEO_DISPLAY_LIST(LAYER_TRANSPARENT, sOmmWingGlowDisplayList),
+                GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_wing_glow_gfx),
             GEO_CLOSE_NODE(),
         GEO_CLOSE_NODE(),
         GEO_END(),
     };
-    mem_cpy(sOmmWingGlowGeoLayout, geo, sizeof(geo));
+    mem_cpy(omm_geo_wing_glow, geo, sizeof(geo));
 }
 
 static void bhv_omm_wing_glow_update() {
@@ -88,22 +102,9 @@ static void bhv_omm_wing_glow_update() {
         return;
     }
 
-    // Compute Mario's hand pos
-    f32  *fPos = geo_get_marios_forearm_pos(o->oAction);
-    f32  *wPos = geo_get_marios_hand_pos(o->oAction);
-    Vec3f dPos = { wPos[0] - fPos[0], wPos[1] - fPos[1], wPos[2] - fPos[2] };
-    Vec3f hPos = { wPos[0], wPos[1], wPos[2] };
-    f32 delta  = sqrtf(sqr_f(dPos[0]) + sqr_f(dPos[1]) + sqr_f(dPos[2]));
-    if (delta != 0.f) {
-        f32 offset = (180.f - geo_get_marios_height()) / (4.f * delta);
-        hPos[0] += dPos[0] * m->marioObj->oScaleX * offset;
-        hPos[1] += dPos[1] * m->marioObj->oScaleY * offset;
-        hPos[2] += dPos[2] * m->marioObj->oScaleZ * offset;
-    }
-
     // Update vertex color
-    Vtx *vtx = sOmmWingGlowVertices;
-    for (s32 i = 0; i != array_length(sOmmWingGlowVertices); i += 4) {
+    Vtx *vtx = omm_wing_glow_vtx;
+    for (s32 i = 0; i != array_length(omm_wing_glow_vtx); i += 4) {
         omm_wing_set_vertex_color(vtx++, 0.0f, NULL);
         omm_wing_set_vertex_color(vtx++, 0.2f, NULL);
         omm_wing_set_vertex_color(vtx++, 1.0f, NULL);
@@ -111,11 +112,12 @@ static void bhv_omm_wing_glow_update() {
     }
 
     // Update object's graphics
-    obj_set_pos(o, hPos[0], hPos[1], hPos[2]);
+    Vec3f hpos; omm_wing_compute_mario_hand_pos(m, hpos, o->behavior == bhvOmmWingGlowLeft);
+    obj_set_xyz(o, hpos[0], hpos[1], hpos[2]);
     obj_set_angle(o, 0, 0, 0);
     obj_set_scale(o, 1.f, 1.f, 1.f);
     obj_set_always_rendered(o, true);
-    o->oGraphNode = geo_layout_to_graph_node(NULL, sOmmWingGlowGeoLayout);
+    o->oGraphNode = geo_layout_to_graph_node(NULL, omm_geo_wing_glow);
     o->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
     if ((m->marioObj->oNodeFlags & GRAPH_RENDER_INVISIBLE) ||
        !(m->marioObj->oNodeFlags & GRAPH_RENDER_ACTIVE)) {
@@ -130,46 +132,57 @@ static void bhv_omm_wing_glow_update() {
 // Wing trail
 //
 
-#define OMM_WING_TRAIL_NUM_POINTS 24
-#define OMM_WING_TRAIL_RADIUS_IN 10.f
-#define OMM_WING_TRAIL_RADIUS_OUT 40.f
+#define OMM_WING_TRAIL_NUM_POINTS (24)
+#define OMM_WING_TRAIL_RADIUS_IN  (10.f)
+#define OMM_WING_TRAIL_RADIUS_OUT (40.f)
 
-static Vtx sOmmWingTrailVertices[2][OMM_WING_TRAIL_NUM_POINTS * 5];
-static Gfx sOmmWingTrailTriangles[2][(OMM_WING_TRAIL_NUM_POINTS - 1) * 5 + 1];
-static Gfx sOmmWingTrailDisplayList[8];
-static GeoLayout sOmmWingTrailGeoLayout[8];
+static Vtx omm_wing_trail_vtx[2][(OMM_WING_TRAIL_NUM_POINTS + 2) * 5];
+
+static Gfx omm_wing_trail_tri[2][(OMM_WING_TRAIL_NUM_POINTS - 1) * 5 + 1];
+
+static Gfx omm_wing_trail_gfx[2][8];
+
+static GeoLayout omm_geo_wing_trail[2][8];
+
+static bool bhv_omm_wing_trail_is_mario_flying(struct MarioState *m) {
+    return m->action == ACT_FLYING || (m->action == ACT_JUMBO_STAR_CUTSCENE && m->actionArg == 2);
+}
 
 OMM_AT_STARTUP static void bhv_omm_wing_trail_init() {
+    for (s32 index = 0; index != 2; ++index) {
 
-    // Gfx
-    Gfx *gfx = sOmmWingTrailDisplayList;
-    gSPClearGeometryMode(gfx++, G_LIGHTING | G_CULL_BOTH);
-    gDPSetCombineLERP(gfx++, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE);
-    gSPDisplayList(gfx++, sOmmWingTrailTriangles[0]);
-    gSPDisplayList(gfx++, sOmmWingTrailTriangles[1]);
-    gSPSetGeometryMode(gfx++, G_LIGHTING | G_CULL_BACK);
-    gSPEndDisplayList(gfx);
+        // Gfx
+        Gfx *gfx = omm_wing_trail_gfx[index];
+        gSPClearGeometryMode(gfx++, G_LIGHTING | G_CULL_BOTH);
+        gDPSetCombineLERP(gfx++, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE);
+        gSPDisplayList(gfx++, omm_wing_trail_tri[index]);
+        gSPSetGeometryMode(gfx++, G_LIGHTING | G_CULL_BACK);
+        gSPEndDisplayList(gfx);
 
-    // Geo layout
-    GeoLayout geo[] = {
-        GEO_NODE_START(),
-        GEO_OPEN_NODE(),
-            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, sOmmWingTrailDisplayList),
-        GEO_CLOSE_NODE(),
-        GEO_END(),
-    };
-    mem_cpy(sOmmWingTrailGeoLayout, geo, sizeof(geo));
+        // Geo layout
+        GeoLayout geo[] = {
+            GEO_NODE_START(),
+            GEO_OPEN_NODE(),
+                GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_wing_trail_gfx[index]),
+            GEO_CLOSE_NODE(),
+            GEO_END(),
+        };
+        mem_cpy(omm_geo_wing_trail[index], geo, sizeof(geo));
+    }
 }
 
 static void bhv_omm_wing_trail_reset() {
-    mem_clr(sOmmWingTrailVertices, sizeof(sOmmWingTrailVertices));
+    struct Object *o = gCurrentObject;
+    s32 index = (o->behavior == bhvOmmWingTrailLeft);
+    mem_zero(omm_wing_trail_vtx[index], sizeof(omm_wing_trail_vtx[index]));
 }
 
 static void bhv_omm_wing_trail_update() {
     struct MarioState *m = gMarioState;
     struct Object *o = gCurrentObject;
+    s32 index = (o->behavior == bhvOmmWingTrailLeft);
     bool swapTriangleBuffers = (m->faceAngle[2] < 0);
-    bool trail = omm_mario_has_wing_cap(m) && (m->action == ACT_FLYING);
+    bool trail = omm_mario_has_wing_cap(m) && bhv_omm_wing_trail_is_mario_flying(m);
 
     // Unload after some time
     o->oTimer *= !trail;
@@ -194,164 +207,184 @@ static void bhv_omm_wing_trail_update() {
         gLakituState.pos[2] + camPlaneNormal[2] * distCamToCamPlane,
     };
 
-    // Right hand, Left hand
-    for (s32 k = 0; k != 2; ++k) {
-
-        // Compute Mario's hand pos
-        f32  *fPos = geo_get_marios_forearm_pos(k);
-        f32  *wPos = geo_get_marios_hand_pos(k);
-        Vec3f dPos = { wPos[0] - fPos[0], wPos[1] - fPos[1], wPos[2] - fPos[2] };
-        Vec3f hPos = { wPos[0], wPos[1], wPos[2] };
-        f32 delta  = sqrtf(sqr_f(dPos[0]) + sqr_f(dPos[1]) + sqr_f(dPos[2]));
-        if (delta != 0.f) {
-            f32 offset = (180.f - geo_get_marios_height()) / (4.f * delta);
-            hPos[0] += dPos[0] * m->marioObj->oScaleX * offset;
-            hPos[1] += dPos[1] * m->marioObj->oScaleY * offset;
-            hPos[2] += dPos[2] * m->marioObj->oScaleZ * offset;
+    // Update current vertex
+    Vtx *vtx0 = &omm_wing_trail_vtx[index][0];
+    Vtx *vtx1 = &omm_wing_trail_vtx[index][5];
+    Vtx *vtxHead = &omm_wing_trail_vtx[index][10];
+    Vtx *vtxPrev = vtxHead + 5;
+    mem_cpy(vtxHead, vtx1, sizeof(Vtx) * 5);
+    mem_cpy(vtx0, vtxHead, sizeof(Vtx) * 5);
+    mem_mov(vtxPrev, vtxHead, sizeof(Vtx) * (OMM_WING_TRAIL_NUM_POINTS - 1) * 5);
+    if (trail) {
+        Vec3f hpos; omm_wing_compute_mario_hand_pos(m, hpos, index);
+        *vtxHead = omm_wing_get_vertex(hpos, gVec3fZero, 0.f, 0xFF);
+        omm_wing_set_vertex_color(vtxHead, 0.f, NULL);
+        if (vtxPrev->v.cn[3] == 0) {
+            vec3f_copy(vtxPrev->v.ob, vtxHead->v.ob);
         }
-
-        // Update current vertex
-        Vtx *vtxHead = &sOmmWingTrailVertices[k][0];
-        Vtx *vtxPrev = vtxHead + 5;
-        mem_mov(vtxPrev, vtxHead, sizeof(Vtx) * (OMM_WING_TRAIL_NUM_POINTS - 1) * 5);
-        if (trail) {
-            *vtxHead = omm_wing_get_vertex(hPos, gVec3fZero, 0.f, 0xFF);
-            omm_wing_set_vertex_color(vtxHead, 0.f, NULL);
-            if (vtxPrev->v.cn[3] == 0) {
-                vec3f_copy(vtxPrev->v.ob, vtxHead->v.ob);
-            }
-        } else {
-            vtxHead->v.cn[3] = 0;
-        }
-
-        // Update vertices alpha
-        u8 alphaDec = (u8) ((0xFF + OMM_WING_TRAIL_NUM_POINTS) / OMM_WING_TRAIL_NUM_POINTS);
-        for (s32 i = 0; i != (OMM_WING_TRAIL_NUM_POINTS - 1) * 5; ++i, vtxPrev++) {
-            if (vtxPrev->v.cn[3] > alphaDec) {
-                vtxPrev->v.cn[3] -= alphaDec;
-            } else {
-                vtxPrev->v.cn[3] = 0;
-            }
-        }
-
-        // Compute vertices
-        Vec3f dirPrev2d = { 0, 0, 0 };
-        Gfx *tri = sOmmWingTrailTriangles[swapTriangleBuffers ? (1 - k) : (k)];
-        for (s32 i = 0; i != OMM_WING_TRAIL_NUM_POINTS; ++i, vtxHead += 5) {
-            s32 iPrev = min_s(i + 1, OMM_WING_TRAIL_NUM_POINTS - 1);
-            s32 iNext = max_s(i - 1, 0);
-            Vec3f posCurr; vec3f_copy(posCurr, vtxHead->v.ob);
-            Vec3f posPrev; vec3f_copy(posPrev, (vtxHead + (5 * (iPrev - i)))->v.ob);
-            Vec3f posNext; vec3f_copy(posNext, (vtxHead + (5 * (iNext - i)))->v.ob);
-
-            // Project onto the camera plane
-            Vec3f posCurr2d; vec3f_to_2d_plane(posCurr2d, &posCurr2d[2], posCurr, camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
-            Vec3f posPrev2d; vec3f_to_2d_plane(posPrev2d, &posPrev2d[2], posPrev, camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
-            Vec3f posNext2d; vec3f_to_2d_plane(posNext2d, &posNext2d[2], posNext, camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
-
-            // Correct perspective
-            posPrev2d[0] *= (distCamToCamPlane / (distCamToCamPlane + posPrev2d[2]));
-            posPrev2d[1] *= (distCamToCamPlane / (distCamToCamPlane + posPrev2d[2]));
-            posNext2d[0] *= (distCamToCamPlane / (distCamToCamPlane + posNext2d[2]));
-            posNext2d[1] *= (distCamToCamPlane / (distCamToCamPlane + posNext2d[2]));
-
-            // Correct direction to avoid twists
-            Vec3f dirCurr2d = { posNext2d[0] - posPrev2d[0], posNext2d[1] - posPrev2d[1], 0 };
-            vec3f_normalize(dirCurr2d);
-            if (vec3f_dot(dirPrev2d, dirCurr2d) < 0.f) {
-                dirCurr2d[0] *= -1.f;
-                dirCurr2d[1] *= -1.f;
-            }
-            vec3f_copy(dirPrev2d, dirCurr2d);
-            Vec2f dirRot90  = { +dirCurr2d[1], -dirCurr2d[0] };
-            Vec2f dirRot270 = { -dirCurr2d[1], +dirCurr2d[0] };
-
-            // Compute vertices on the 2D plane
-            Vec2f v1Pos2d = { posCurr2d[0] + OMM_WING_TRAIL_RADIUS_IN  * dirRot90 [0], posCurr2d[1] + OMM_WING_TRAIL_RADIUS_IN  * dirRot90 [1] };
-            Vec2f v2Pos2d = { posCurr2d[0] + OMM_WING_TRAIL_RADIUS_OUT * dirRot90 [0], posCurr2d[1] + OMM_WING_TRAIL_RADIUS_OUT * dirRot90 [1] };
-            Vec2f v3Pos2d = { posCurr2d[0] + OMM_WING_TRAIL_RADIUS_IN  * dirRot270[0], posCurr2d[1] + OMM_WING_TRAIL_RADIUS_IN  * dirRot270[1] };
-            Vec2f v4Pos2d = { posCurr2d[0] + OMM_WING_TRAIL_RADIUS_OUT * dirRot270[0], posCurr2d[1] + OMM_WING_TRAIL_RADIUS_OUT * dirRot270[1] };
-
-            // Convert 2D positions to 3D positions
-            vec2f_and_dist_to_3d(vtxHead[1].v.ob, v1Pos2d, posCurr2d[2], camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
-            vec2f_and_dist_to_3d(vtxHead[2].v.ob, v2Pos2d, posCurr2d[2], camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
-            vec2f_and_dist_to_3d(vtxHead[3].v.ob, v3Pos2d, posCurr2d[2], camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
-            vec2f_and_dist_to_3d(vtxHead[4].v.ob, v4Pos2d, posCurr2d[2], camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
-
-            // Update vertex color
-            u8 alpha0[] = { 0 };
-            u8 *alpha1 = &vtxHead->v.cn[3];
-            omm_wing_set_vertex_color(vtxHead + 1, 0.8f, alpha1);
-            omm_wing_set_vertex_color(vtxHead + 2, 1.0f, alpha0);
-            omm_wing_set_vertex_color(vtxHead + 3, 0.8f, alpha1);
-            omm_wing_set_vertex_color(vtxHead + 4, 1.0f, alpha0);
-
-            // Build triangles
-            if (i < OMM_WING_TRAIL_NUM_POINTS - 1) {
-                gSPVertex(tri++, vtxHead, 10, 0);
-                gSP2Triangles(tri++, 0, 1, 5, 0, 1, 5, 6, 0);
-                gSP2Triangles(tri++, 1, 2, 6, 0, 2, 6, 7, 0);
-                gSP2Triangles(tri++, 0, 3, 5, 0, 3, 5, 8, 0);
-                gSP2Triangles(tri++, 3, 4, 8, 0, 4, 8, 9, 0);
-            }
-        }
-        gSPEndDisplayList(tri);
+    } else {
+        vtxHead->v.cn[3] = 0;
     }
 
+    // Update vertices alpha
+    u8 alphaDec = (u8) ((0xFF + OMM_WING_TRAIL_NUM_POINTS) / OMM_WING_TRAIL_NUM_POINTS);
+    for (s32 i = 0; i != (OMM_WING_TRAIL_NUM_POINTS - 1) * 5; ++i, vtxPrev++) {
+        if (vtxPrev->v.cn[3] > alphaDec) {
+            vtxPrev->v.cn[3] -= alphaDec;
+        } else {
+            vtxPrev->v.cn[3] = 0;
+        }
+    }
+
+    // Compute vertices
+    Vec3f dirPrev2d = { 0, 0, 0 };
+    Vtx *vtxCurr = vtxHead;
+    Gfx *tri = omm_wing_trail_tri[swapTriangleBuffers ? (1 - index) : (index)];
+    for (s32 i = 0; i != OMM_WING_TRAIL_NUM_POINTS; ++i, vtxCurr += 5) {
+        s32 iPrev = min_s(i + 1, OMM_WING_TRAIL_NUM_POINTS - 1);
+        s32 iNext = max_s(i - 1, 0);
+        Vec3f posCurr; vec3f_copy(posCurr, vtxCurr->v.ob);
+        Vec3f posPrev; vec3f_copy(posPrev, (vtxCurr + (5 * (iPrev - i)))->v.ob);
+        Vec3f posNext; vec3f_copy(posNext, (vtxCurr + (5 * (iNext - i)))->v.ob);
+
+        // Project onto the camera plane
+        Vec3f posCurr2d; vec3f_to_2d_plane(posCurr2d, &posCurr2d[2], posCurr, camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
+        Vec3f posPrev2d; vec3f_to_2d_plane(posPrev2d, &posPrev2d[2], posPrev, camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
+        Vec3f posNext2d; vec3f_to_2d_plane(posNext2d, &posNext2d[2], posNext, camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
+
+        // Correct perspective
+        posPrev2d[0] *= (distCamToCamPlane / (distCamToCamPlane + posPrev2d[2]));
+        posPrev2d[1] *= (distCamToCamPlane / (distCamToCamPlane + posPrev2d[2]));
+        posNext2d[0] *= (distCamToCamPlane / (distCamToCamPlane + posNext2d[2]));
+        posNext2d[1] *= (distCamToCamPlane / (distCamToCamPlane + posNext2d[2]));
+
+        // Correct direction to avoid twists
+        Vec3f dirCurr2d = { posNext2d[0] - posPrev2d[0], posNext2d[1] - posPrev2d[1], 0 };
+        vec3f_normalize(dirCurr2d);
+        if (vec3f_dot(dirPrev2d, dirCurr2d) < 0.f) {
+            dirCurr2d[0] *= -1.f;
+            dirCurr2d[1] *= -1.f;
+        }
+        vec3f_copy(dirPrev2d, dirCurr2d);
+        Vec2f dirRot90  = { +dirCurr2d[1], -dirCurr2d[0] };
+        Vec2f dirRot270 = { -dirCurr2d[1], +dirCurr2d[0] };
+
+        // Compute vertices on the 2D plane
+        Vec2f v1Pos2d = { posCurr2d[0] + OMM_WING_TRAIL_RADIUS_IN  * dirRot90 [0], posCurr2d[1] + OMM_WING_TRAIL_RADIUS_IN  * dirRot90 [1] };
+        Vec2f v2Pos2d = { posCurr2d[0] + OMM_WING_TRAIL_RADIUS_OUT * dirRot90 [0], posCurr2d[1] + OMM_WING_TRAIL_RADIUS_OUT * dirRot90 [1] };
+        Vec2f v3Pos2d = { posCurr2d[0] + OMM_WING_TRAIL_RADIUS_IN  * dirRot270[0], posCurr2d[1] + OMM_WING_TRAIL_RADIUS_IN  * dirRot270[1] };
+        Vec2f v4Pos2d = { posCurr2d[0] + OMM_WING_TRAIL_RADIUS_OUT * dirRot270[0], posCurr2d[1] + OMM_WING_TRAIL_RADIUS_OUT * dirRot270[1] };
+
+        // Convert 2D positions to 3D positions
+        vec2f_and_dist_to_3d(vtxCurr[1].v.ob, v1Pos2d, posCurr2d[2], camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
+        vec2f_and_dist_to_3d(vtxCurr[2].v.ob, v2Pos2d, posCurr2d[2], camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
+        vec2f_and_dist_to_3d(vtxCurr[3].v.ob, v3Pos2d, posCurr2d[2], camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
+        vec2f_and_dist_to_3d(vtxCurr[4].v.ob, v4Pos2d, posCurr2d[2], camPlaneOrigin, camPlaneNormal, camPlaneAxis1, camPlaneAxis2);
+
+        // Update vertex color
+        u8 alpha0[] = {0};
+        u8 *alpha1 = &vtxCurr->v.cn[3];
+        omm_wing_set_vertex_color(vtxCurr + 1, 0.8f, alpha1);
+        omm_wing_set_vertex_color(vtxCurr + 2, 1.0f, alpha0);
+        omm_wing_set_vertex_color(vtxCurr + 3, 0.8f, alpha1);
+        omm_wing_set_vertex_color(vtxCurr + 4, 1.0f, alpha0);
+
+        // Build triangles
+        if (i < OMM_WING_TRAIL_NUM_POINTS - 1) {
+            gSPVertex(tri++, vtxCurr, 10, 0);
+            gSP2Triangles(tri++, 0, 1, 5, 0, 1, 5, 6, 0);
+            gSP2Triangles(tri++, 1, 2, 6, 0, 2, 6, 7, 0);
+            gSP2Triangles(tri++, 0, 3, 5, 0, 3, 5, 8, 0);
+            gSP2Triangles(tri++, 3, 4, 8, 0, 4, 8, 9, 0);
+        }
+    }
+    gSPEndDisplayList(tri);
+    mem_cpy(vtx1, vtxHead, sizeof(Vtx) * 5);
+
     // Update object's graphics
-    obj_set_pos(o, 0, 0, 0);
-    obj_set_angle(o, 0, 0, 0);
-    obj_set_scale(o, 1.f, 1.f, 1.f);
+    obj_set_pos_vec3f(o, gVec3fZero);
+    obj_set_angle_vec3s(o, gVec3sZero);
+    obj_set_scale_vec3f(o, gVec3fOne);
     obj_set_always_rendered(o, true);
-    o->oGraphNode = geo_layout_to_graph_node(NULL, sOmmWingTrailGeoLayout);
+    o->oGraphNode = geo_layout_to_graph_node(NULL, omm_geo_wing_trail[index]);
     o->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
+}
+
+void gfx_interpolate_frame_bhv_omm_wing_trail(f32 t) {
+    for (u32 index = 0; index != 2; ++index) {
+        Vtx *vtx = omm_wing_trail_vtx[index];
+        for (u32 i = 0; i != 5; ++i) {
+            vtxv_interpolate(
+                &(vtx + 10 + i)->v,
+                &(vtx +  0 + i)->v,
+                &(vtx +  5 + i)->v,
+                t
+            );
+        }
+    }
 }
 
 //
 // Behaviors
 //
 
-const BehaviorScript bhvOmmWingGlowLeftHand[] = {
+const BehaviorScript bhvOmmWingGlowLeft[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_wing_glow_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_wing_glow_update),
+    BHV_END_LOOP(),
 };
 
-const BehaviorScript bhvOmmWingGlowRightHand[] = {
+const BehaviorScript bhvOmmWingGlowRight[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_wing_glow_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_wing_glow_update),
+    BHV_END_LOOP(),
 };
 
-const BehaviorScript bhvOmmWingTrail[] = {
-    OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x0C000000, (uintptr_t) bhv_omm_wing_trail_reset,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_wing_trail_update,
-    0x09000000,
+const BehaviorScript bhvOmmWingTrailLeft[] = {
+    OBJ_TYPE_SPECIAL,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_CALL_NATIVE(bhv_omm_wing_trail_reset),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_wing_trail_update),
+    BHV_END_LOOP(),
+};
+
+const BehaviorScript bhvOmmWingTrailRight[] = {
+    OBJ_TYPE_SPECIAL,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_CALL_NATIVE(bhv_omm_wing_trail_reset),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_wing_trail_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_wing_glow_and_trail(struct Object *o) {
+struct Object *omm_obj_spawn_wing_glow_and_trail(struct Object *o) {
 
     // Wing glows
-    if (!obj_get_first_with_behavior(bhvOmmWingGlowRightHand)) {
-        spawn_object(o, MODEL_NONE, bhvOmmWingGlowRightHand)->oAction = 0;
-        spawn_object(o, MODEL_NONE, bhvOmmWingGlowLeftHand)->oAction = 1;
+    if (!omm_mario_is_capture(gMarioState)) {
+        if (!obj_get_first_with_behavior(bhvOmmWingGlowRight)) {
+            spawn_object(o, MODEL_NONE, bhvOmmWingGlowRight);
+        }
+        if (!obj_get_first_with_behavior(bhvOmmWingGlowLeft)) {
+            spawn_object(o, MODEL_NONE, bhvOmmWingGlowLeft);
+        }
     }
 
     // Wing trail
-    if (gMarioState->action == ACT_FLYING) {
-        if (!obj_get_first_with_behavior(bhvOmmWingTrail)) {
-            spawn_object(o, MODEL_NONE, bhvOmmWingTrail);
+    if (bhv_omm_wing_trail_is_mario_flying(gMarioState)) {
+        if (!obj_get_first_with_behavior(bhvOmmWingTrailRight)) {
+            spawn_object(o, MODEL_NONE, bhvOmmWingTrailRight);
+        }
+        if (!obj_get_first_with_behavior(bhvOmmWingTrailLeft)) {
+            spawn_object(o, MODEL_NONE, bhvOmmWingTrailLeft);
         }
     }
 

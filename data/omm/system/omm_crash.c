@@ -2,37 +2,21 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 
-#if defined(RAPI_RT64)
-#define NOT_COMPATIBLE
-#define MOD_NAME "Ray-tracing"
-#elif defined(CHEATER) && !defined(R96X)
-#define NOT_COMPATIBLE
-#define MOD_NAME "CHEATER"
-#elif defined(ACT_SPINDASH) || defined(ACT_TRANSFORM)
-#define NOT_COMPATIBLE
-#define MOD_NAME "Sonic Edition"
-#elif defined(ANGLE_QUEUE_SIZE) || defined(ACT_LEDGE_PARKOUR) || defined(ACT_WATER_GROUND_POUND_STROKE)
-#define NOT_COMPATIBLE
-#define MOD_NAME "Extended Moveset"
-#else
-#define MOD_NAME "(Unknown)"
-#endif
-
 #if WINDOWS_BUILD && IS_64_BIT
 #include "pc/gfx/gfx_window_manager_api.h"
 #include "pc/gfx/gfx_dxgi.h"
 #include "pc/gfx/gfx_sdl.h"
 #include <windows.h>
 
-#define CHAR_WIDTH 3
-#define CHAR_HEIGHT 6
-#define LINE_SPACING CHAR_HEIGHT
+#define CHAR_WIDTH   (3)
+#define CHAR_HEIGHT  (5)
+#define LINE_SPACING (CHAR_HEIGHT)
 
-static struct {
+static const struct {
     u32 code;
     const char *error;
     const char *message;
-} sOmmCrashHandlerErrors[] = {
+} OMM_CRASH_HANDLER_ERRORS[] = {
     { EXCEPTION_ACCESS_VIOLATION,       "Segmentation Fault",       "The game tried to %s at address 0x%016llX." },
     { EXCEPTION_ARRAY_BOUNDS_EXCEEDED,  "Array Out Of Bounds",      "The game tried to access an element out of the array bounds." },
     { EXCEPTION_DATATYPE_MISALIGNMENT,  "Data Misalignment",        "The game tried to access misaligned data." },
@@ -75,13 +59,24 @@ static OmmCrashHandlerText sOmmCrashHandlerText[256];
     pText++;                                                            \
 }
 
+extern void gfx_clear_frame_mtx();
+extern void gfx_clear_frame_transition();
+extern void gfx_clear_frame_dialog();
+extern void gfx_clear_frame_hud();
+extern void gfx_clear_frame_effects();
+extern void gfx_clear_frame_paintings();
 static void omm_crash_handler_produce_one_frame() {
+    static Vp sViewport = { {
+        { 640, 480, 511, 0 },
+        { 640, 480, 511, 0 },
+    } };
 
     // Start frame
     gfx_start_frame();
     gFrameInterpolation = false;
-    load_gfx_memory_pool();
-    init_scene_rendering();
+    config_gfx_pool();
+    init_render_image();
+    gSPViewport(gDisplayListHead++, &sViewport);
 
     // Clear screen
     create_dl_translation_matrix(MENU_MTX_PUSH, GFX_DIMENSIONS_FROM_LEFT_EDGE(0), 240.f, 0.f);
@@ -115,18 +110,26 @@ static void omm_crash_handler_produce_one_frame() {
             x -= 30;
             y += 14;
         }
+        gDisplayListHead = gfx_font_init(gDisplayListHead, OMM_TEXTURE_FONT_DISPLAY, 16, 768, 480, 48, 80);
         for (char *c = text->s; *c != 0; ++c, ++x) {
-            if (*c > 0x20 && *c < 0x7F) {
-                omm_render_texrect(
-                    GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE((x + 1) * CHAR_WIDTH), 
-                    SCREEN_HEIGHT - CHAR_HEIGHT - (4 + LINE_SPACING * y),
-                    CHAR_WIDTH, CHAR_HEIGHT, 64, 128,
-                    text->r, text->g, text->b, 0xFF,
-                    OMM_TEXTURE_MENU_FONT_[*c - 0x20], false
-                );
-            }
+            gDisplayListHead = gfx_font_render_char(
+                gDisplayListHead, *c,
+                (s32) GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE((x + 1) * CHAR_WIDTH),
+                (s32) (SCREEN_HEIGHT - CHAR_HEIGHT - (4 + LINE_SPACING * y)),
+                CHAR_WIDTH, CHAR_HEIGHT, 0, 0,
+                text->r, text->g, text->b, 0xFF
+            );
         }
+        gDisplayListHead = gfx_font_end(gDisplayListHead);
     }
+
+    // Clear interpolated stuff
+    gfx_clear_frame_mtx();
+    gfx_clear_frame_transition();
+    gfx_clear_frame_dialog();
+    gfx_clear_frame_hud();
+    gfx_clear_frame_effects();
+    gfx_clear_frame_paintings();
 
     // Render frame
     end_master_display_list();
@@ -136,16 +139,12 @@ static void omm_crash_handler_produce_one_frame() {
 }
 
 static LONG omm_crash_handler(EXCEPTION_POINTERS *ExceptionInfo) {
-    mem_clr(sOmmCrashHandlerText, sizeof(sOmmCrashHandlerText));
+    mem_zero(sOmmCrashHandlerText, sizeof(sOmmCrashHandlerText));
     OmmCrashHandlerText *pText = &sOmmCrashHandlerText[0];
 
     // Oops, the game crashed
     omm_crash_handler_set_text(0, 0, 0xFF, 0x80, 0x00, "%s", "Odyssey Mario's Moveset Crash Handler");
-    if (ExceptionInfo) {
-        omm_crash_handler_set_text(0, 1, 0xFF, 0x80, 0x00, "%s", "The game crashed. Please report this crash with a consistent way to reproduce it.");
-    } else {
-        omm_crash_handler_set_text(0, 1, 0xFF, 0x80, 0x00, "%s", "This version is not compatible with " MOD_NAME ".");
-    }
+    omm_crash_handler_set_text(0, 1, 0xFF, 0x80, 0x00, "%s", "The game crashed. Please report this crash with a consistent way to reproduce it.");
 
     // Exception address, code, type and info
     if (ExceptionInfo && ExceptionInfo->ExceptionRecord) {
@@ -155,14 +154,14 @@ static LONG omm_crash_handler(EXCEPTION_POINTERS *ExceptionInfo) {
         omm_crash_handler_set_text(-1, 3, 0xFF, 0x00, 0x00, "%s", " with error code ");
         omm_crash_handler_set_text(-1, 3, 0xFF, 0x00, 0xFF, "0x%08X", (u32) er->ExceptionCode);
         omm_crash_handler_set_text(-1, 3, 0xFF, 0x00, 0x00, "%s", ":");
-        for (s32 i = 0; i != array_length(sOmmCrashHandlerErrors); ++i) {
-            if (sOmmCrashHandlerErrors[i].code == (u32) er->ExceptionCode || sOmmCrashHandlerErrors[i].code == 0) {
-                omm_crash_handler_set_text( 0, 4, 0xFF, 0x00, 0x00, "%s", sOmmCrashHandlerErrors[i].error);
+        for (s32 i = 0; i != array_length(OMM_CRASH_HANDLER_ERRORS); ++i) {
+            if (OMM_CRASH_HANDLER_ERRORS[i].code == (u32) er->ExceptionCode || OMM_CRASH_HANDLER_ERRORS[i].code == 0) {
+                omm_crash_handler_set_text( 0, 4, 0xFF, 0x00, 0x00, "%s", OMM_CRASH_HANDLER_ERRORS[i].error);
                 omm_crash_handler_set_text(-1, 4, 0xFF, 0xFF, 0xFF, "%s", " - ");
                 if (er->ExceptionCode == EXCEPTION_ACCESS_VIOLATION || er->ExceptionCode == EXCEPTION_IN_PAGE_ERROR) {
-                    omm_crash_handler_set_text(-1, 4, 0xFF, 0xFF, 0xFF, sOmmCrashHandlerErrors[i].message, (er->ExceptionInformation[0] ? "write" : "read"), (uintptr_t) er->ExceptionInformation[1]);
+                    omm_crash_handler_set_text(-1, 4, 0xFF, 0xFF, 0xFF, OMM_CRASH_HANDLER_ERRORS[i].message, (er->ExceptionInformation[0] ? "write" : "read"), (uintptr_t) er->ExceptionInformation[1]);
                 } else {
-                    omm_crash_handler_set_text(-1, 4, 0xFF, 0xFF, 0xFF, "%s", sOmmCrashHandlerErrors[i].message);
+                    omm_crash_handler_set_text(-1, 4, 0xFF, 0xFF, 0xFF, "%s", OMM_CRASH_HANDLER_ERRORS[i].message);
                 }
                 break;
             }
@@ -174,28 +173,26 @@ static LONG omm_crash_handler(EXCEPTION_POINTERS *ExceptionInfo) {
 
     // Useful info
     omm_crash_handler_set_text(105, 0, 0xFF, 0xFF, 0x80, "%s", "Ver.: ");
-    omm_crash_handler_set_text( -1, 0, 0x00, 0xC0, 0xFF, "%s", STRINGIFY(OMM_VERSION));
-    omm_crash_handler_set_text(105, 1, 0xFF, 0xFF, 0x80, "%s", "Rev.: ");
-    omm_crash_handler_set_text( -1, 1, 0x00, 0xC0, 0xFF, "%s", STRINGIFY(OMM_REVISION));
-    omm_crash_handler_set_text(105, 2, 0xFF, 0xFF, 0x80, "%s", "Game: ");
-    omm_crash_handler_set_text( -1, 2, 0x00, 0xC0, 0xFF, "%s", OMM_GAME_CODE);
-    omm_crash_handler_set_text(105, 3, 0xFF, 0xFF, 0x80, "%s", "Arch: ");
+    omm_crash_handler_set_text( -1, 0, 0x00, 0xC0, 0xFF, "%s", OMM_VERSION);
+    omm_crash_handler_set_text(105, 1, 0xFF, 0xFF, 0x80, "%s", "Game: ");
+    omm_crash_handler_set_text( -1, 1, 0x00, 0xC0, 0xFF, "%s", OMM_GAME_CODE);
+    omm_crash_handler_set_text(105, 2, 0xFF, 0xFF, 0x80, "%s", "Arch: ");
 #if IS_64_BIT
-    omm_crash_handler_set_text( -1, 3, 0x00, 0xC0, 0xFF, "%s", "64-bit");
+    omm_crash_handler_set_text( -1, 2, 0x00, 0xC0, 0xFF, "%s", "64-bit");
 #else
-    omm_crash_handler_set_text( -1, 3, 0x00, 0xC0, 0xFF, "%s", "32-bit");
+    omm_crash_handler_set_text( -1, 2, 0x00, 0xC0, 0xFF, "%s", "32-bit");
 #endif
-    omm_crash_handler_set_text(105, 4, 0xFF, 0xFF, 0x80, "%s", "RAPI: ");
+    omm_crash_handler_set_text(105, 3, 0xFF, 0xFF, 0x80, "%s", "RAPI: ");
 #if defined(RAPI_GL)
-    omm_crash_handler_set_text( -1, 4, 0x00, 0xC0, 0xFF, "%s", "OpenGL 2.1");
+    omm_crash_handler_set_text( -1, 3, 0x00, 0xC0, 0xFF, "%s", "OpenGL 2.1");
 #elif defined(RAPI_GL_LEGACY)
-    omm_crash_handler_set_text( -1, 4, 0x00, 0xC0, 0xFF, "%s", "OpenGL 1.1");
+    omm_crash_handler_set_text( -1, 3, 0x00, 0xC0, 0xFF, "%s", "OpenGL 1.1");
 #elif defined(RAPI_D3D11)
-    omm_crash_handler_set_text( -1, 4, 0x00, 0xC0, 0xFF, "%s", "DirectX 11");
+    omm_crash_handler_set_text( -1, 3, 0x00, 0xC0, 0xFF, "%s", "DirectX 11");
 #elif defined(RAPI_D3D12)
-    omm_crash_handler_set_text( -1, 4, 0x00, 0xC0, 0xFF, "%s", "DirectX 12");
+    omm_crash_handler_set_text( -1, 3, 0x00, 0xC0, 0xFF, "%s", "DirectX 12");
 #else
-    omm_crash_handler_set_text( -1, 4, 0x00, 0xC0, 0xFF, "%s", "Unknown");
+    omm_crash_handler_set_text( -1, 3, 0x00, 0xC0, 0xFF, "%s", "Unknown");
 #endif
 #define STUB_LEVEL(_1, lvl, ...) STRINGIFY(lvl),
 #define DEFINE_LEVEL(_1, lvl, ...) STRINGIFY(lvl),
@@ -205,18 +202,18 @@ static LONG omm_crash_handler(EXCEPTION_POINTERS *ExceptionInfo) {
     };
 #undef STUB_LEVEL
 #undef DEFINE_LEVEL
-    omm_crash_handler_set_text(105,  5, 0xFF, 0xFF, 0x80, "%s", "Char: ");
-    omm_crash_handler_set_text( -1,  5, 0x00, 0xC0, 0xFF, "%s", omm_player_properties_get_selected_name());
-    omm_crash_handler_set_text(105,  6, 0xFF, 0xFF, 0x80, "%s", "File: ");
-    omm_crash_handler_set_text( -1,  6, 0x00, 0xC0, 0xFF, "Mario %c", 'A' + gCurrSaveFileNum - 1);
-    omm_crash_handler_set_text(105,  7, 0xFF, 0xFF, 0x80, "%s", "Lev.: ");
-    omm_crash_handler_set_text( -1,  7, 0x00, 0xC0, 0xFF, "%s", sLevelNames[gCurrLevelNum] + 6);
-    omm_crash_handler_set_text(105,  8, 0xFF, 0xFF, 0x80, "%s", "Area: ");
-    omm_crash_handler_set_text( -1,  8, 0x00, 0xC0, 0xFF, "%d", gCurrAreaIndex);
-    omm_crash_handler_set_text(105,  9, 0xFF, 0xFF, 0x80, "%s", "Star: ");
-    omm_crash_handler_set_text( -1,  9, 0x00, 0xC0, 0xFF, "%d", gCurrActNum);
-    omm_crash_handler_set_text(105, 10, 0xFF, 0xFF, 0x80, "%s", "Room: ");
-    omm_crash_handler_set_text( -1, 10, 0x00, 0xC0, 0xFF, "%d", gMarioCurrentRoom);
+    omm_crash_handler_set_text(105, 4, 0xFF, 0xFF, 0x80, "%s", "Char: ");
+    omm_crash_handler_set_text( -1, 4, 0x00, 0xC0, 0xFF, "%s", omm_player_properties_get_selected_name_upper());
+    omm_crash_handler_set_text(105, 5, 0xFF, 0xFF, 0x80, "%s", "File: ");
+    omm_crash_handler_set_text( -1, 5, 0x00, 0xC0, 0xFF, "Mario %c", 'A' + gCurrSaveFileNum - 1);
+    omm_crash_handler_set_text(105, 6, 0xFF, 0xFF, 0x80, "%s", "Lev.: ");
+    omm_crash_handler_set_text( -1, 6, 0x00, 0xC0, 0xFF, "%s", sLevelNames[gCurrLevelNum] + 6);
+    omm_crash_handler_set_text(105, 7, 0xFF, 0xFF, 0x80, "%s", "Area: ");
+    omm_crash_handler_set_text( -1, 7, 0x00, 0xC0, 0xFF, "%d", gCurrAreaIndex);
+    omm_crash_handler_set_text(105, 8, 0xFF, 0xFF, 0x80, "%s", "Star: ");
+    omm_crash_handler_set_text( -1, 8, 0x00, 0xC0, 0xFF, "%d", gCurrActNum);
+    omm_crash_handler_set_text(105, 9, 0xFF, 0xFF, 0x80, "%s", "Room: ");
+    omm_crash_handler_set_text( -1, 9, 0x00, 0xC0, 0xFF, "%d", gMarioCurrentRoom);
 
     // Registers
     omm_crash_handler_set_text(0, 6, 0xFF, 0xFF, 0xFF, "%s", "Registers:");
@@ -251,14 +248,13 @@ static LONG omm_crash_handler(EXCEPTION_POINTERS *ExceptionInfo) {
         Symbol *symbol0 = NULL;
 
         // Load symbols
-        str_cat_paths_sa(filename, SYS_MAX_PATH, sys_exe_path(), "res/omm.map");
-        FILE *f = fopen(filename, "r");
-        if (f) {
+        fs_file_t *file = fs_open("omm." OMM_GAME_CODE ".map");
+        if (file) {
             char buffer[1024];
-            while (fgets(buffer, 1024, f)) {
+            while (fs_readline(file, buffer, 1024)) {
                 s32 length = strlen(buffer);
                 if (length > 17) {
-                    buffer[length - 1] = 0;
+                    buffer[strcspn(buffer, "\r\n")] = 0;
                     const char *addr = buffer;
                     const char *name = buffer + 17;
 
@@ -291,14 +287,14 @@ static LONG omm_crash_handler(EXCEPTION_POINTERS *ExceptionInfo) {
                     }
                 }
             }
-            fclose(f);
+            fs_close(file);
         }
         uintptr_t addr0 = (symbol0 ? ((uintptr_t) set_mario_action - symbol0->offset) : 0);
 
         // Unwind and print call stack
         void *stack[64];
         s32 frames = CaptureStackBackTrace(0, 64, stack, NULL);
-        for (s32 i = 1, j = 0; i < frames && j < 25; ++i) {
+        for (s32 i = 1, j = 0; i < frames && j < 30; ++i) {
             s32 y = 14 + j;
             omm_crash_handler_set_text( 0, y, 0xFF, 0xFF, 0x00, "0x%016llX", (uintptr_t) stack[i]);
             omm_crash_handler_set_text(-1, y, 0xFF, 0xFF, 0xFF, "%s", ": ");
@@ -346,18 +342,4 @@ OMM_AT_STARTUP static void omm_init_crash_handler() {
     SetUnhandledExceptionFilter(omm_crash_handler);
 }
 
-#else
-
-static void omm_crash_handler(UNUSED void *p) {
-    exit(0);
-}
-
 #endif
-
-OMM_ROUTINE_UPDATE(omm_update_crash_handler) {
-#if defined(NOT_COMPATIBLE)
-    if (gMarioObject || obj_get_first_with_behavior(bhvMenuButtonManager)) {
-        omm_crash_handler(NULL);
-    }
-#endif
-}

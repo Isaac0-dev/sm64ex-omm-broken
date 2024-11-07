@@ -1,9 +1,10 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
-#define OMM_PERRY_TRAIL_NUM_SEGMENTS_MAX        16
-#define OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME    4
+#define OMM_PERRY_TRAIL_NUM_SEGMENTS_MAX        (16)
+#define OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME    (4)
 #define OMM_PERRY_TRAIL_NUM_POINTS_MAX          (OMM_PERRY_TRAIL_NUM_SEGMENTS_MAX * OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME)
 
 //
@@ -11,11 +12,10 @@
 //
 
 static const Gfx omm_perry_trail_gfx[] = {
-    gsSPClearGeometryMode(G_CULL_BOTH),
-    gsSPSetGeometryMode(G_LIGHTING),
+    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
     gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPDisplayList(null),
-    gsSPSetGeometryMode(G_CULL_BACK),
+    gsSPDisplayList(NULL),
+    gsSPSetGeometryMode(G_CULL_BACK | G_LIGHTING),
     gsSPEndDisplayList(),
 };
 
@@ -24,24 +24,32 @@ static const Gfx omm_perry_trail_gfx[] = {
 //
 
 typedef struct {
+    Vec4f br, bl, tr, tl;
+} Point;
+
+typedef struct {
+    Gfx *displayLists[1];
     Gfx gfx[array_length(omm_perry_trail_gfx)];
-    Gfx tri[OMM_PERRY_TRAIL_NUM_POINTS_MAX * 7 + 1];
+    Gfx tri[OMM_PERRY_TRAIL_NUM_POINTS_MAX * 2 + 1];
     Vtx vtx[OMM_PERRY_TRAIL_NUM_POINTS_MAX][4];
-    Lights1 lightsFront;
-    Lights1 lightsBack;
+    Point pts[OMM_PERRY_TRAIL_NUM_POINTS_MAX];
 } OmmPerryTrailGeoData;
+
+static const u32 sOmmPerryTrailGeoDataDisplayListsOffsets[] = {
+    offsetof(OmmPerryTrailGeoData, gfx),
+};
 
 //
 // Geo layout
 //
 
 const GeoLayout omm_geo_perry_trail[] = {
-	GEO_NODE_START(),
-	GEO_OPEN_NODE(),
+    GEO_NODE_START(),
+    GEO_OPEN_NODE(),
         GEO_ASM(0, geo_link_geo_data),
-		GEO_DISPLAY_LIST(LAYER_TRANSPARENT, NULL),
-	GEO_CLOSE_NODE(),
-	GEO_END(),
+        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, NULL),
+    GEO_CLOSE_NODE(),
+    GEO_END(),
 };
 
 //
@@ -51,150 +59,138 @@ const GeoLayout omm_geo_perry_trail[] = {
 static void bhv_omm_perry_trail_update() {
     struct Object *o = gCurrentObject;
     struct MarioState *m = gMarioState;
-    OmmPerryTrailGeoData *data = geo_get_geo_data(o, sizeof(OmmPerryTrailGeoData), omm_perry_trail_gfx, sizeof(omm_perry_trail_gfx));
+    OmmPerryTrailGeoData *data = geo_get_geo_data(o,
+        sizeof(OmmPerryTrailGeoData),
+        sOmmPerryTrailGeoDataDisplayListsOffsets,
+        array_length(sOmmPerryTrailGeoDataDisplayListsOffsets)
+    );
     o->oPerryType = omm_perry_get_type(m);
 
-    // Update lights
-    data->lightsFront = (Lights1) gdSPDefLights1(
-        OMM_PERRY_COLOR_FRONT[0],
-        OMM_PERRY_COLOR_FRONT[1],
-        OMM_PERRY_COLOR_FRONT[2],
-        OMM_PERRY_COLOR_FRONT[0],
-        OMM_PERRY_COLOR_FRONT[1],
-        OMM_PERRY_COLOR_FRONT[2],
-        0x28, 0x28, 0x28
-    );
-    data->lightsBack = (Lights1) gdSPDefLights1(
-        lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[0], OMM_PERRY_COLOR_BACK[0]),
-        lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[1], OMM_PERRY_COLOR_BACK[1]),
-        lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[2], OMM_PERRY_COLOR_BACK[2]),
-        lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[0], OMM_PERRY_COLOR_BACK[0]),
-        lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[1], OMM_PERRY_COLOR_BACK[1]),
-        lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[2], OMM_PERRY_COLOR_BACK[2]),
-        0x28, 0x28, 0x28
-    );
-
-    // Update previous points
-    mem_mov(data->vtx + OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME, data->vtx, sizeof(data->vtx[0]) * (OMM_PERRY_TRAIL_NUM_POINTS_MAX - OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME));
-    for (s32 i = 0; i != OMM_PERRY_TRAIL_NUM_POINTS_MAX; ++i) {
-        for (s32 j = 0; j != 4; ++j) {
-            u8 da = (data->vtx[i][j].n.tc[0] + OMM_PERRY_TRAIL_NUM_SEGMENTS_MAX - 1) / OMM_PERRY_TRAIL_NUM_SEGMENTS_MAX;
-            if (data->vtx[i][j].n.a < da) {
-                data->vtx[i][j].n.a = 0;
-            } else {
-                data->vtx[i][j].n.a -= da;
-            }
-        }
-    }
-
     // Add new point...
+    mem_mov(data->pts + OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME, data->pts, sizeof(data->pts[0]) * (OMM_PERRY_TRAIL_NUM_POINTS_MAX - OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME));
     struct Object *perry = omm_perry_get_object();
     if (o->oAction == 0 && perry && (perry->oPerryFlags & OBJ_INT_PERRY_TRAIL)) {
-        Vec3f perryDir = { 0.f, 110.f, 0.f };
+        Vec3f perryDir = { 0.f, 120.f, 0.f };
         vec3f_rotate_zxy(perryDir, perryDir, perry->oFaceAnglePitch, perry->oFaceAngleYaw, perry->oFaceAngleRoll);
 
         // Real points, not interpolated
-        Vtx *vtx[4][3] = {
-            { &data->vtx[0][0], &data->vtx[OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME][0], &data->vtx[OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME * 2][0] }, // Bottom-right
-            { &data->vtx[0][1], &data->vtx[OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME][1], &data->vtx[OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME * 2][1] }, // Bottom-left
-            { &data->vtx[0][2], &data->vtx[OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME][2], &data->vtx[OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME * 2][2] }, // Top-right
-            { &data->vtx[0][3], &data->vtx[OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME][3], &data->vtx[OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME * 2][3] }, // Top-left
+        Point *pts[3] = {
+            &data->pts[0],
+            &data->pts[OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME],
+            &data->pts[OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME * 2]
         };
 
         // Current point, left side
-        vtx[1][0]->n.ob[0] = perry->oPosX;
-        vtx[1][0]->n.ob[1] = perry->oPosY;
-        vtx[1][0]->n.ob[2] = perry->oPosZ;
-        vtx[1][0]->n.tc[0] = 0xF0 * (perry->oOpacity / 255.f);
-        vtx[1][0]->n.a     = 0xF0 * (perry->oOpacity / 255.f);
-        vtx[3][0]->n.ob[0] = perry->oPosX + perryDir[0] * perry->oScaleX;
-        vtx[3][0]->n.ob[1] = perry->oPosY + perryDir[1] * perry->oScaleY;
-        vtx[3][0]->n.ob[2] = perry->oPosZ + perryDir[2] * perry->oScaleZ;
-        vtx[3][0]->n.tc[0] = 0xF0 * (perry->oOpacity / 255.f);
-        vtx[3][0]->n.a     = 0xF0 * (perry->oOpacity / 255.f);
-
-        // Current point, right side
+        pts[0]->bl[0] = perry->oPosX;
+        pts[0]->bl[1] = perry->oPosY;
+        pts[0]->bl[2] = perry->oPosZ;
+        pts[0]->bl[3] = 0xF0 * (perry->oOpacity / 255.f) * (o->oTimer >= 2);
+        pts[0]->tl[0] = perry->oPosX + perryDir[0] * perry->oScaleX;
+        pts[0]->tl[1] = perry->oPosY + perryDir[1] * perry->oScaleY;
+        pts[0]->tl[2] = perry->oPosZ + perryDir[2] * perry->oScaleZ;
+        pts[0]->tl[3] = 0xF0 * (perry->oOpacity / 255.f) * (o->oTimer >= 2);
         if (o->oTimer == 0) {
-            *vtx[0][0] = *vtx[1][0];
-            *vtx[2][0] = *vtx[3][0];
-            *vtx[1][1] = *vtx[1][0];
-            *vtx[3][1] = *vtx[3][0];
-            *vtx[0][1] = *vtx[0][0];
-            *vtx[2][1] = *vtx[2][0];
-            *vtx[1][2] = *vtx[1][0];
-            *vtx[3][2] = *vtx[3][0];
-            *vtx[0][2] = *vtx[0][0];
-            *vtx[2][2] = *vtx[2][0];
-        } else {
-            *vtx[0][0] = *vtx[1][1];
-            *vtx[2][0] = *vtx[3][1];
+            vec4f_copy(pts[0]->br, pts[0]->bl);
+            vec4f_copy(pts[0]->tr, pts[0]->tl);
+            mem_cpy(pts[1], pts[0], sizeof(Point));
+            mem_cpy(pts[2], pts[0], sizeof(Point));
         }
 
         // Interpolated points
         for (s32 i = 0; i != OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME; ++i) {
             f32 t = (f32) (i + 1) / (f32) OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME;
-            Vec3f p[2];
-            vec3f_interpolate3(p[0], t, vtx[1][0]->n.ob, 0.f, vtx[1][1]->n.ob, 1.f, vtx[1][2]->n.ob, 2.f);
-            vec3f_interpolate3(p[1], t, vtx[3][0]->n.ob, 0.f, vtx[3][1]->n.ob, 1.f, vtx[3][2]->n.ob, 2.f);
-            u8 alpha = lerp_s(t, vtx[0][0]->n.a, vtx[0][1]->n.a);
-            data->vtx[i][0].n.ob[0] = p[0][0];
-            data->vtx[i][0].n.ob[1] = p[0][1];
-            data->vtx[i][0].n.ob[2] = p[0][2];
-            data->vtx[i][0].n.tc[0] = data->vtx[0][0].n.tc[0];
-            data->vtx[i][0].n.a     = alpha;
-            data->vtx[i][2].n.ob[0] = p[1][0];
-            data->vtx[i][2].n.ob[1] = p[1][1];
-            data->vtx[i][2].n.ob[2] = p[1][2];
-            data->vtx[i][2].n.tc[0] = data->vtx[0][2].n.tc[0];
-            data->vtx[i][2].n.a     = alpha;
-            data->vtx[i + 1][1]     = data->vtx[i][0];
-            data->vtx[i + 1][3]     = data->vtx[i][2];
+            Vec3f br, tr;
+            vec3f_interpolate3(br, t, pts[0]->bl, 0.f, pts[1]->bl, 1.f, pts[2]->bl, 2.f);
+            vec3f_interpolate3(tr, t, pts[0]->tl, 0.f, pts[1]->tl, 1.f, pts[2]->tl, 2.f);
+            vec3f_copy(data->pts[i].br, br); data->pts[i].br[3] = pts[0]->bl[3];
+            vec3f_copy(data->pts[i].tr, tr); data->pts[i].tr[3] = pts[0]->tl[3];
+            vec4f_copy(data->pts[i + 1].bl, data->pts[i].br);
+            vec4f_copy(data->pts[i + 1].tl, data->pts[i].tr);
         }
     }
-    
+
     // ...or progressively unload the trail
     else {
-        mem_clr(data->vtx, sizeof(data->vtx[0]) * OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME);
+        mem_zero(data->pts, sizeof(data->pts[0]) * OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME);
         o->oAction = 1;
         if (o->oSubAction++ > OMM_PERRY_TRAIL_NUM_SEGMENTS_MAX) {
             obj_mark_for_deletion(o);
         }
     }
 
+    // Colors
+    u8 r0 = lerp_s(0.5f, 0xFF, OMM_PERRY_COLOR_FRONT[0]);
+    u8 g0 = lerp_s(0.5f, 0xFF, OMM_PERRY_COLOR_FRONT[1]);
+    u8 b0 = lerp_s(0.5f, 0xFF, OMM_PERRY_COLOR_FRONT[2]);
+    u8 r1 = OMM_PERRY_COLOR_FRONT[0];
+    u8 g1 = OMM_PERRY_COLOR_FRONT[1];
+    u8 b1 = OMM_PERRY_COLOR_FRONT[2];
+    u8 r2 = lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[0], OMM_PERRY_COLOR_BACK[0]);
+    u8 g2 = lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[1], OMM_PERRY_COLOR_BACK[1]);
+    u8 b2 = lerp_s(0.5f, OMM_PERRY_COLOR_FRONT[2], OMM_PERRY_COLOR_BACK[2]);
+
+    // Update points
+    for (s32 i = 0; i != OMM_PERRY_TRAIL_NUM_POINTS_MAX; ++i) {
+        const f32 *pts[4] = {
+            data->pts[i].br,
+            data->pts[i].bl,
+            data->pts[i].tr,
+            data->pts[i].tl
+        };
+        for (s32 j = 0; j != 4; ++j) {
+            f32 t = 1.f - ((f32) (i + ((j & 1) == 0)) / (f32) OMM_PERRY_TRAIL_NUM_POINTS_MAX);
+            Vtx *vtx = &data->vtx[i][j];
+            Vec3f center = {
+                (pts[j][0] + pts[(j + 2) % 4][0]) / 2.f,
+                (pts[j][1] + pts[(j + 2) % 4][1]) / 2.f,
+                (pts[j][2] + pts[(j + 2) % 4][2]) / 2.f,
+            };
+            Vec3f dir = {
+                pts[j][0] - center[0],
+                pts[j][1] - center[1],
+                pts[j][2] - center[2],
+            };
+            f32 f = relerp_f(t * t * t, 0.f, 1.f, j < 2 ? 1.f : 2.f, 1.f);
+            vtx->v.ob[0] = center[0] + dir[0] * f;
+            vtx->v.ob[1] = center[1] + dir[1] * f;
+            vtx->v.ob[2] = center[2] + dir[2] * f;
+            vtx->v.cn[0] = (u8) (t > 0.8f ? relerp_0_1_f(t, 1.f, 0.8f, r0, r1) : relerp_0_1_f(t, 0.8f, 0.5f, r1, r2));
+            vtx->v.cn[1] = (u8) (t > 0.8f ? relerp_0_1_f(t, 1.f, 0.8f, g0, g1) : relerp_0_1_f(t, 0.8f, 0.5f, g1, g2));
+            vtx->v.cn[2] = (u8) (t > 0.8f ? relerp_0_1_f(t, 1.f, 0.8f, b0, b1) : relerp_0_1_f(t, 0.8f, 0.5f, b1, b2));
+            vtx->v.cn[3] = clamp_s(pts[j][3] * clamp_0_1_f(sqr_f(t * 1.2f)), 0x00, 0xFF);
+        }
+    }
+
     // Triangles
     Gfx *tri = data->tri;
     for (s32 i = 0; i != OMM_PERRY_TRAIL_NUM_POINTS_MAX; ++i) {
-        gSPLight(tri++, &data->lightsFront.l, 1);
-        gSPLight(tri++, &data->lightsFront.a, 2);
         gSPVertex(tri++, data->vtx[i], 4, 0);
-        gSPLight(tri++, &data->lightsBack.l, 1);
-        gSPLight(tri++, &data->lightsBack.a, 2);
-        gSPVertex(tri++, data->vtx[i], 2, 0);
         gSP2Triangles(tri++, 0, 2, 1, 0, 1, 2, 3, 0);
     }
-    gSPEndDisplayList(tri);
+    gSPEndDisplayList(tri++);
+    gfx_copy_and_fill_null(data->gfx, omm_perry_trail_gfx, sizeof(omm_perry_trail_gfx), data->tri);
 
     // Update properties
     obj_scale(o, 1.f);
-    obj_set_pos(o, 0, 0, 0);
+    obj_set_xyz(o, 0, 0, 0);
     obj_set_angle(o, 0, 0, 0);
     obj_set_always_rendered(o, true);
 }
 
 const BehaviorScript bhvOmmPerryTrail[] = {
     OBJ_TYPE_DEFAULT, // This object must be updated after bhvOmmPerry
-	0x08000000,
-	0x0C000000, (uintptr_t) bhv_omm_perry_trail_update,
-	0x09000000,
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_perry_trail_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner (auto)
 //
 
-OMM_ROUTINE_UPDATE(omm_spawn_perry_trail) {
+OMM_ROUTINE_UPDATE(omm_obj_spawn_perry_trail) {
     if (gMarioObject && OMM_PERRY_SWORD_ACTION) {
-        struct Object *activeTrail = obj_get_first_with_behavior_and_field_s32(bhvOmmPerryTrail, 0x31, 0);
+        struct Object *activeTrail = obj_get_first_with_behavior_and_field_s32(bhvOmmPerryTrail, _FIELD(oAction), 0);
         if (!activeTrail) {
             struct Object *perry = omm_perry_get_object();
             if (perry && (perry->oPerryFlags & OBJ_INT_PERRY_TRAIL)) {

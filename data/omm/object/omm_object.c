@@ -51,6 +51,17 @@ struct Object *obj_get_first_with_behavior(const BehaviorScript *behavior) {
     return NULL;
 }
 
+struct Object *obj_get_first_with_behavior_and_parent(struct Object *parent, const BehaviorScript *behavior) {
+    if (OMM_LIKELY(behavior)) {
+        for_each_object_in_list(obj, obj_get_list_index_from_behavior(behavior)) {
+            if (obj->behavior == behavior && obj->activeFlags && obj->parentObj == parent) {
+                return obj;
+            }
+        }
+    }
+    return NULL;
+}
+
 struct Object *obj_get_next_with_behavior(struct Object *o, const BehaviorScript *behavior) {
     if (OMM_LIKELY(o && behavior)) {
         s32 list = obj_get_list_index_from_behavior(behavior);

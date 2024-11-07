@@ -1,155 +1,61 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "data/omm/system/omm_thread.h"
 #include "pc/gfx/gfx_window_manager_api.h"
 #include "pc/gfx/gfx_dxgi.h"
 #include "pc/gfx/gfx_sdl.h"
-extern f32 gfx_texture_do_precache(void);
+#include <time.h>
 
-#define CHAR_WIDTH 4
-#define CHAR_HEIGHT 8
-#define LINE_SPACING (CHAR_HEIGHT)
+#define OMM_LOADING_SCREEN_TEXTURE_W                    (512)
+#define OMM_LOADING_SCREEN_TEXTURE_H                    (256)
+#define OMM_LOADING_SCREEN_TEXTURE_TILE_W               (36)
+#define OMM_LOADING_SCREEN_TEXTURE_TILE_H               (36)
+#define OMM_LOADING_SCREEN_TEXTURE_TILES_PER_ROW        (14)
 
-enum OmmLoadingState {
-    OMM_LOADING_START,
-    OMM_LOADING_FILE_SYSTEM,
-    OMM_LOADING_MEMORY_POOLS,
-    OMM_LOADING_WINDOW,
-    OMM_LOADING_RENDER_ENGINE,
-    OMM_LOADING_AUDIO_ENGINE,
-    OMM_LOADING_TEXTURES,
-    OMM_LOADING_DONE,
-};
+#define OMM_LOADING_SCREEN_MARIO_W                      (SCREEN_HEIGHT / 4)
+#define OMM_LOADING_SCREEN_MARIO_H                      (SCREEN_HEIGHT / 4)
+#define OMM_LOADING_SCREEN_MARIO_X                      ((SCREEN_WIDTH / 2) - (OMM_LOADING_SCREEN_MARIO_W / 2))
+#define OMM_LOADING_SCREEN_MARIO_Y                      ((SCREEN_HEIGHT / 2) - (OMM_LOADING_SCREEN_MARIO_H / 2))
 
-static struct {
-    s32 state;
-    s32 value;
-} sOmmLoadingState[1] = { { 0, 0 } };
+#define OMM_LOADING_SCREEN_PROGRESS_W                   (SCREEN_HEIGHT / 3)
+#define OMM_LOADING_SCREEN_PROGRESS_H                   (1)
+#define OMM_LOADING_SCREEN_PROGRESS_Y                   (OMM_LOADING_SCREEN_MARIO_Y - (OMM_LOADING_SCREEN_PROGRESS_H / 2) - (SCREEN_HEIGHT / 16))
+#define OMM_LOADING_SCREEN_PROGRESS_COLOR               0xFF, 0xFF, 0xFF
+#define OMM_LOADING_SCREEN_PROGRESS_COLOR_OUTLINE       0x80, 0x80, 0x80
 
 typedef struct {
-    s32 x, y;
-    u8 r, g, b;
-    char s[128];
-} OmmLoadingScreenText;
-static OmmLoadingScreenText sOmmLoadingScreenText[256];
+    const char *texture;
+    s32 start;
+    s32 length;
+} OmmLoadingScreenAnimation;
 
-#define omm_loading_screen_set_text(_x_, _y_, _r_, _g_, _b_, _fmt_, ...) \
-{                                                                        \
-    if (_x_ == -1) {                                                     \
-        pText->x = ((pText - 1)->x + strlen((pText - 1)->s));            \
-    } else {                                                             \
-        pText->x = _x_;                                                  \
-    }                                                                    \
-    pText->y = _y_;                                                      \
-    pText->r = _r_;                                                      \
-    pText->g = _g_;                                                      \
-    pText->b = _b_;                                                      \
-    str_fmt(pText->s, 128, _fmt_, __VA_ARGS__);                          \
-    pText++;                                                             \
-}
+static const OmmLoadingScreenAnimation OMM_LOADING_SCREEN_ANIMATIONS[] = {
+    { OMM_TEXTURE_MISC_LOADING_SCREEN_0, 0, 87 },
+    { OMM_TEXTURE_MISC_LOADING_SCREEN_1, 0, 40 },
+    { OMM_TEXTURE_MISC_LOADING_SCREEN_1, 40, 50 },
+};
 
-static void omm_loading_state_update() {
-    switch (sOmmLoadingState->state) {
-        case OMM_LOADING_START: {
-            sOmmLoadingState->state = OMM_LOADING_FILE_SYSTEM;
-            sOmmLoadingState->value = 0;
-        } break;
+static Vp OMM_LOADING_SCREEN_VIEWPORT = {{
+    { 640, 480, 511, 0 },
+    { 640, 480, 511, 0 },
+}};
 
-        case OMM_LOADING_FILE_SYSTEM: {
-            if (sOmmLoadingState->value++ == 1) {
-                sOmmLoadingState->state = OMM_LOADING_MEMORY_POOLS;
-                sOmmLoadingState->value = 0;
-            }
-        } break;
-
-        case OMM_LOADING_MEMORY_POOLS: {
-            if (sOmmLoadingState->value++ == 1) {
-                sOmmLoadingState->state = OMM_LOADING_WINDOW;
-                sOmmLoadingState->value = 0;
-            }
-        } break;
-
-        case OMM_LOADING_WINDOW: {
-            if (sOmmLoadingState->value++ == 1) {
-                sOmmLoadingState->state = OMM_LOADING_RENDER_ENGINE;
-                sOmmLoadingState->value = 0;
-            }
-        } break;
-
-        case OMM_LOADING_RENDER_ENGINE: {
-            if (sOmmLoadingState->value++ == 1) {
-                sOmmLoadingState->state = OMM_LOADING_AUDIO_ENGINE;
-                sOmmLoadingState->value = 0;
-            }
-        } break;
-
-        case OMM_LOADING_AUDIO_ENGINE: {
-            if (sOmmLoadingState->value++ == 1) {
-                sOmmLoadingState->state = OMM_LOADING_TEXTURES;
-                sOmmLoadingState->value = 0;
-            }
-        } break;
-
-        case OMM_LOADING_TEXTURES: {
-            if (gOmmTextureCaching == OMM_TEXTURE_CACHING_DISABLED || (sOmmLoadingState->value = (s32) (gfx_texture_do_precache() * 100)) == 100) {
-                sOmmLoadingState->state = OMM_LOADING_DONE;
-                sOmmLoadingState->value = 0;
-            }
-        } break;
-
-        case OMM_LOADING_DONE: {
-        } break;
-    }
-}
-
-static void omm_loading_state_text() {
-    mem_clr(sOmmLoadingScreenText, sizeof(sOmmLoadingScreenText));
-    OmmLoadingScreenText *pText = &sOmmLoadingScreenText[0];
-    if (sOmmLoadingState->state >= OMM_LOADING_FILE_SYSTEM) {
-        omm_loading_screen_set_text(0, 0, 0xFF, 0xFF, 0xFF, "%s", "> Initializing File system... ");
-        if (sOmmLoadingState->state > OMM_LOADING_FILE_SYSTEM) omm_loading_screen_set_text(-1, 0, 0x00, 0xFF, 0x00, "%s", "Done");
-    }
-    if (sOmmLoadingState->state >= OMM_LOADING_MEMORY_POOLS) {
-        omm_loading_screen_set_text(0, 1, 0xFF, 0xFF, 0xFF, "%s", "> Initializing Memory pools... ");
-        if (sOmmLoadingState->state > OMM_LOADING_MEMORY_POOLS) omm_loading_screen_set_text(-1, 1, 0x00, 0xFF, 0x00, "%s", "Done");
-    }
-    if (sOmmLoadingState->state >= OMM_LOADING_WINDOW) {
-        omm_loading_screen_set_text(0, 2, 0xFF, 0xFF, 0xFF, "%s", "> Initializing Window... ");
-        if (sOmmLoadingState->state > OMM_LOADING_WINDOW) omm_loading_screen_set_text(-1, 2, 0x00, 0xFF, 0x00, "%s", "Done");
-    }
-    if (sOmmLoadingState->state >= OMM_LOADING_RENDER_ENGINE) {
-        omm_loading_screen_set_text(0, 3, 0xFF, 0xFF, 0xFF, "%s", "> Initializing Rendering engine... ");
-        if (sOmmLoadingState->state > OMM_LOADING_RENDER_ENGINE) omm_loading_screen_set_text(-1, 3, 0x00, 0xFF, 0x00, "%s", "Done");
-    }
-    if (sOmmLoadingState->state >= OMM_LOADING_AUDIO_ENGINE) {
-        omm_loading_screen_set_text(0, 4, 0xFF, 0xFF, 0xFF, "%s", "> Initializing Audio engine... ");
-        if (sOmmLoadingState->state > OMM_LOADING_AUDIO_ENGINE) omm_loading_screen_set_text(-1, 4, 0x00, 0xFF, 0x00, "%s", "Done");
-    }
-    if (sOmmLoadingState->state >= OMM_LOADING_TEXTURES) {
-        if (gOmmTextureCaching != OMM_TEXTURE_CACHING_DISABLED) {
-            omm_loading_screen_set_text(0, 5, 0xFF, 0xFF, 0xFF, "%s", "> Pre-loading Textures... ");
-            if (sOmmLoadingState->state > OMM_LOADING_TEXTURES) omm_loading_screen_set_text(-1, 5, 0x00, 0xFF, 0x00, "%s", "Done")
-            else omm_loading_screen_set_text(-1, 5, 0xFF, 0xFF, 0x00, "%d%%", sOmmLoadingState->value);
-        } else {
-            omm_loading_screen_set_text(0, 5, 0xFF, 0xFF, 0xFF, "%s", "> Skipping Texture pre-loading...");
-        }
-    }
-    if (sOmmLoadingState->state >= OMM_LOADING_DONE) {
-        omm_loading_screen_set_text(0, 6, 0xFF, 0xFF, 0xFF, "%s", "> Starting game...");
-    }
-}
+static struct {
+    const OmmLoadingScreenAnimation *animation;
+    s32 frame;
+    u64 loaded_bytes;
+    u64 total_bytes;
+} sOmmLoadingScreen[1];
 
 static void omm_loading_screen_produce_one_frame() {
 
     // Start frame
     gfx_start_frame();
     gFrameInterpolation = false;
-    load_gfx_memory_pool();
-    init_scene_rendering();
-
-    // Load stuff and update text
-    omm_loading_state_update();
-    omm_loading_state_text();
+    config_gfx_pool();
+    init_render_image();
+    gSPViewport(gDisplayListHead++, &OMM_LOADING_SCREEN_VIEWPORT);
 
     // Clear screen
     create_dl_translation_matrix(MENU_MTX_PUSH, GFX_DIMENSIONS_FROM_LEFT_EDGE(0), 240.f, 0.f);
@@ -158,22 +64,20 @@ static void omm_loading_screen_produce_one_frame() {
     gSPDisplayList(gDisplayListHead++, dl_draw_text_bg_box);
     gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
 
-    // Print text
-    for (OmmLoadingScreenText *text = sOmmLoadingScreenText; text->s[0] != 0; ++text) {
-        s32 x = text->x;
-        s32 y = text->y;
-        for (char *c = text->s; *c != 0; ++c, ++x) {
-            if (*c > 0x20 && *c < 0x7F) {
-                omm_render_texrect(
-                    GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE((x + 3) * CHAR_WIDTH),
-                    SCREEN_HEIGHT - CHAR_HEIGHT - (8 + LINE_SPACING * y),
-                    CHAR_WIDTH, CHAR_HEIGHT, 64, 128,
-                    text->r, text->g, text->b, 0xFF,
-                    OMM_TEXTURE_MENU_FONT_[*c - 0x20], false
-                );
-            }
-        }
-    }
+    // Draw loading screen
+    f32 progress = (f32) (sOmmLoadingScreen->loaded_bytes < sOmmLoadingScreen->total_bytes ? (f64) sOmmLoadingScreen->loaded_bytes / (f64) sOmmLoadingScreen->total_bytes : 1.0);
+    s32 frame = sOmmLoadingScreen->animation->start + sOmmLoadingScreen->frame;
+    sOmmLoadingScreen->frame = (sOmmLoadingScreen->frame + 1) % sOmmLoadingScreen->animation->length;
+    gDisplayListHead = gfx_font_init(gDisplayListHead, sOmmLoadingScreen->animation->texture, OMM_LOADING_SCREEN_TEXTURE_TILES_PER_ROW, OMM_LOADING_SCREEN_TEXTURE_W, OMM_LOADING_SCREEN_TEXTURE_H, OMM_LOADING_SCREEN_TEXTURE_TILE_W, OMM_LOADING_SCREEN_TEXTURE_TILE_H);
+    gDisplayListHead = gfx_font_render_char(gDisplayListHead, 0x20 + frame, OMM_LOADING_SCREEN_MARIO_X, OMM_LOADING_SCREEN_MARIO_Y, OMM_LOADING_SCREEN_MARIO_W, OMM_LOADING_SCREEN_MARIO_H, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF);
+    gDisplayListHead = gfx_font_end(gDisplayListHead);
+    f32 w = X_SCREEN_TO_WINDOW(GFX_DIMENSIONS_FROM_LEFT_EDGE(OMM_LOADING_SCREEN_PROGRESS_W));
+    f32 h = Y_SCREEN_TO_WINDOW(OMM_LOADING_SCREEN_PROGRESS_H);
+    f32 x = X_SCREEN_TO_WINDOW(SCREEN_WIDTH / 2) - w / 2.f;
+    f32 y = Y_SCREEN_TO_WINDOW(OMM_LOADING_SCREEN_PROGRESS_Y);
+    omm_render_rect_window_coords(x - 2, y - 2, w + 4, h + 4, OMM_LOADING_SCREEN_PROGRESS_COLOR_OUTLINE, 0xFF);
+    omm_render_rect_window_coords(x - 1, y - 1, w + 2, h + 2, 0x00, 0x00, 0x00, 0xFF);
+    omm_render_rect_window_coords(x, y, w * progress, h, OMM_LOADING_SCREEN_PROGRESS_COLOR, 0xFF);
 
     // Render frame
     end_master_display_list();
@@ -182,12 +86,50 @@ static void omm_loading_screen_produce_one_frame() {
     gfx_end_frame();
 }
 
-static void omm_loading_screen_update() {
-    while (sOmmLoadingState->state != OMM_LOADING_DONE) {
+static void omm_loading_screen_render(pthread_t *thread) {
+    while (sOmmLoadingScreen->loaded_bytes < sOmmLoadingScreen->total_bytes) {
         omm_loading_screen_produce_one_frame();
     }
+    pthread_join(*thread, NULL);
+}
+
+static void *omm_load_textures_and_model_packs(UNUSED void *unused) {
+
+    // Load textures
+    gfx_texture_precache_start(&sOmmLoadingScreen->loaded_bytes);
+
+    // Load models packs
+    omm_models_load_all(&sOmmLoadingScreen->loaded_bytes);
+
+    // Make sure to exit the loading screen loop
+    sOmmLoadingScreen->loaded_bytes = sOmmLoadingScreen->total_bytes;
+    return NULL;
 }
 
 void omm_loading_screen_start() {
-    omm_loading_screen_update();
+
+    // Select the animation to display
+    srand(time(NULL));
+    sOmmLoadingScreen->animation = &OMM_LOADING_SCREEN_ANIMATIONS[rand() % 3];
+    sOmmLoadingScreen->frame = 0;
+
+    // Compute total size of textures and model packs
+    sOmmLoadingScreen->loaded_bytes = 0;
+    sOmmLoadingScreen->total_bytes = (
+        gfx_texture_precache_get_size() +
+        omm_models_precache_get_size()
+    );
+
+    // Run this now to render the loading screen at least once before threading starts
+    // Needed to load the loading screen texture and to avoid displaying a black screen if threading fails
+    omm_loading_screen_produce_one_frame();
+
+    // Attempt to start thread
+    pthread_t thread;
+    if (sOmmLoadingScreen->total_bytes > 0 && pthread_create(&thread, NULL, omm_load_textures_and_model_packs, NULL) == 0) {
+        omm_loading_screen_render(&thread);
+    } else {
+        omm_load_textures_and_model_packs(NULL);
+    }
+    gfx_texture_precache_end();
 }

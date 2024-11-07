@@ -1,13 +1,14 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Collision
 //
 
-#define OMM_BITFS_PILLAR_RADIUS 110
-#define OMM_BITFS_PILLAR_HEIGHT 3200
+#define OMM_BITFS_PILLAR_RADIUS (110)
+#define OMM_BITFS_PILLAR_HEIGHT (3200)
 
 static const Collision omm_bitfs_pillar_collision[] = {
     COL_INIT(),
@@ -43,20 +44,20 @@ static const Collision omm_bitfs_pillar_collision[] = {
 
 const BehaviorScript bhvOmmBitfsPillar[] = {
     OBJ_TYPE_SURFACE,
-    0x2A000000, (uintptr_t) omm_bitfs_pillar_collision,
-    0x08000000,
-    0x0C000000, (uintptr_t) load_object_collision_model,
-    0x09000000,
+    BHV_LOAD_COLLISION_DATA(omm_bitfs_pillar_collision),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(load_object_collision_model),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_bitfs_pillar(struct Object *o, f32 x, f32 y, f32 z) {
+struct Object *omm_obj_spawn_bitfs_pillar(struct Object *o, f32 x, f32 y, f32 z) {
     struct Object *pillar = spawn_object(o, MODEL_NONE, bhvOmmBitfsPillar);
     pillar->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
-    obj_set_pos(pillar, x, y, z);
+    obj_set_xyz(pillar, x, y, z);
     obj_set_home(pillar, x, y, z);
     obj_set_angle(pillar, 0, 0, 0);
     obj_scale(pillar, 1.f);

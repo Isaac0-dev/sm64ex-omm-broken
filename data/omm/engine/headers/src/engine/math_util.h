@@ -66,18 +66,22 @@ static inline f32 sqr_f         (f32 x)                             { return x *
 #define vec2f_zero(dest)        memset(dest, 0, sizeof(Vec2f))
 #define vec2f_one(dest)         memcpy(dest, gVec2fOne, sizeof(Vec2f))
 #define vec2f_copy(dest, src)   memcpy(dest, src, sizeof(Vec2f))
+#define vec2f_eq(a, b)          (memcmp(a, b, sizeof(Vec2f)) == 0)
 
 #define vec3f_zero(dest)        memset(dest, 0, sizeof(Vec3f))
 #define vec3f_one(dest)         memcpy(dest, gVec3fOne, sizeof(Vec3f))
 #define vec3f_copy(dest, src)   memcpy(dest, src, sizeof(Vec3f))
+#define vec3f_eq(a, b)          (memcmp(a, b, sizeof(Vec3f)) == 0)
 
 #define vec3s_zero(dest)        memset(dest, 0, sizeof(Vec3s))
 #define vec3s_one(dest)         memcpy(dest, gVec3sOne, sizeof(Vec3s))
 #define vec3s_copy(dest, src)   memcpy(dest, src, sizeof(Vec3s))
+#define vec3s_eq(a, b)          (memcmp(a, b, sizeof(Vec3s)) == 0)
 
 #define vec4f_zero(dest)        memset(dest, 0, sizeof(Vec4f))
 #define vec4f_one(dest)         memcpy(dest, gVec4fOne, sizeof(Vec4f))
 #define vec4f_copy(dest, src)   memcpy(dest, src, sizeof(Vec4f))
+#define vec4f_eq(a, b)          (memcmp(a, b, sizeof(Vec4f)) == 0)
 
 #define mtxf_zero(dest)         memset(dest, 0, sizeof(Mat4))
 #define mtxf_identity(dest)     memcpy(dest, gMat4Identity, sizeof(Mat4))
@@ -86,11 +90,33 @@ static inline f32 sqr_f         (f32 x)                             { return x *
 
 u16 random_u16(void);
 f32 random_float(void);
+f32 random_float_n1_p1(void);
 s32 random_sign(void);
 
+u16 srandom_u16(u16 seed);
+f32 srandom_float(u16 seed);
+f32 srandom_float_n1_p1(u16 seed);
+s32 srandom_sign(u16 seed);
+
+f32   vec2f_length(Vec2f v);
+f32   vec2f_length2(Vec2f v);
+f32   vec2f_dot(Vec2f a, Vec2f b);
+f32   vec2f_dotperp(Vec2f a, Vec2f b);
+f32   vec2f_dist(Vec2f a, Vec2f b);
+void *vec2f_set(Vec2f dest, f32 x, f32 y);
+void *vec2f_add(Vec2f dest, Vec2f a);
+void *vec2f_sum(Vec2f dest, Vec2f a, Vec2f b);
+void *vec2f_sub(Vec2f dest, Vec2f a);
+void *vec2f_dif(Vec2f dest, Vec2f a, Vec2f b);
+void *vec2f_mul(Vec2f dest, f32 a);
+void *vec2f_mult(Vec2f dest, Vec2f a, Vec2f b);
+void *vec2f_perp(Vec2f dest, Vec2f v);
+void *vec2f_normalize(Vec2f dest);
+void *vec2f_set_mag(Vec2f v, f32 mag);
 void *vec2f_and_dist_to_3d(Vec3f dest3d, Vec2f src2d, f32 dist2d, Vec3f o, Vec3f n, Vec3f e1, Vec3f e2);
 void *vec2f_to_3d_plane(Vec3f dest, Vec2f src, Vec3f o, Vec3f e1, Vec3f e1Scale, Vec3f e2, Vec3f e2Scale);
 void *vec2f_get_projected_point_on_line(Vec2f dest, f32 *t, Vec2f p, Vec2f a, Vec2f b);
+bool  vec2f_get_intersect_point(Vec2f dest, Vec2f p0, Vec2f v0, Vec2f p1, Vec2f v1);
 
 f32   vec3f_length(Vec3f v);
 f32   vec3f_dot(Vec3f a, Vec3f b);
@@ -107,6 +133,7 @@ void *vec3f_mult_mtx(Vec3f dest, Vec3f a, Mat4 b);
 void *vec3f_to_vec3s(Vec3s dest, Vec3f a);
 void *vec3f_cross(Vec3f dest, Vec3f a, Vec3f b);
 void *vec3f_normalize(Vec3f dest);
+void *vec3f_get_normal(Vec3f dest, Vec3f a, Vec3f b, Vec3f c);
 void  vec3f_get_dist_and_angle(Vec3f from, Vec3f to, f32 *dist, s16 *pitch, s16 *yaw);
 void  vec3f_set_dist_and_angle(Vec3f from, Vec3f to, f32  dist, s16  pitch, s16  yaw);
 void *vec3f_set_mag(Vec3f v, f32 mag);
@@ -122,6 +149,8 @@ void *vec3f_transform(Vec3f dest, Vec3f v, Vec3f translation, Vec3s rotation, Ve
 void *vec3f_interpolate(Vec3f dest, Vec3f from, Vec3f to, f32 t);
 void *vec3f_interpolate3(Vec3f dest, f32 t, Vec3f p0, f32 t0, Vec3f p1, f32 t1, Vec3f p2, f32 t2);
 bool  vec3f_is_inside_cylinder(Vec3f v, Vec3f pos, f32 radius, f32 height, f32 downOffset);
+bool  vec3f_is_inside_box(Vec3f v, Vec3f boxMin, Vec3f boxMax);
+bool  vec3f_check_cylinder_overlap(Vec3f pos1, f32 radius1, f32 height1, f32 offset1, Vec3f pos2, f32 radius2, f32 height2, f32 offset2);
 void *vec3f_get_barycentric_coords(Vec3f coords, Vec3f p, Vec3f a, Vec3f b, Vec3f c);
 void *vec3f_from_barycentric_coords(Vec3f dest, Vec3f coords, Vec3f a, Vec3f b, Vec3f c);
 void *find_vector_perpendicular_to_plane(Vec3f dest, Vec3f a, Vec3f b, Vec3f c);
@@ -170,10 +199,11 @@ Gfx *gfx_create_translation_matrix(Gfx *gfx, Mtx *mtx, bool push, f32 x, f32 y, 
 Gfx *gfx_create_rotation_matrix(Gfx *gfx, Mtx *mtx, bool push, f32 a, f32 x, f32 y, f32 z);
 Gfx *gfx_create_scale_matrix(Gfx *gfx, Mtx *mtx, bool push, f32 x, f32 y, f32 z);
 Gfx *gfx_create_ortho_matrix(Gfx *gfx);
+Gfx *gfx_create_billboard(Gfx *gfx, Vtx *vtx, f32 left, f32 top, f32 width, f32 height, s32 texX, s32 texY, s32 texW, s32 texH, Vec3f billboardPos, Vec3f objPos, f32 cameraOffset, s16 roll, u8 r, u8 g, u8 b, u8 a);
 
-#if OMM_GAME_IS_XALO
-#include "math_util_hackersm64.h" // Not cool, AloXado
-#endif
+Gfx *gfx_font_init(Gfx *gfx, const char *font, s32 cols, s32 texw, s32 texh, s32 glyphw, s32 glyphh);
+Gfx *gfx_font_render_char(Gfx *gfx, char c, f32 x, f32 y, f32 w, f32 h, s32 du, s32 dv, u8 r, u8 g, u8 b, u8 a);
+Gfx *gfx_font_end(Gfx *gfx);
 
 //
 // Frame interpolation
@@ -183,6 +213,8 @@ extern bool gFrameInterpolation;
 
 typedef struct {
     Gfx *pos;
+    Gfx *gfx;
+    Vtx *vtx;
     f32 x, x0, x1;
     f32 y, y0, y1;
     f32 z, z0, z1;
@@ -192,7 +224,8 @@ typedef struct {
     bool inited;
 } InterpData;
 
-void interp_data_update(InterpData *data, bool shouldInterp, Gfx *pos, f32 x, f32 y, f32 z, f32 a, f32 s, f32 t);
+void interp_data_update(InterpData *data, bool shouldInterp, Gfx *pos, Gfx *gfx, Vtx *vtx, f32 x, f32 y, f32 z, f32 a, f32 s, f32 t);
 void interp_data_lerp(InterpData *data, f32 t);
+void interp_data_reset(InterpData *data);
 
 #endif

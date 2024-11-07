@@ -1,5 +1,7 @@
 #ifndef _GBI_H_
 #define _GBI_H_
+#pragma GCC push_options
+#pragma GCC diagnostic ignored "-Wcomment"
 
 #include <PR/ultratypes.h>
 #define GBI_FLOATS
@@ -27,10 +29,10 @@
 
 // RSP commands
 #define G_NOOP                              0x00
-#define G_RDPHALF_2                         0x00 //0xf1
+// #define G_RDPHALF_2                      0xf1
 #define G_SETOTHERMODE_H                    0xe3
 #define G_SETOTHERMODE_L                    0xe2
-#define G_RDPHALF_1                         0x00 //0xe1
+// #define G_RDPHALF_1                      0xe1
 #define G_SPNOOP                            0xe0
 #define G_ENDDL                             0xdf
 #define G_DL                                0xde
@@ -45,15 +47,19 @@
 #define G_SPECIAL_1                         0xd5
 #define G_SPECIAL_2                         0xd4
 #define G_SPECIAL_3                         0xd3
+#define G_COPYMEM                           0xd2
 #define G_VTX                               0x01
 #define G_VTXTC                             0x02
-#define G_MODIFYVTX                         0x00 //0x02
-#define G_CULLDL                            0x03
-#define G_BRANCH_Z                          0x04
+#define G_VTXEXT                            0x03
+#define G_VTXEXTTC                          0x04
 #define G_TRI1                              0x05
 #define G_TRI2                              0x06
-#define G_QUAD                              0x07
-#define G_LINE3D                            0x08
+#define G_TRIEXT                            0x07
+// #define G_MODIFYVTX                      0x02
+// #define G_CULLDL                         0x03
+// #define G_BRANCH_Z                       0x04
+// #define G_QUAD                           0x07
+// #define G_LINE3D                         0x08
 
 // RDP commands
 #define G_SETCIMG                           0xff
@@ -83,17 +89,20 @@
 #define G_RDPLOADSYNC                       0xe6
 #define G_TEXRECTFLIP                       0xe5
 #define G_TEXRECT                           0xe4
-#define G_TRI_SHADE_TXTR_ZBUFF              0xcf
-#define G_TRI_SHADE_TXTR                    0xce
-#define G_TRI_SHADE_ZBUFF                   0xcd
-#define G_TRI_SHADE                         0xcc
-#define G_TRI_TXTR_ZBUFF                    0xcb
-#define G_TRI_TXTR                          0xca
-#define G_TRI_FILL_ZBUFF                    0xc9
-#define G_TRI_FILL                          0xc8
+// #define G_TRI_SHADE_TXTR_ZBUFF           0xcf
+// #define G_TRI_SHADE_TXTR                 0xce
+// #define G_TRI_SHADE_ZBUFF                0xcd
+// #define G_TRI_SHADE                      0xcc
+// #define G_TRI_TXTR_ZBUFF                 0xcb
+// #define G_TRI_TXTR                       0xca
+// #define G_TRI_FILL_ZBUFF                 0xc9
+// #define G_TRI_FILL                       0xc8
 
-// RXP commands
+// Extra commands
 #define G_SWAPCMD                           0xf1
+#define G_POPTEX                            0xd1
+#define G_PUSHTEX                           0xd0
+#define G_INVERTCULL                        0xcf
 
 // G_MTX: parameter flags
 #define G_MTX_MODELVIEW                     0x00 
@@ -112,7 +121,7 @@
 #define G_CULL_FRONT                        0x000200
 #define G_CULL_BACK                         0x000400
 #define G_CULL_BOTH                         0x000600
-#if defined(SMMS)
+#if defined(smms)
 #define G_FOG                               0x000000
 #else
 #define G_FOG                               0x010000
@@ -299,7 +308,7 @@
 
 // G_SETOTHERMODE_H gSetCycleType
 #define G_CYC_1CYCLE                        (0 << G_MDSFT_CYCLETYPE)
-#if defined(SMMS)
+#if defined(smms)
 #define G_CYC_2CYCLE                        G_CYC_1CYCLE
 #else
 #define G_CYC_2CYCLE                        (1 << G_MDSFT_CYCLETYPE)
@@ -357,7 +366,7 @@
 #define G_AC_THRESHOLD                      (1 << G_MDSFT_ALPHACOMPARE)
 #define G_AC_DITHER                         (3 << G_MDSFT_ALPHACOMPARE)
 #if defined(RAPI_GL) && defined(TRANSPARENCY_GL)
-#define	G_AC_COVERAGE                       (5 << G_MDSFT_ALPHACOMPARE)
+#define G_AC_COVERAGE                       (5 << G_MDSFT_ALPHACOMPARE)
 #else
 #define G_AC_COVERAGE                       (0 << G_MDSFT_ALPHACOMPARE)
 #endif
@@ -710,7 +719,7 @@
 #define G_RM_OPA_CI2                        RM_OPA_CI(2)
 #define G_RM_CUSTOM_AA_ZB_XLU_SURF          RM_CUSTOM_AA_ZB_XLU_SURF(1)
 #define G_RM_CUSTOM_AA_ZB_XLU_SURF2         RM_CUSTOM_AA_ZB_XLU_SURF(2)
-#if defined(SMMS)
+#if defined(smms)
 #define G_RM_FOG_SHADE_A                    G_RM_AA_ZB_OPA_SURF
 #else
 #define G_RM_FOG_SHADE_A                    GBL_c1(G_BL_CLR_FOG, G_BL_A_SHADE, G_BL_CLR_IN, G_BL_1MA)
@@ -1106,6 +1115,30 @@ typedef union {
     (_SHIFTL(G_VTXTC,24,8) | _SHIFTL((n),12,8) | _SHIFTL((v0)+(n),1,7)), (uintptr_t)(v) \
 }}
 
+#define gSPVertexExt(pkt, v, n, v0) \
+{ \
+    Gfx *_g = (Gfx *)(pkt); \
+    _g->words.w0 = _SHIFTL(G_VTXEXT,24,8) | _SHIFTL((n),8,16) | _SHIFTL((v0),0,8); \
+    _g->words.w1 = (uintptr_t)(v); \
+}
+
+#define gsSPVertexExt(v, n, v0) \
+{{ \
+    (_SHIFTL(G_VTXEXT,24,8) | _SHIFTL((n),8,16) | _SHIFTL((v0),0,8)), (uintptr_t)(v) \
+}}
+
+#define gSPVertexExtTC(pkt, v, n, v0) \
+{ \
+    Gfx *_g = (Gfx *)(pkt); \
+    _g->words.w0 = _SHIFTL(G_VTXEXTTC,24,8) | _SHIFTL((n),8,16) | _SHIFTL((v0),0,8); \
+    _g->words.w1 = (uintptr_t)(v); \
+}
+
+#define gsSPVertexExtTC(v, n, v0) \
+{{ \
+    (_SHIFTL(G_VTXEXTTC,24,8) | _SHIFTL((n),8,16) | _SHIFTL((v0),0,8)), (uintptr_t)(v) \
+}}
+
 #define gSPViewport(pkt, v)         gDma2p((pkt), G_MOVEMEM, (v), sizeof(Vp), G_MV_VIEWPORT, 0)
 #define gsSPViewport(v)             gsDma2p(      G_MOVEMEM, (v), sizeof(Vp), G_MV_VIEWPORT, 0)
 
@@ -1240,42 +1273,42 @@ typedef union {
     _SHIFTL(G_TRI1, 24, 8) | __gsSP1Triangle_w1f(v0, v1, v2, flag), 0 \
 }}
 
-#define gSPLine3D(pkt, v0, v1, flag) \
-{ \
-    Gfx *_g = (Gfx *)(pkt); \
-    _g->words.w0 = _SHIFTL(G_LINE3D, 24, 8) | __gsSPLine3D_w1f(v0, v1, 0, flag); \
-    _g->words.w1 = 0; \
-}
+// #define gSPLine3D(pkt, v0, v1, flag) \
+// { \
+//     Gfx *_g = (Gfx *)(pkt); \
+//     _g->words.w0 = _SHIFTL(G_LINE3D, 24, 8) | __gsSPLine3D_w1f(v0, v1, 0, flag); \
+//     _g->words.w1 = 0; \
+// }
 
-#define gsSPLine3D(v0, v1, flag) \
-{{ \
-    _SHIFTL(G_LINE3D, 24, 8) | __gsSPLine3D_w1f(v0, v1, 0, flag), 0 \
-}}
+// #define gsSPLine3D(v0, v1, flag) \
+// {{ \
+//     _SHIFTL(G_LINE3D, 24, 8) | __gsSPLine3D_w1f(v0, v1, 0, flag), 0 \
+// }}
 
-#define gSPLineW3D(pkt, v0, v1, wd, flag) \
-{ \
-    Gfx *_g = (Gfx *)(pkt); \
-    _g->words.w0 = _SHIFTL(G_LINE3D, 24, 8) | __gsSPLine3D_w1f(v0, v1, wd, flag); \
-    _g->words.w1 = 0; \
-}
+// #define gSPLineW3D(pkt, v0, v1, wd, flag) \
+// { \
+//     Gfx *_g = (Gfx *)(pkt); \
+//     _g->words.w0 = _SHIFTL(G_LINE3D, 24, 8) | __gsSPLine3D_w1f(v0, v1, wd, flag); \
+//     _g->words.w1 = 0; \
+// }
 
-#define gsSPLineW3D(v0, v1, wd, flag) \
-{{ \
-    _SHIFTL(G_LINE3D, 24, 8) | __gsSPLine3D_w1f(v0, v1, wd, flag), 0 \
-}}
+// #define gsSPLineW3D(v0, v1, wd, flag) \
+// {{ \
+//     _SHIFTL(G_LINE3D, 24, 8) | __gsSPLine3D_w1f(v0, v1, wd, flag), 0 \
+// }}
 
-#define gSP1Quadrangle(pkt, v0, v1, v2, v3, flag) \
-{ \
-    Gfx *_g = (Gfx *)(pkt); \
-    _g->words.w0 = (_SHIFTL(G_QUAD, 24, 8) | __gsSP1Quadrangle_w1f(v0, v1, v2, v3, flag)); \
-    _g->words.w1 =                           __gsSP1Quadrangle_w2f(v0, v1, v2, v3, flag); \
-}
+// #define gSP1Quadrangle(pkt, v0, v1, v2, v3, flag) \
+// { \
+//     Gfx *_g = (Gfx *)(pkt); \
+//     _g->words.w0 = (_SHIFTL(G_QUAD, 24, 8) | __gsSP1Quadrangle_w1f(v0, v1, v2, v3, flag)); \
+//     _g->words.w1 =                           __gsSP1Quadrangle_w2f(v0, v1, v2, v3, flag); \
+// }
 
-#define gsSP1Quadrangle(v0, v1, v2, v3, flag) \
-{{ \
-    (_SHIFTL(G_QUAD, 24, 8) | __gsSP1Quadrangle_w1f(v0, v1, v2, v3, flag)), \
-                              __gsSP1Quadrangle_w2f(v0, v1, v2, v3, flag) \
-}}
+// #define gsSP1Quadrangle(v0, v1, v2, v3, flag) \
+// {{ \
+//     (_SHIFTL(G_QUAD, 24, 8) | __gsSP1Quadrangle_w1f(v0, v1, v2, v3, flag)), \
+//                               __gsSP1Quadrangle_w2f(v0, v1, v2, v3, flag) \
+// }}
 
 #define gSP2Triangles(pkt, v00, v01, v02, flag0, v10, v11, v12, flag1) \
 { \
@@ -1290,16 +1323,28 @@ typedef union {
                               __gsSP1Triangle_w1f(v10, v11, v12, flag1) \
 }}
 
+#define gSPTrianglesExt(pkt, tris, n) \
+{ \
+    Gfx *_g = (Gfx *)(pkt); \
+    _g->words.w0 = _SHIFTL(G_TRIEXT,24,8) | _SHIFTL((n),8,16); \
+    _g->words.w1 = (uintptr_t)(tris); \
+}
+
+#define gsSPTrianglesExt(tris, n) \
+{{ \
+    (_SHIFTL(G_TRIEXT,24,8) | _SHIFTL((n),8,16)), (uintptr_t)(tris) \
+}}
+
 #define gSPCullDisplayList(pkt,vstart,vend) \
 { \
     Gfx *_g = (Gfx *)(pkt); \
-    _g->words.w0 = _SHIFTL(G_CULLDL, 24, 8) | _SHIFTL((vstart)*2, 0, 16); \
+    _g->words.w0 = _SHIFTL(G_NOOP, 24, 8) | _SHIFTL((vstart)*2, 0, 16); \
     _g->words.w1 = _SHIFTL((vend)*2, 0, 16); \
 }
 
 #define gsSPCullDisplayList(vstart,vend) \
 {{ \
-    _SHIFTL(G_CULLDL, 24, 8) | _SHIFTL((vstart)*2, 0, 16), \
+    _SHIFTL(G_NOOP, 24, 8) | _SHIFTL((vstart)*2, 0, 16), \
     _SHIFTL((vend)*2, 0, 16) \
 }}
 
@@ -1343,16 +1388,42 @@ typedef union {
     gsDma2p(G_MOVEMEM,(mptr),sizeof(Mtx),G_MV_MATRIX,0), \
     gsMoveWd(G_MW_FORCEMTX,0,0x00010000)
 
-#define gSPModifyVertex(pkt, vtx, where, val) \
+// #define gSPModifyVertex(pkt, vtx, where, val) \
+// { \
+//     Gfx *_g = (Gfx *)(pkt); \
+//     _g->words.w0 = (_SHIFTL(G_MODIFYVTX,24,8) | _SHIFTL((where),16,8) | _SHIFTL((vtx)*2,0,16)); \
+//     _g->words.w1 = (u32)(val); \
+// }
+// #define gsSPModifyVertex(vtx, where, val) \
+// {{ \
+//     _SHIFTL(G_MODIFYVTX,24,8) | _SHIFTL((where),16,8) | _SHIFTL((vtx)*2,0,16), (u32)(val) \
+// }}
+
+#define gCopyMemEXT(pkt, c, idx, dst, src, len) \
 { \
     Gfx *_g = (Gfx *)(pkt); \
-    _g->words.w0 = (_SHIFTL(G_MODIFYVTX,24,8) | _SHIFTL((where),16,8) | _SHIFTL((vtx)*2,0,16)); \
-    _g->words.w1 = (u32)(val); \
+    _g->words.w0 = (_SHIFTL((c),24,8)|_SHIFTL((src)/8,16,8) | _SHIFTL((dst)/8,8,8)|_SHIFTL((idx),0,8)); \
+    _g->words.w1 = (uintptr_t)(((len)-1)/8); \
 }
-#define gsSPModifyVertex(vtx, where, val) \
+#define gsCopyMemEXT(c, idx, dst, src, len) \
 {{ \
-    _SHIFTL(G_MODIFYVTX,24,8) | _SHIFTL((where),16,8) | _SHIFTL((vtx)*2,0,16), (u32)(val) \
+    (_SHIFTL((c),24,8)|_SHIFTL((src)/8,16,8) | _SHIFTL((dst)/8,8,8)|_SHIFTL((idx),0,8)), \
+    (uintptr_t)(((len)-1)/8) \
 }}
+
+#define gSPCopyLightEXT(pkt, dst, src) \
+    gCopyMemEXT((pkt),G_COPYMEM,G_MV_LIGHT,(dst)*24+24,(src)*24+24,sizeof(Light))
+
+#define gsSPCopyLightEXT(dst, src) \
+    gsCopyMemEXT(G_COPYMEM,G_MV_LIGHT,(dst)*24+24,(src)*24+24,sizeof(Light))
+
+#define gSPCopyLightsPlayerPart(pkt, part) \
+    gSPCopyLightEXT((pkt), 1, ((2 * ((part) + 1)) + 1)); \
+    gSPCopyLightEXT((pkt), 2, ((2 * ((part) + 1)) + 2));
+
+#define gsSPCopyLightsPlayerPart(part) \
+    gsSPCopyLightEXT(1, ((2 * ((part) + 1)) + 1)), \
+    gsSPCopyLightEXT(2, ((2 * ((part) + 1)) + 2))
 
 #define NUML(n)         ((n)*24)
 #define NUMLIGHTS_0     1
@@ -1558,7 +1629,7 @@ typedef union {
     gsMoveWd(G_MW_FOG, G_MWO_FOG, \
         (_SHIFTL(fm,16,16) | _SHIFTL(fo,0,16)))
 
-#if defined(SMMS)
+#if defined(smms)
 #define gSPFogPosition(pkt, min, max) \
     gDPPipeSync(pkt)
 
@@ -1776,7 +1847,7 @@ typedef union {
 #define gsDPSetEnvColor(r, g, b, a)         sDPRGBColor(G_SETENVCOLOR, r,g,b,a)
 #define gDPSetBlendColor(pkt, r, g, b, a)   DPRGBColor(pkt, G_SETBLENDCOLOR, r,g,b,a)
 #define gsDPSetBlendColor(r, g, b, a)       sDPRGBColor(G_SETBLENDCOLOR, r,g,b,a)
-#if defined(SMMS)
+#if defined(smms)
 #define gDPSetFogColor(pkt, r, g, b, a)     gDPPipeSync(pkt)
 #define gsDPSetFogColor(r, g, b, a)         gsDPPipeSync()
 #else
@@ -2511,16 +2582,16 @@ typedef union {
     _g2->words.w1 = (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16)); \
 }
 
-#define gsDPWord(wordhi, wordlo) \
-    gsImmp1(G_RDPHALF_1, (uintptr_t)(wordhi)), \
-    gsImmp1(G_RDPHALF_2, (uintptr_t)(wordlo))
+// #define gsDPWord(wordhi, wordlo) \
+//     gsImmp1(G_RDPHALF_1, (uintptr_t)(wordhi)), \
+//     gsImmp1(G_RDPHALF_2, (uintptr_t)(wordlo))
 
-#define gDPWord(pkt, wordhi, wordlo) \
-{ \
-    Gfx *_g = (Gfx *)(pkt); \
-    gImmp1(pkt, G_RDPHALF_1, (uintptr_t)(wordhi)); \
-    gImmp1(pkt, G_RDPHALF_2, (uintptr_t)(wordlo)); \
-}
+// #define gDPWord(pkt, wordhi, wordlo) \
+// { \
+//     Gfx *_g = (Gfx *)(pkt); \
+//     gImmp1(pkt, G_RDPHALF_1, (uintptr_t)(wordhi)); \
+//     gImmp1(pkt, G_RDPHALF_2, (uintptr_t)(wordlo)); \
+// }
 
 #define gsXPSwapCmd(cmd, func) \
 {{ \
@@ -2534,6 +2605,42 @@ typedef union {
     Gfx *_g = (Gfx *)(pkt); \
     _g->words.w0 = _SHIFTL(G_SWAPCMD, 24, 8) | _SHIFTL(cmd, 0, 8); \
     _g->words.w1 = (uintptr_t) (func); \
+}
+
+#define gsXPInvertCulling(invert) \
+{{ \
+    _SHIFTL(G_INVERTCULL, 24, 8), (invert) \
+}}
+
+#define gXPInvertCulling(pkt, invert) \
+{ \
+    Gfx *_g = (Gfx *)(pkt); \
+    _g->words.w0 = _SHIFTL(G_INVERTCULL, 24, 8); \
+    _g->words.w1 = (invert); \
+}
+
+#define gsXPPushTexture() \
+{{ \
+    _SHIFTL(G_PUSHTEX, 24, 8), 0 \
+}}
+
+#define gXPPushTexture(pkt) \
+{ \
+    Gfx *_g = (Gfx *)(pkt); \
+    _g->words.w0 = _SHIFTL(G_PUSHTEX, 24, 8); \
+    _g->words.w1 = 0; \
+}
+
+#define gsXPPopTexture() \
+{{ \
+    _SHIFTL(G_POPTEX, 24, 8), 0 \
+}}
+
+#define gXPPopTexture(pkt) \
+{ \
+    Gfx *_g = (Gfx *)(pkt); \
+    _g->words.w0 = _SHIFTL(G_POPTEX, 24, 8); \
+    _g->words.w1 = 0; \
 }
 
 #define gDPFullSync(pkt)        gDPNoParam(pkt, G_RDPFULLSYNC)
@@ -2550,4 +2657,5 @@ typedef union {
 #define gsDPNoOpTag(tag)        gsDPParam(G_NOOP, tag)
 
 #endif /* _LANGUAGE_C */
+#pragma GCC pop_options
 #endif /* _GBI_H_ */

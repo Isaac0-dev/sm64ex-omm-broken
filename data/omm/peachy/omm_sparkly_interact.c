@@ -8,7 +8,7 @@ bool omm_sparkly_interact_star(struct MarioState *m, struct Object *o) {
             omm_sparkly_collect_star(gOmmSparklyMode, omm_sparkly_get_index(gOmmSparklyMode, gCurrLevelNum, gCurrAreaIndex));
             mario_stop_riding_and_holding(m);
             update_mario_sound_and_camera(m);
-            obj_play_sound(m->marioObj, SOUND_MENU_STAR_SOUND);
+            SFX(SOUND_MENU_STAR_SOUND);
             spawn_object(o, MODEL_NONE, bhvStarKeyCollectionPuffSpawner);
             omm_sparkly_state_set(OMM_SPARKLY_STATE_INVALID, 0);
             omm_sparkly_context_reset_data();
@@ -23,30 +23,26 @@ bool omm_sparkly_interact_star(struct MarioState *m, struct Object *o) {
 
 void omm_sparkly_interact_grand_star(struct MarioState *m, struct Object *o) {
 #if OMM_GAME_IS_SM64
-    if (o->behavior == bhvGrandStar && (o->oInteractionSubtype & INT_SUBTYPE_GRAND_STAR)) {
+    if (o->oInteractionSubtype & INT_SUBTYPE_GRAND_STAR) {
 
         // Sparkly Grand Star
         // Collecting it unlocks the next mode
         // Triggers the secret Peach ending if Bowser 4 is defeated for the first time
         if (gOmmSparkly->grandStar) {
-            gOmmSparklyEnding = (!omm_player_is_unlocked(OMM_PLAYER_PEACH) ? OMM_SPARKLY_ENDING_PEACH : OMM_SPARKLY_ENDING_REGULAR);
+            gOmmSparklyEnding = (!OMM_REWARD_IS_PLAYABLE_PEACH_UNLOCKED ? OMM_SPARKLY_ENDING_PEACH : OMM_SPARKLY_ENDING_REGULAR);
             omm_sparkly_collect_grand_star(gOmmSparklyMode);
             gOmmStats->sparklyStarsCollected++;
             return;
         }
 
         // Regular Grand Star
-        // Triggers the bad ending if Bowser 3 is defeated for the first time after completing
-        // a save file (120 stars + regular Bowser 3 flag), or if the Sparkly Stars mode
-        // is enabled and Peach is not unlocked yet
-        if (m->numStars >= 120 && (!omm_sparkly_is_unlocked(OMM_SPARKLY_MODE_NORMAL) || (OMM_SPARKLY_MODE_IS_ENABLED && !omm_player_is_unlocked(OMM_PLAYER_PEACH)))) {
+        // Triggers the bad ending if Bowser 3 is defeated for the first time after completing a permanent save file
+        // (120 stars + regular Bowser 3 flag), or if the Sparkly Stars mode is enabled and Peach is not unlocked yet
+        if (m->numStars >= 120 && gCurrSaveFileNum <= NUM_SAVE_FILES && (!OMM_REWARD_IS_SPARKLY_STARS_UNLOCKED || (OMM_SPARKLY_MODE_IS_ENABLED && !OMM_REWARD_IS_PLAYABLE_PEACH_UNLOCKED))) {
             gOmmSparklyEnding = OMM_SPARKLY_ENDING_BAD;
             omm_sparkly_unlock_mode(OMM_SPARKLY_MODE_NORMAL);
             return;
         }
     }
-#else
-    OMM_UNUSED(m);
-    OMM_UNUSED(o);
 #endif
 }

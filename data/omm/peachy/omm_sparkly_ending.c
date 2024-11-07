@@ -116,7 +116,7 @@ void omm_sparkly_ending_screen() {
         sSoundTimer = (sSoundTimer + 1) * (gGlobalTimer == (sLastTick + 1));
         sLastTick = gGlobalTimer;
         switch (sSoundTimer) {
-            case 001: sound_banks_disable(SEQ_PLAYER_SFX, 0xFFFF); break;
+            case   1: sound_banks_disable(SEQ_PLAYER_SFX, 0xFFFF); break;
 #if OMM_GAME_IS_R96X
             case 120: dynos_sound_stop(1); break;
 #endif

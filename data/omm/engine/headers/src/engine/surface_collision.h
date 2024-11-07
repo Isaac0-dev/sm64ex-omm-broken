@@ -3,9 +3,9 @@
 
 #include "types.h"
 
-#define MAX_REFERENCED_WALLS 4 // DO NOT INCREASE THIS VALUE, THIS COULD CAUSE A BUFFER OVERFLOW IN collide_with_walls()
-#define MAX_RAYCAST_COL_HITS 16
-#define MAX_COLLISION_RADIUS 200
+#define MAX_REFERENCED_WALLS (4) // DO NOT INCREASE THIS VALUE, THIS COULD CAUSE A BUFFER OVERFLOW IN collide_with_walls()
+#define MAX_RAYCAST_COL_HITS (16)
+#define MAX_COLLISION_RADIUS (200)
 
 struct WallCollisionData {
     f32 x, y, z;
@@ -63,7 +63,10 @@ f32 find_water_level_and_floor(f32 x, f32 z, struct Surface **pFloor);
 f32 find_water_level(f32 x, f32 z);
 f32 find_poison_gas_level(f32 x, f32 z);
 
-s32 find_collisions_on_ray(Vec3f orig, Vec3f dir, RayCollisionData* hits, f32 delta, u32 flags);
+s32 find_collisions_on_ray(Vec3f orig, Vec3f dir, RayCollisionData *hits, f32 surfaceScale, u32 flags);
+bool find_first_hit_on_ray(Vec3f orig, Vec3f dir, Vec3f hitPos, f32 offset, f32 surfaceScale, u32 flags);
 void find_surface_on_ray(Vec3f orig, Vec3f dir, struct Surface **hitSurface, Vec3f hitPos BETTER_CAM_RAYCAST_ARGS);
+
+bool surface_intersects_cylinder(struct Surface *surf, Vec3f pos, f32 radius, f32 height, f32 downOffset);
 
 #endif

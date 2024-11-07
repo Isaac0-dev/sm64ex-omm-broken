@@ -431,6 +431,7 @@ void unload_objects_from_area(UNUSED s32 unused, s32 areaIndex) {
     struct ObjectNode *list;
     s32 i;
     gObjectLists = gObjectListArray;
+omm_patch__unload_objects_from_area__keep_held_ridden_capture_alive
 
     for (i = 0; i < NUM_OBJ_LISTS; i++) {
         list = gObjectLists + i;

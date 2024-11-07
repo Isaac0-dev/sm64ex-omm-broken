@@ -28,6 +28,14 @@ static void omm_cappy_mad_piano_play_song(bool aPress, bool bPress) {
 
 #endif
 
+static void omm_cappy_mad_piano_destroy_door(struct Object *door) {
+    if (door) {
+        obj_spawn_white_puff(door, POBJ_SOUND_BREAK_BOX);
+        obj_spawn_triangle_break_particles(door, OBJ_SPAWN_TRI_BREAK_PRESET_TRIANGLES_30);
+        obj_mark_for_deletion(door);
+    }
+}
+
 //
 // Init
 //
@@ -35,7 +43,6 @@ static void omm_cappy_mad_piano_play_song(bool aPress, bool bPress) {
 bool omm_cappy_mad_piano_init(struct Object *o) {
     o->oFaceAngleYaw += 0x4000;
     gOmmObject->state.actionTimer = 0;
-    gOmmObject->state.actionState = 0;
     return true;
 }
 
@@ -47,8 +54,12 @@ void omm_cappy_mad_piano_end(struct Object *o) {
     o->oHomeZ = o->oPosZ;
 }
 
+u64 omm_cappy_mad_piano_get_type(UNUSED struct Object *o) {
+    return OMM_CAPTURE_MAD_PIANO;
+}
+
 f32 omm_cappy_mad_piano_get_top(struct Object *o) {
-    return 150.f * o->oScaleY;
+    return omm_capture_get_hitbox_height(o);
 }
 
 //
@@ -60,30 +71,33 @@ s32 omm_cappy_mad_piano_update(struct Object *o) {
     // Hitbox
     o->hitboxRadius = omm_capture_get_hitbox_radius(o);
     o->hitboxHeight = omm_capture_get_hitbox_height(o);
-    o->hitboxDownOffset = omm_capture_get_hitbox_down_offset(o);
     o->oWallHitboxRadius = omm_capture_get_wall_hitbox_radius(o);
 
     // Properties
     POBJ_SET_ABOVE_WATER;
+    POBJ_SET_UNDER_WATER;
+    POBJ_SET_AFFECTED_BY_WATER;
+    POBJ_SET_AFFECTED_BY_CANNON;
     POBJ_SET_INVULNERABLE;
     POBJ_SET_IMMUNE_TO_FIRE;
     POBJ_SET_IMMUNE_TO_LAVA;
-    POBJ_SET_IMMUNE_TO_SAND;
-    POBJ_SET_IMMUNE_TO_WIND;
-    POBJ_SET_ATTACKING;
+    POBJ_SET_IMMUNE_TO_QUICKSAND;
+    POBJ_SET_IMMUNE_TO_STRONG_WINDS;
+    POBJ_SET_ATTACKING_BREAKABLE;
+    POBJ_SET_GROUND_POUNDING;
 
     // Inputs
-    if (!omm_mario_is_locked(gMarioState)) {
+    if (pobj_process_inputs(o)) {
         pobj_move(o, false, false, false);
-        if (pobj_jump(o, 1.f, 1) != POBJ_RESULT_NONE) {
-            obj_play_sound(o, SOUND_OBJ_MAD_PIANO_CHOMPING);
-        }
         omm_cappy_mad_piano_play_song(POBJ_A_BUTTON_PRESSED, POBJ_B_BUTTON_PRESSED);
     }
 
     // Movement
+    if (pobj_hop(o, 1.f)) {
+        obj_play_sound(o, SOUND_OBJ_MAD_PIANO_CHOMPING);
+    }
     perform_object_step(o, POBJ_STEP_FLAGS);
-    pobj_decelerate(o, 0.80f, 0.95f);
+    pobj_decelerate(o);
     pobj_apply_gravity(o, 1.f);
     pobj_handle_special_floors(o);
     pobj_stop_if_unpossessed();
@@ -94,29 +108,30 @@ s32 omm_cappy_mad_piano_update(struct Object *o) {
     omm_obj_process_interactions(o, POBJ_INT_PRESET_MAD_PIANO);
 
     // Break doors
-    if (o->oWall && o->oWall->object && o->oWall->object->behavior == bhvDoor) {
-        obj_spawn_white_puff(o->oWall->object, SOUND_GENERAL_BREAK_BOX);
-        obj_spawn_triangle_break_particles(o->oWall->object, OBJ_SPAWN_TRI_BREAK_PRESET_TRIANGLES_30);
-        obj_mark_for_deletion(o->oWall->object);
+    if (o->oWall && o->oWall->object) {
+        struct Object *door = o->oWall->object;
+        if (door->oInteractType & INTERACT_DOOR) {
+            if (door->oInteractionSubtype & INT_SUBTYPE_STAR_DOOR) {
+                omm_cappy_mad_piano_destroy_door(obj_get_nearest_with_behavior(door, door->behavior));
+            }
+            omm_cappy_mad_piano_destroy_door(door);
+        }
     }
 
-    // Gfx
-    if (!obj_is_on_ground(o)) {
-        gOmmObject->state.actionState = 1;
-        gOmmObject->state.actionTimer = 1;
-    } else if (gOmmObject->state.actionTimer == 0) {
-        gOmmObject->state.actionState = 0;
-    } else {
-        gOmmObject->state.actionTimer--;
-    }
-    obj_update_gfx(o);
-    obj_anim_play(o, gOmmObject->state.actionState, 1.f);
-    o->oGfxAngle[1] -= 0x4000;
-
-    // Cappy values
-    gOmmObject->cappy.offset[1] = 150.f;
-    gOmmObject->cappy.scale     = 1.5f;
+    // Animation, sound and particles
+    gOmmObject->state.actionTimer = obj_is_on_ground(o) ? max_s(0, gOmmObject->state.actionTimer - 1) : 2;
+    obj_anim_play(o, gOmmObject->state.actionTimer != 0, 1.f);
 
     // OK
     pobj_return_ok;
+}
+
+void omm_cappy_mad_piano_update_gfx(struct Object *o) {
+
+    // Gfx
+    obj_update_gfx(o);
+    o->oGfxAngle[1] -= 0x4000;
+
+    // Cappy transform
+    gOmmObject->cappy.object = o;
 }

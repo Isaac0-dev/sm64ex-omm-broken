@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //                                    *&@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@&%#(*.                                                    
 //                                /@@@@@@@@@@@@@@&&&&&&&&&&%%%%%%%%%%%%%%&&&&&&&&&@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@&%#(,                                    
@@ -118,23 +119,41 @@ static void bhv_omm_problem_update() {
 
 const BehaviorScript bhvOmmProblem[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_problem_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_problem_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_problem(struct Object *o) {
+static const u32 sOmmProblemMarioActions[] = {
+    ACT_HARD_FORWARD_GROUND_KB, ACT_HARD_BACKWARD_GROUND_KB,
+    ACT_HARD_FORWARD_AIR_KB, ACT_HARD_BACKWARD_AIR_KB,
+    ACT_FORWARD_WATER_KB, ACT_BACKWARD_WATER_KB,
+    ACT_FORWARD_WATER_KB, ACT_BACKWARD_WATER_KB,
+};
+
+struct Object *omm_obj_spawn_problem(struct Object *o) {
     struct Object *problem = obj_spawn_from_geo(o, omm_geo_problem, bhvOmmProblem);
-    obj_spawn_from_geo(problem, explosion_geo, bhvExplosion)->oGraphYOffset += 100.f;
-    problem->oGraphYOffset += 100.f;
-    obj_set_params(problem, INTERACT_DAMAGE, 30, 0, 0, true);
-    obj_reset_hitbox(problem, 200, 300, 0, 0, 0, 100);
+    problem->oGraphYOffset = 100.f;
+    struct Object *explosion = obj_spawn_from_geo(problem, explosion_geo, bhvExplosion);
+    explosion->oGraphYOffset = 100.f;
     play_sound(SOUND_GENERAL2_BOBOMB_EXPLOSION | 0xFF00, gGlobalSoundArgs);
     set_environmental_camera_shake(SHAKE_ENV_EXPLOSION);
+
+    // Get trolled
+    struct MarioState *m = gMarioState;
+    m->interactObj = problem;
+    obj_play_sound(o, SOUND_MARIO_ATTACKED);
+    update_mario_sound_and_camera(m);
+    omm_mario_unpossess_object(m, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
+    drop_and_set_mario_action(m, sOmmProblemMarioActions[(((m->action & (ACT_FLAG_SWIMMING | ACT_FLAG_METAL_WATER)) != 0) << 2) | (((m->action & ACT_FLAG_AIR) != 0) << 1) | (random_u16() & 1)], 1);
+    gOmmMario->state.health.state = OMM_HEALTH_STATE_DAMAGE;
+    gOmmMario->state.health.timer = 0;
+    gOmmStats->hitsTaken += (m->health > OMM_HEALTH_DEAD);
+    gOmmGlobals->marioTimer = gGlobalTimer;
     return problem;
 }

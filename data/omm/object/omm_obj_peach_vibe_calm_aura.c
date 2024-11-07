@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -71,19 +72,12 @@ OMM_GFX_DL(omm_peach_vibe_calm_aura, OMM_TEXTURE_EFFECT_VIBE_CALM_AURA, omm_peac
 // Geo layout
 //
 
-static Gfx *omm_geo_peach_vibe_calm_aura_translate(s32 callContext, struct GraphNode *node, UNUSED void *context) {
-    if (callContext == GEO_CONTEXT_RENDER) {
-        geo_move_from_camera(gCurGraphNodeObject, (struct GraphNodeTranslation *) node->next, -80.f * gMarioObject->oScaleY);
-    }
-    return NULL;
-}
-
 const GeoLayout omm_geo_peach_vibe_calm_aura[] = {
     GEO_NODE_START(),
     GEO_OPEN_NODE(),
         GEO_BILLBOARD(),
         GEO_OPEN_NODE(),
-            GEO_ASM(1, omm_geo_peach_vibe_calm_aura_translate),
+            GEO_ASM(-80, geo_move_from_camera_mario_scale),
             GEO_TRANSLATE_NODE(0, 0, 0, 0),
             GEO_OPEN_NODE(),
                 GEO_SWITCH_CASE(18, geo_switch_anim_state),
@@ -128,7 +122,7 @@ static void bhv_omm_peach_vibe_calm_aura_update() {
             o->oAnimState++;
         }
         if (gGlobalTimer % 3 == 0) {
-            omm_spawn_peach_vibe_calm_sparkle(o);
+            omm_obj_spawn_peach_vibe_calm_sparkle(o);
         }
     } else {
         obj_mark_for_deletion(o);
@@ -137,17 +131,17 @@ static void bhv_omm_peach_vibe_calm_aura_update() {
 
 const BehaviorScript bhvOmmPeachVibeCalmAura[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_peach_vibe_calm_aura_update,
-    0x09000000
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_peach_vibe_calm_aura_update),
+    BHV_END_LOOP()
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_peach_vibe_calm_aura(struct Object *o) {
+struct Object *omm_obj_spawn_peach_vibe_calm_aura(struct Object *o) {
     struct Object *aura = obj_get_first_with_behavior(bhvOmmPeachVibeCalmAura);
     if (!aura) {
         aura = obj_spawn_from_geo(o, omm_geo_peach_vibe_calm_aura, bhvOmmPeachVibeCalmAura);

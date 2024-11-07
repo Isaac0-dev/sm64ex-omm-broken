@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Behavior
@@ -57,19 +58,19 @@ static void bhv_omm_star_celebration_update() {
 
 const BehaviorScript bhvOmmStarCelebration[] = {
     OBJ_TYPE_LEVEL,
-    0x11010001,
-    0x10120000,
-    0x10140000,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_star_celebration_update,
-    0x09000000,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_SET_INT(oFaceAnglePitch, 0),
+    BHV_SET_INT(oFaceAngleRoll, 0),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_star_celebration_update),
+    BHV_END_LOOP(),
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_star_celebration(struct Object *o, f32 radius, f32 height) {
+struct Object *omm_obj_spawn_star_celebration(struct Object *o, f32 radius, f32 height, const BehaviorScript *starBehavior) {
     struct Object *star = spawn_object(o, MODEL_STAR, bhvOmmStarCelebration);
     star->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
     star->oHomeX = o->oPosX;
@@ -77,6 +78,7 @@ struct Object *omm_spawn_star_celebration(struct Object *o, f32 radius, f32 heig
     star->oHomeZ = o->oPosZ;
     star->oCelebStarRadius = radius + 80.f;
     star->oCelebStarHeight = height + 80.f;
+    star->oCelebStarBehavior = starBehavior;
     obj_scale(star, 0);
     return star;
 }

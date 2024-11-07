@@ -2,34 +2,30 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 
-//
-// Data
-//
-
-s32 sOmmCompleteState = 0;
-s32 sOmmCompleteCoins = 0;
-s32 sOmmCompleteTimer = 0;
-s32 sOmmCompleteAlpha = 0;
+static struct {
+    s32 score;
+    s32 coins;
+    s32 timer;
+    s32 alpha;
+} sOmmComplete[1];
 
 //
 // Course complete
 //
 
-static void omm_render_course_complete_init() {
-    if (sOmmCompleteState == 0) {
-        sOmmCompleteCoins = -1;
-        sOmmCompleteTimer = -1;
-        sOmmCompleteAlpha = 0;
-        sOmmCompleteState = 1;
-    }
+void omm_render_course_complete_init() {
+    sOmmComplete->score = gMarioState->numCoins;
+    sOmmComplete->coins = -1;
+    sOmmComplete->timer = -1;
+    sOmmComplete->alpha = 0;
 }
 
 static void omm_render_course_complete_update() {
-    if (sOmmCompleteCoins < gHudDisplay.coins) {
-        sOmmCompleteCoins = min_s(sOmmCompleteCoins + 1, gHudDisplay.coins);
+    if (sOmmComplete->coins < sOmmComplete->score) {
+        sOmmComplete->coins = min_s(sOmmComplete->coins + 1, sOmmComplete->score);
         play_sound(SOUND_MENU_YOSHI_GAIN_LIVES, gGlobalSoundArgs);
-        if (sOmmCompleteCoins == gHudDisplay.coins) {
-            sOmmCompleteTimer = 0;
+        if (sOmmComplete->coins == sOmmComplete->score) {
+            sOmmComplete->timer = 0;
             audio_play_star_fanfare();
             if (gGotFileCoinHiScore) {
                 play_sound(SOUND_MENU_MARIO_CASTLE_WARP2, gGlobalSoundArgs);
@@ -40,12 +36,12 @@ static void omm_render_course_complete_update() {
 
 static s16 omm_render_course_complete_coins(s16 y) {
     u8 *textScore = omm_text_convert(OMM_TEXT_MY_SCORE, false);
-    omm_render_string_right_align(OMM_RENDER_COURSE_COMPLETE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmCompleteAlpha, textScore, true);
-    omm_render_hud_coins(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sOmmCompleteAlpha, sOmmCompleteCoins, false);
-    if (sOmmCompleteCoins == gHudDisplay.coins && gGotFileCoinHiScore) {
+    omm_render_string_right_align(OMM_RENDER_COURSE_COMPLETE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmComplete->alpha, textScore, true);
+    omm_render_hud_coins(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sOmmComplete->alpha, sOmmComplete->coins);
+    if (sOmmComplete->coins == sOmmComplete->score && gGotFileCoinHiScore) {
         u8 intensity = (0xFF * ((1.f + sins(gGlobalTimer * 0x1000)) / 2.f));
         u8 *textHiScore = omm_text_convert(OMM_TEXT_COURSE_COMPLETE_HI_SCORE, false);
-        omm_render_string_left_align(OMM_RENDER_COURSE_COMPLETE_HI_SCORE_X, y, intensity, intensity, intensity, sOmmCompleteAlpha, textHiScore, true);
+        omm_render_string_left_align(OMM_RENDER_COURSE_COMPLETE_HI_SCORE_X, y, intensity, intensity, intensity, sOmmComplete->alpha, textHiScore, true);
     }
     y += OMM_RENDER_COURSE_COMPLETE_OFFSET_Y;
     return y;
@@ -54,8 +50,8 @@ static s16 omm_render_course_complete_coins(s16 y) {
 static s16 omm_render_course_complete_stars(s16 y) {
     s32 levelNum = OMM_BOWSER_IN_THE_LEVEL(gLastCompletedLevelNum);
     u8 *textStars = omm_text_convert(OMM_TEXT_MY_STARS, false);
-    omm_render_string_right_align(OMM_RENDER_COURSE_COMPLETE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmCompleteAlpha, textStars, true);
-    omm_render_hud_stars(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sOmmCompleteAlpha, levelNum, levelNum != OMM_LEVEL_END, false);
+    omm_render_string_right_align(OMM_RENDER_COURSE_COMPLETE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmComplete->alpha, textStars, true);
+    omm_render_hud_stars(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sOmmComplete->alpha, levelNum);
     y += OMM_RENDER_COURSE_COMPLETE_OFFSET_Y;
     return y;
 }
@@ -68,8 +64,9 @@ static s16 omm_render_course_complete_act_name(s16 y) {
         textAct[length - 2] = DIALOG_CHAR_SPACE;
         textAct[length - 1] = gLastCompletedStarNum;
         textAct[length - 0] = 0xFF;
-        omm_render_string_right_align(OMM_RENDER_COURSE_COMPLETE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmCompleteAlpha, textAct, true);
-        omm_render_string_left_align(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmCompleteAlpha, omm_level_get_act_name(levelNum, gLastCompletedStarNum, OMM_GAME_MODE, false, false), false);
+        ustr_t actName;
+        omm_render_string_right_align(OMM_RENDER_COURSE_COMPLETE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmComplete->alpha, textAct, true);
+        omm_render_string_left_align(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmComplete->alpha, omm_level_get_act_name(actName, levelNum, gLastCompletedStarNum, OMM_GAME_MODE, false, false), false);
         y += OMM_RENDER_COURSE_COMPLETE_OFFSET_Y;
     }
     return y;
@@ -93,8 +90,9 @@ static s16 omm_render_course_complete_course_name(s16 y) {
     } else {
         textCourse[textCourseLength - 3] = 0xFF;
     }
-    omm_render_string_right_align(OMM_RENDER_COURSE_COMPLETE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmCompleteAlpha, textCourse, true);
-    omm_render_string_left_align(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmCompleteAlpha, omm_level_get_course_name(levelNum, OMM_GAME_MODE, false, false), false);
+    ustr_t courseName;
+    omm_render_string_right_align(OMM_RENDER_COURSE_COMPLETE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmComplete->alpha, textCourse, true);
+    omm_render_string_left_align(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmComplete->alpha, omm_level_get_course_name(courseName, levelNum, OMM_GAME_MODE, false, false), false);
     y += OMM_RENDER_COURSE_COMPLETE_OFFSET_Y;
     return y;
 }
@@ -102,30 +100,28 @@ static s16 omm_render_course_complete_course_name(s16 y) {
 static s16 omm_render_course_complete_message(s16 y) {
     y = (((SCREEN_HEIGHT + (y - 8)) / 2) - 8);
     u8 intensity = 0x80 + (0x7F * ((1.f + sins(gGlobalTimer * 0x1000)) / 2.f));
-    u8 *textMessage = omm_text_convert(((gLastCompletedLevelNum == LEVEL_BITDW || gLastCompletedLevelNum == LEVEL_BITFS) ? OMM_TEXT_COURSE_COMPLETE_CONGRATULATIONS : OMM_TEXT_COURSE_COMPLETE_GOT_A_STAR), false);
-    omm_render_string_hud_centered(y, intensity, intensity, intensity, sOmmCompleteAlpha, textMessage, false);
+    u8 *textMessage = omm_text_convert((OMM_LEVEL_IS_BOWSER_LEVEL(gLastCompletedLevelNum) ? OMM_TEXT_COURSE_COMPLETE_CONGRATULATIONS : OMM_TEXT_COURSE_COMPLETE_GOT_A_STAR), false);
+    omm_render_string_hud_centered(y, intensity, intensity, intensity, sOmmComplete->alpha, textMessage, false);
     return y;
 }
 
 static void omm_render_course_complete_end() {
-    if (sOmmCompleteTimer != -1 && sOmmCompleteTimer++ >= 90 && obj_anim_is_at_end(gMarioObject)) {
-        sOmmCompleteAlpha = max_s(sOmmCompleteAlpha - 0x10, 0x00);
-        if (sOmmCompleteAlpha == 0) {
-            level_set_transition(0, 0);
+    if (sOmmComplete->timer >= 0 && sOmmComplete->timer++ >= 90 && obj_anim_is_at_end(gMarioObject)) {
+        sOmmComplete->alpha = max_s(sOmmComplete->alpha - 0x10, 0x00);
+        if (sOmmComplete->alpha == 0) {
+            level_set_transition(0, NULL);
             gSaveOptSelectIndex = 1; // Save and continue
-            sOmmCompleteState = 0;
             gMenuMode = -1;
         }
     } else {
-        sOmmCompleteAlpha = min_s(sOmmCompleteAlpha + 0x40, 0xFF);
+        sOmmComplete->alpha = min_s(sOmmComplete->alpha + 0x40, 0xFF);
     }
 }
 
 s32 omm_render_course_complete() {
     s16 y = ((SCREEN_HEIGHT - ((16 * (3 + (COURSE_IS_MAIN_COURSE(omm_level_get_course(OMM_BOWSER_IN_THE_LEVEL(gLastCompletedLevelNum))) ? 1 : 0))) - 8)) / 2);
-    omm_render_course_complete_init();
     omm_render_course_complete_update();
-    omm_render_shade_screen(sOmmCompleteAlpha / 2);
+    omm_render_shade_screen(sOmmComplete->alpha / 2);
     y = omm_render_course_complete_coins(y);
     y = omm_render_course_complete_stars(y);
     y = omm_render_course_complete_act_name(y);

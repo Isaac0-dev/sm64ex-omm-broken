@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "behavior_commands.h"
 
 //
 // Gfx data
@@ -59,17 +60,17 @@ static void bhv_omm_peach_vibe_calm_sparkle_update() {
 
 const BehaviorScript bhvOmmPeachVibeCalmSparkle[] = {
     OBJ_TYPE_UNIMPORTANT,
-    0x11010001,
-    0x08000000,
-    0x0C000000, (uintptr_t) bhv_omm_peach_vibe_calm_sparkle_update,
-    0x09000000
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_peach_vibe_calm_sparkle_update),
+    BHV_END_LOOP()
 };
 
 //
 // Spawner
 //
 
-struct Object *omm_spawn_peach_vibe_calm_sparkle(struct Object *o) {
+struct Object *omm_obj_spawn_peach_vibe_calm_sparkle(struct Object *o) {
     struct Object *sparkle = obj_spawn_from_geo(o, omm_geo_peach_vibe_calm_sparkle, bhvOmmPeachVibeCalmSparkle);
     obj_set_always_rendered(sparkle, true);
     obj_set_angle(sparkle, 0, 0, 0);
