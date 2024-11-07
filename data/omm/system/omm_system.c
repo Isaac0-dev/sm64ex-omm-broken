@@ -101,6 +101,11 @@ void omm_update() {
 #if OMM_GAME_IS_SMSR
     gStarRoadHardMode = FALSE;
 #endif
+#if BETTER_CAM_IS_PUPPY_CAM
+    if (omm_is_main_menu()) {
+        gPuppyCam.opacity = 0xFF;
+    }
+#endif
 }
 
 //

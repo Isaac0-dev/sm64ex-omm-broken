@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "data/omm/omm_constants.h"
 
 //
 // Mario object and Cappy gfx
@@ -838,6 +839,7 @@ bool omm_mario_possess_object_after_warp(struct MarioState *m) {
     o->oBehParams = gOmmWarp->behParams;
     o->oBehParams2ndByte = gOmmWarp->behParams2ndByte;
     o->oDistanceToMario = 0;
+    o->oFlags |= OBJ_FLAG_CAPTURE_AFTER_WARP;
     o->parentObj = o;
     o->respawnInfoType = RESPAWN_INFO_TYPE_NULL;
     o->respawnInfo = NULL;
@@ -853,11 +855,17 @@ bool omm_mario_possess_object_after_warp(struct MarioState *m) {
         case OMM_CAPTURE_HOOT: { o->oHootAvailability = HOOT_AVAIL_READY_TO_FLY; } break;
         case OMM_CAPTURE_WHOMP: { o->oNumLootCoins = 0; } break;
         case OMM_CAPTURE_SNOWMAN: { o->oAction = 1; } break;
-        case OMM_CAPTURE_BOO: { gOmmObject->state.actionFlag = true; } break;
+        case OMM_CAPTURE_BOO: { o->oAction = 1; o->oBehParams2ndByte = 1; gOmmObject->state.actionFlag = true; } break;
         case OMM_CAPTURE_MAD_PIANO: { o->oFaceAngleYaw -= 0x4000; } break;
         case OMM_CAPTURE_MONEY_BAG: { o->oAction = MONEYBAG_ACT_MOVE_AROUND; } break;
-        case OMM_CAPTURE_TOAD: { o->oToadMessageRecentlyTalked = TRUE; } break;
         case OMM_CAPTURE_MIPS: { o->oMipsStarStatus = MIPS_STAR_STATUS_ALREADY_SPAWNED_STAR; } break;
+        case OMM_CAPTURE_TOAD: { o->oToadMessageRecentlyTalked = TRUE;
+            switch (o->oToadMessageDialogId) {
+                case TOAD_STAR_1_DIALOG: o->oToadMessageDialogId = TOAD_STAR_1_DIALOG_AFTER; break;
+                case TOAD_STAR_2_DIALOG: o->oToadMessageDialogId = TOAD_STAR_2_DIALOG_AFTER; break;
+                case TOAD_STAR_3_DIALOG: o->oToadMessageDialogId = TOAD_STAR_3_DIALOG_AFTER; break;
+            }
+        } break;
     }
     if (!omm_capture_init(o)) {
         obj_mark_for_deletion(o);

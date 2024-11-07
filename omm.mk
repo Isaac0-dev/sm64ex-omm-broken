@@ -2,7 +2,7 @@
 # Odyssey Mario's Moveset
 # -----------------------
 
-OMM_VERSION_NUMBER := 8.0.0
+OMM_VERSION_NUMBER := 8.0.1
 OMM_DEVELOPER := PeachyPeach
 
 # ------

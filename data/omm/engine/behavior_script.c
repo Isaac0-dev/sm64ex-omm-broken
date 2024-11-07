@@ -626,9 +626,9 @@ static bool bhv_manta_ray_water_ring__fix_hitbox(NativeBhvFunc func) {
     return true;
 }
 
-// Always spawn Mips past 120 stars
-static bool bhv_mips__spawn_at_120_stars(NativeBhvFunc func) {
-    if (m->numStars >= 120) {
+// Always spawn Mips when all stars are collected
+static bool bhv_mips__spawn_at_max_stars(NativeBhvFunc func) {
+    if (m->numStars >= omm_stars_get_total_star_count(OMM_GAME_MODE) || (o->oFlags & OBJ_FLAG_CAPTURE_AFTER_WARP)) {
         o->oBehParams2ndByte = OMM_NUM_MIPS_STARS - 1;
         o->oMipsForwardVelocity = 50.f;
         o->oInteractionSubtype = INT_SUBTYPE_HOLDABLE_NPC;
@@ -706,7 +706,17 @@ static bool bhv_mr_i__update(NativeBhvFunc func) {
     func();
 
     // Fix the model
+    if (!o->oGraphNode) {
+        o->oGraphNode = geo_layout_to_graph_node(NULL, mr_i_geo);
+    }
     o->oGraphYOffset = 100.f * o->oScaleY;
+
+    // Fix the iris
+    struct Object *iris = obj_get_first_with_behavior_and_parent(o, bhvMrIBody);
+    if (!iris && omm_models_get_model_pack_index(o->oGraphNode->georef) == -1) {
+        iris = obj_spawn_from_geo(o, mr_i_iris_geo, bhvMrIBody);
+        iris->parentObj = o;
+    }
 
     return true;
 }
@@ -1182,7 +1192,7 @@ OMM_AT_STARTUP static void omm_setup_behavior_update_functions_map() {
         { bhv_koopa_shell_underwater_loop,          bhv_koopa_shell_underwater__dont_destroy_and_fall },
         { bhv_mad_piano_update,                     bhv_mad_piano__always_tangible },
         { bhv_manta_ray_water_ring_init,            bhv_manta_ray_water_ring__fix_hitbox },
-        { bhv_mips_init,                            bhv_mips__spawn_at_120_stars },
+        { bhv_mips_init,                            bhv_mips__spawn_at_max_stars },
         { bhv_moving_blue_coin_loop,                bhv_moving_coin__fix_collision_and_tangibility },
         { bhv_moving_yellow_coin_init,              bhv_moving_yellow_coin__less_rng },
         { bhv_moving_yellow_coin_loop,              bhv_moving_coin__fix_collision_and_tangibility },

@@ -45,6 +45,7 @@
 #define OBJ_FLAG_YOSHI_DESTROY                              (1 << 26) // 0x04000000
 #define OBJ_FLAG_SPARKLY_NOT_ENEMY                          (1 << 27) // 0x08000000
 #define OBJ_FLAG_DESTROYED                                  (1 << 28) // 0x10000000
+#define OBJ_FLAG_CAPTURE_AFTER_WARP                         (1 << 29) // 0x20000000
 //      OBJ_FLAG_30                                         (1 << 30) // 0x40000000
 
 //      INT_STATUS_MARIO_STUNNED                            (1 <<  0) // 0x00000001

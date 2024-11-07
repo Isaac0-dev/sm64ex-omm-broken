@@ -32,7 +32,7 @@ bool omm_cappy_boo_init(struct Object *o) {
     struct Object *coin = obj_get_first_with_behavior_and_parent(o, bhvCoinInsideBoo);
     if (coin) {
         switch (obj_get_coin_type(coin)) {
-            case 0:  o->oNumLootCoins = 1; break; // Yallow coin
+            case 0:  o->oNumLootCoins = 1; break; // Yellow coin
             case 1:  o->oNumLootCoins = 2; break; // Red coin
             case 2:  o->oNumLootCoins = -1; break; // Blue coin
             default: o->oNumLootCoins = 0; break;

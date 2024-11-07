@@ -79,7 +79,12 @@ static OmmMarioColors sOmmMarioColorsPresets[] = {
     { { 0x7F0000, 0xFF0000 }, { 0x390300, 0x730600 }, { 0x7F603C, 0xFEC179 }, { 0x7F7F7F, 0xFFFFFF }, { 0x00007F, 0x0000FF }, { 0x390E07, 0x721C0E }, { 0xFF0000, 0xFF4080 } }, // Custom 3
     { { 0x7F0000, 0xFF0000 }, { 0x390300, 0x730600 }, { 0x7F603C, 0xFEC179 }, { 0x7F7F7F, 0xFFFFFF }, { 0x00007F, 0x0000FF }, { 0x390E07, 0x721C0E }, { 0xFF0000, 0xFF4080 } }, // Custom 4
 };
-static str_t sOmmMarioColorsCustoms[4];
+static str_t sOmmMarioColorsCustoms[4] = {
+    "Custom 1",
+    "Custom 2",
+    "Custom 3",
+    "Custom 4",
+};
 
 #if OMM_MARIO_COLORS
 extern Lights1 mario_red_lights_group;
@@ -186,7 +191,12 @@ static OmmPeachColors sOmmPeachColorsPresets[] = {
     { { 0x7F6E64, 0xFFDCC8 }, { 0x7F780C, 0xFFF018 }, { 0x7F3C50, 0xFF78A0 }, { 0x681830, 0xD03060 }, { 0x7F7F7F, 0xFFFFFF }, { 0x00607F, 0x00C0FF }, { 0x7F0018, 0xFF0030 }, { 0xFF0080, 0xFF40FF } }, // Custom 3
     { { 0x7F6E64, 0xFFDCC8 }, { 0x7F780C, 0xFFF018 }, { 0x7F3C50, 0xFF78A0 }, { 0x681830, 0xD03060 }, { 0x7F7F7F, 0xFFFFFF }, { 0x00607F, 0x00C0FF }, { 0x7F0018, 0xFF0030 }, { 0xFF0080, 0xFF40FF } }, // Custom 4
 };
-static str_t sOmmPeachColorsCustoms[4];
+static str_t sOmmPeachColorsCustoms[4] = {
+    "Custom 1",
+    "Custom 2",
+    "Custom 3",
+    "Custom 4",
+};
 
 extern Lights1 omm_peach_skin_light;
 extern Lights1 omm_peach_hair_light;

@@ -42,8 +42,8 @@ bool omm_sparkly_check_requirements(struct MarioState *m) {
         return true;
     }
 
-    // If a save file with less than the minimum number of stars required is selected, disable the Sparkly Stars mode and return
-    if (m->numStars < OMM_SPARKLY_REQUIREMENT) {
+    // If a save file has not all stars collected, disable the Sparkly Stars mode and return
+    if (m->numStars < omm_stars_get_total_star_count(OMM_GAME_MODE)) {
         omm_sparkly_disable();
         return true;
     }

@@ -224,6 +224,13 @@ void *omm_update_warp(void *cmd, bool inited) {
 
                 // Phase 3 - End level initialization
                 if (sOmmWarpState->targetWarp && inited) {
+#if OMM_GAME_IS_SM64
+                    // SM64 only: Drain the moat before searching for a valid exit point
+                    struct Object *moatDrainer = obj_get_first_with_behavior(bhvInvisibleObjectsUnderBridge);
+                    if (moatDrainer) {
+                        obj_update(moatDrainer);
+                    }
+#endif
 
                     // Find target position
                     f32 x = sOmmWarpState->targetWarp->x;

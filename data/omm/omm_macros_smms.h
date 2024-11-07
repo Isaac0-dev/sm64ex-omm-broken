@@ -145,7 +145,6 @@
 #define Star                                            "Moon"
 
 // Sparkly stars
-#define OMM_SPARKLY_REQUIREMENT                         50
 #define OMM_SPARKLY_BLOCK_LEVEL                         LEVEL_CASTLE
 #define OMM_SPARKLY_BLOCK_AREA                          1
 #define OMM_SPARKLY_BLOCK_COUNT                         1

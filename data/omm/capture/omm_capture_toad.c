@@ -161,8 +161,8 @@ void omm_cappy_toad_update_gfx(struct Object *o) {
         obj_anim_set_frame(o, (((s32) (o->oAnimFrame + 10)) % 18) + 8);
         f32 vn = sqrtf(sqr_f(o->oVelX) + sqr_f(o->oVelZ));
         o->oGfxAngle[1] += 0x8000;
-        o->oGfxPos[0]   -= (o->oVelX / vn) * 9.78f * (16.36f + o->oAnimFrame);
-        o->oGfxPos[2]   -= (o->oVelZ / vn) * 9.78f * (16.36f + o->oAnimFrame);
+        o->oGfxPos[0] -= (o->oVelX / vn) * 9.78f * (16.36f + o->oAnimFrame);
+        o->oGfxPos[2] -= (o->oVelZ / vn) * 9.78f * (16.36f + o->oAnimFrame);
     }
 
     // Idle

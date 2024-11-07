@@ -145,7 +145,6 @@
 #define Star                                            "Star"
 
 // Sparkly stars
-#define OMM_SPARKLY_REQUIREMENT                         120
 #define OMM_SPARKLY_BLOCK_LEVEL                         LEVEL_CASTLE_GROUNDS
 #define OMM_SPARKLY_BLOCK_AREA                          1
 #define OMM_SPARKLY_BLOCK_COUNT                         3

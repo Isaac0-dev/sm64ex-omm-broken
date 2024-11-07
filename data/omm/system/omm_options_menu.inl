@@ -785,7 +785,7 @@ static void omm_opt_check_buttons() {
     static u16 optmenu_hold_button = 0;
 
     // Open/close options menu
-    if (gPlayer1Controller->buttonPressed & R_TRIG) {
+    if ((gPlayer1Controller->buttonPressed & R_TRIG) && !optmenu_binding) {
         optmenu_toggle();
         return;
     }
