@@ -17,6 +17,7 @@
 #define OMM_SAVE_FILE_SECTION_GAME_DATA     "[%s:%c%d]"
 #define OMM_SAVE_FILE_SECTION_SPARKLY_STARS "[sparkly_stars]"
 #define OMM_SAVE_FILE_SECTION_STATS         "[stats]"
+#define OMM_SAVE_FILE_SECTION_SECRETS       "[secrets]"
 #define OMM_SAVE_FILE_SECTION_MARIO_COLORS  "[mario_colors]"
 #define OMM_SAVE_FILE_SECTION_PEACH_COLORS  "[peach_colors]"
 
@@ -55,7 +56,7 @@ extern u8 gSpecialTripleJump;
 #define SAVE_FLAG_CAP_ON_UKIKI              (0)
 #define SAVE_FLAG_CAP_ON_MR_BLIZZARD        (0)
 
-// Not flags, another ex-alo thing...
+// Not flags, but needs to be defined to fix compiling issues
 #define SAVE_FLAG_COLLECTED_TOAD_STAR_1     (1 << 24)
 #define SAVE_FLAG_COLLECTED_TOAD_STAR_2     (1 << 25)
 #define SAVE_FLAG_COLLECTED_TOAD_STAR_3     (1 << 26)
@@ -101,7 +102,10 @@ bool warp_checkpoint_check               (struct WarpNode *warpNode, s32 actInde
 void warp_checkpoint_check_if_should_set (struct WarpNode *warpNode, s32 courseIndex, s32 actIndex);
 void warp_checkpoint_disable             ();
 
-#define OMM_SAVE_FILE_WRITE_BUFFER_LENGTH (0x10000)
+struct OmmStats;
+struct OmmStats *omm_save_file_get_stats (s32 fileIndex, s32 modeIndex);
+
+#define OMM_SAVE_FILE_WRITE_BUFFER_LENGTH (0x20000)
 #define omm_save_file_write_buffer(...) { \
     extern char *gOmmSaveFileWriteBuffer; \
     extern s32 gOmmSaveFileWrittenLength; \

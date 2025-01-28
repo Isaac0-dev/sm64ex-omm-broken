@@ -61,7 +61,7 @@ struct Object *omm_cappy_spawn(struct MarioState *m) {
     obj_set_angle(cappy, 0, m->faceAngle[1], 0);
     obj_update_gfx(cappy);
     gOmmCappy = cappy;
-    gOmmStats->cappyThrows++;
+    omm_stats_increase(cappyThrows, 1);
     return cappy;
 }
 
@@ -109,10 +109,10 @@ void omm_cappy_update(struct MarioState *m) {
 
         // Update Cappy's hitbox
         if (awaken) {
-            cappy->hitboxRadius = OMM_CAPPY_HITBOX_RADIUS;
-            cappy->hitboxHeight = OMM_CAPPY_HITBOX_HEIGHT;
-            cappy->hitboxDownOffset = OMM_CAPPY_HITBOX_OFFSET;
-            cappy->oWallHitboxRadius = OMM_CAPPY_WALL_RADIUS;
+            cappy->hitboxRadius = OMM_CAPPY_HITBOX_RADIUS * OMM_CAPPY_SCALE_MULTIPLIER_X;
+            cappy->hitboxHeight = OMM_CAPPY_HITBOX_HEIGHT * OMM_CAPPY_SCALE_MULTIPLIER_Y;
+            cappy->hitboxDownOffset = OMM_CAPPY_HITBOX_OFFSET * OMM_CAPPY_SCALE_MULTIPLIER_Y;
+            cappy->oWallHitboxRadius = OMM_CAPPY_WALL_RADIUS * OMM_CAPPY_SCALE_MULTIPLIER_X;
         }
 
         // Update Cappy's behavior
@@ -135,9 +135,9 @@ void omm_cappy_update(struct MarioState *m) {
             cappy->oGfxPos[2] = cappy->oPosZ;
             cappy->oGfxAngle[0] = 0;
             cappy->oGfxAngle[2] = 0;
-            cappy->oGfxScale[0] = OMM_CAPPY_GFX_SCALE_X;
-            cappy->oGfxScale[1] = OMM_CAPPY_GFX_SCALE_Y;
-            cappy->oGfxScale[2] = OMM_CAPPY_GFX_SCALE_Z;
+            cappy->oGfxScale[0] = OMM_CAPPY_GFX_SCALE_X * OMM_CAPPY_SCALE_MULTIPLIER_X;
+            cappy->oGfxScale[1] = OMM_CAPPY_GFX_SCALE_Y * OMM_CAPPY_SCALE_MULTIPLIER_Y;
+            cappy->oGfxScale[2] = OMM_CAPPY_GFX_SCALE_Z * OMM_CAPPY_SCALE_MULTIPLIER_X;
             cappy->oNodeFlags |= GRAPH_RENDER_ACTIVE;
             cappy->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
             cappy->oOpacity = (m->flags & MARIO_VANISH_CAP ? 0x80 : 0xFF);

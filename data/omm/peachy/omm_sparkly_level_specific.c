@@ -62,7 +62,7 @@ bool omm_sparkly_level_ddd__switch_and_boxes(struct MarioState *m, const s32 *pa
         spawn_object_abs_with_rot(m->marioObj, 0, MODEL_PURPLE_SWITCH, bhvFloorSwitchHiddenObjects, x, y, z, 0, 0, 0);
 
         // Boxes
-        for_each_(Vec3f, boxPos, 14, array_of(Vec3f) {
+        for_each_in_(Vec3f, boxPos, {
             { x - 200, y + 1600, z - 200 }, { x - 200, y + 1600, z +   0 }, { x - 200, y + 1600, z + 200 },
             { x +   0, y + 1600, z - 200 }, { x +   0, y + 1600, z +   0 }, { x +   0, y + 1600, z + 200 },
             { x + 200, y + 1600, z - 200 }, { x + 200, y + 1600, z +   0 }, { x + 200, y + 1600, z + 200 },
@@ -94,6 +94,34 @@ bool omm_sparkly_level_sl__snowmen_at_top(struct MarioState *m, const s32 *param
         }
         gOmmSparklyContext->successful = (numSnowmenAtTop >= maxSnowmenAtTop);
     }
+    return true;
+}
+
+bool omm_sparkly_level_wdw__secret(struct MarioState *m, const s32 *params) {
+
+    // Unlock secret
+    if (m->action == ACT_OMM_SPARKLY_STAR_DANCE && gOmmSparklyContext->successful) {
+        omm_secrets_unlock(OMM_SECRET_PEACH_SECRET_2);
+    }
+
+    // Set flag if on ground
+    if ((m->action & ACT_GROUP_MASK) < ACT_GROUP_AIRBORNE && m->pos[1] < 4500.f) {
+        gOmmSparklyContext->successful = true;
+    }
+
+    // Unset flag if...
+    else if (
+        omm_sparkly_are_regular_cheats_enabled(m, true) ||                          // Cheats
+        (m->action == ACT_IN_CANNON || m->action == ACT_SHOT_FROM_CANNON) ||        // Cannon
+        (m->action == ACT_RIDING_HOOT) ||                                           // Hoot
+        (m->action & ACT_GROUP_MASK) != ACT_GROUP_AIRBORNE ||                       // Not in airborne action
+        (m->flags & (MARIO_WING_CAP | MARIO_METAL_CAP | MARIO_VANISH_CAP)) != 0 ||  // Caps
+        omm_mario_is_capture(m) ||                                                  // Capture
+        omm_peach_vibe_is_joy()                                                     // Joy Vibe
+    ) {
+        gOmmSparklyContext->successful = false;
+    }
+
     return true;
 }
 

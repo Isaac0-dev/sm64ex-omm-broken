@@ -261,6 +261,25 @@ void obj_set_scale(struct Object *o, f32 x, f32 y, f32 z) {
     o->oScaleZ = z;
 }
 
+static void apply_drag_to_value(f32 *value, f32 dragStrength) {
+    if (*value != 0) {
+        f32 decel = (f32) ((f64) (*value) * (f64) (*value) * (f64) dragStrength * 0.0001);
+        *value -= (*value > 0 ? decel : -decel);
+        if (abs_f(*value) < 0.001f) {
+            *value = 0;
+        }
+    }
+}
+
+void obj_apply_drag_xz(struct Object *o, f32 dragStrength) {
+    s16 angle = atan2s(o->oVelZ, o->oVelX);
+    apply_drag_to_value(&o->oVelX, dragStrength);
+    apply_drag_to_value(&o->oVelZ, dragStrength);
+    f32 mag = sqrtf(o->oVelX * o->oVelX + o->oVelZ * o->oVelZ);
+    o->oVelX = mag * sins(angle);
+    o->oVelZ = mag * coss(angle);
+}
+
 void obj_apply_displacement(struct Object *o, struct Object *obj, Vec3f prevPos, Vec3s prevAngle, Vec3f prevScale, bool updatePrev) {
     Vec3f offset = {
         o->oPosX - prevPos[0],
@@ -500,7 +519,10 @@ void obj_rotate_billboard(struct Object *o, s16 angle) {
 }
 
 void obj_copy_visibility_and_transparency(struct Object *dst, struct Object *src) {
-    dst->oNodeFlags = (dst->oNodeFlags & ~GRAPH_RENDER_INVISIBLE) | (src->oNodeFlags & GRAPH_RENDER_INVISIBLE);
+    dst->oFlags &= ~OBJ_FLAG_INVISIBLE_MODE;
+    dst->oFlags |= (src->oFlags & OBJ_FLAG_INVISIBLE_MODE);
+    dst->oNodeFlags &= ~(GRAPH_RENDER_ACTIVE | GRAPH_RENDER_INVISIBLE | GRAPH_RENDER_ALWAYS);
+    dst->oNodeFlags |= (src->oNodeFlags & (GRAPH_RENDER_ACTIVE | GRAPH_RENDER_INVISIBLE | GRAPH_RENDER_ALWAYS));
     dst->oTransparency = src->oTransparency;
 }
 
@@ -985,6 +1007,19 @@ static void obj_destroy_fire_piranha_plant(struct Object *o, s32 numCoins, s32 s
     }
 }
 
+static void obj_destroy_wooden_post(struct Object *o, s32 numCoins, s32 soundBits) {
+    struct Object *chainChomp = o->parentObj;
+    if (chainChomp && chainChomp->behavior == bhvChainChomp && chainChomp != gOmmCapture) {
+        chainChomp->behavior = bhvOmmChainChompFree;
+        chainChomp->curBhvCommand = bhvOmmChainChompFree;
+        chainChomp->bhvStackIndex = 0;
+    }
+    obj_spawn_coins(o, numCoins);
+    obj_spawn_white_puff(o, soundBits);
+    obj_spawn_triangle_break_particles(o, OBJ_SPAWN_TRI_BREAK_PRESET_DIRT);
+    obj_mark_for_deletion(o);
+}
+
 static bool obj_destroy_check_condition(struct Object *o, const OmmBhvDataDestroy *destroy) {
     switch (destroy->cond) {
         case DESTROY_COND_NONE:           return true;
@@ -1112,6 +1147,12 @@ void obj_destroy(struct Object *o) {
                     s32 numCoins = obj_destroy_get_num_coins(o, destroy->args[0]);
                     s32 soundBits = (s32) destroy->args[1];
                     obj_destroy_fire_piranha_plant(o, numCoins, soundBits);
+                } break;
+
+                case DESTROY_TYPE_WOODEN_POST: {
+                    s32 numCoins = (o->oBehParams & WOODEN_POST_BP_NO_COINS_MASK) ? 0 : 5;
+                    s32 soundBits = (s32) destroy->args[1];
+                    obj_destroy_wooden_post(o, numCoins, soundBits);
                 } break;
             }
             o->oFlags |= OBJ_FLAG_DESTROYED;
@@ -1345,7 +1386,7 @@ struct Waypoint *obj_path_get_nearest_waypoint(struct Object *o, struct Waypoint
 
 struct Object *find_unimportant_object() {
     for_each_object_in_unimportant_lists(obj) {
-        if (obj != gCurrentObject && obj->activeFlags && (*__list__ == OBJ_LIST_UNIMPORTANT || omm_obj_is_unimportant(obj))) {
+        if (obj != gCurrentObject && obj->activeFlags && (*_list_ == OBJ_LIST_UNIMPORTANT || omm_obj_is_unimportant(obj))) {
             return obj;
         }
     }
@@ -1371,7 +1412,7 @@ struct Object *obj_get_red_coin_star() {
     }
 
     // Actual red coin star
-    for_each_until_null(const BehaviorScript *, bhv, array_of(const BehaviorScript *) { bhvStar, bhvStarSpawnCoordinates, NULL }) {
+    for_each_in_(const BehaviorScript *, bhv, { bhvStar, bhvStarSpawnCoordinates }) {
         for_each_object_with_behavior(star, *bhv) {
             if ((star->oBehParams >> 24) == gOmmArea->redCoinStarIndex) {
                 return star;
@@ -1396,7 +1437,7 @@ struct Object *obj_get_secret_star() {
     }
 
     // Actual secret star
-    for_each_until_null(const BehaviorScript *, bhv, array_of(const BehaviorScript *) { bhvStar, bhvStarSpawnCoordinates, NULL }) {
+    for_each_in_(const BehaviorScript *, bhv, { bhvStar, bhvStarSpawnCoordinates }) {
         for_each_object_with_behavior(star, *bhv) {
             if ((star->oBehParams >> 24) == gOmmArea->secretStarIndex) {
                 return star;

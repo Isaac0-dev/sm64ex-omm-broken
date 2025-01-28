@@ -13,7 +13,10 @@ struct _Surface {
 
 // Surfaces hash map and pool
 OmmSurfaceHashMap gOmmSurfaces[2];
-static OmmArray_(struct _Surface *) sOmmLoadedSurfaces = omm_array_zero;
+#if !OMM_GAME_IS_R96X
+static
+#endif
+OmmArray_(struct _Surface *) sOmmLoadedSurfaces = omm_array_zero;
 
 // Collision cache
 typedef struct { s16 *start; s16 *verts; s16 count; } Col;
@@ -48,6 +51,26 @@ static void omm_surface_add(struct _Surface *surface, bool dynamic) {
         }
     }
 }
+
+#if OMM_GAME_IS_R96X
+
+void omm_surface_add_all_surfaces_again() {
+
+    // Clear surface arrays
+    OmmSurfaceArray *surfaceArray = (OmmSurfaceArray *) gOmmSurfaces;
+    for (s32 i = 0; i != OMM_NUM_SURFACE_ARRAYS; ++i, surfaceArray++) {
+        omm_array_delete(surfaceArray->data);
+        surfaceArray->count = 0;
+    }
+
+    // Add all surfaces again
+    for (s32 i = 0; i != gSurfacesAllocated; ++i) {
+        struct _Surface *surface = omm_array_get(sOmmLoadedSurfaces, ptr, i);
+        omm_surface_add(surface, surface->surf->object != NULL);
+    }
+}
+
+#endif
 
 //
 // Read
@@ -356,6 +379,9 @@ void load_area_terrain(s16 areaIndex, s16 *data, s8 *surfaceRooms, s16 *macroObj
     gEnvironmentRegions = NULL;
     gSurfacesAllocated = 0;
     gNumStaticSurfaces = 0;
+    gMarioState->floor = NULL;
+    gMarioState->ceil = NULL;
+    gMarioState->wall = NULL;
 
 #if OMM_GAME_IS_SM74
 
@@ -426,7 +452,7 @@ void clear_dynamic_surfaces() {
             gOmmWalls(1, cx, cz)->count = 0;
         }
         gSurfacesAllocated = gNumStaticSurfaces;
-        for_each_(struct Object, obj, OBJECT_POOL_CAPACITY, gObjectPool) {
+        for_each_(struct Object, obj, gObjectPool, OBJECT_POOL_CAPACITY) {
             obj->oSurfaces = NULL;
         }
     }

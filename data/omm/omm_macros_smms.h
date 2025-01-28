@@ -115,11 +115,12 @@
 #define OMM_STAR_COLORS                                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
 #define OMM_STAR_COLOR_OFFSET(...)                      0
 #define OMM_STAR_COLOR_COUNT                            20
+#define OMM_STAR_COLOR_CLASSIC                          { 0x00, 0xFF, 0x00 }
 #define OMM_LEVEL_ENTRY_WARP(levelNum)                  0x0A
 #define OMM_LEVEL_EXIT_DISTANCE                         500
 #define OMM_LEVEL_SLIDE                                 LEVEL_ENDING
 #define OMM_LEVEL_ENTRY_POINT                           LEVEL_CASTLE
-#define OMM_LEVEL_RETURN_TO_CASTLE                      LEVEL_CASTLE, 1, 0x1F, 0
+#define OMM_LEVEL_RETURN_TO_CASTLE                      LEVEL_CASTLE, 1, 0x1F
 #define OMM_LEVEL_YELLOW_COIN_BOO                       LEVEL_NONE
 #define OMM_LEVEL_EXCLUDE_LIST                          LEVEL_JRB, LEVEL_SSL, LEVEL_DDD, LEVEL_SL, LEVEL_TTM, LEVEL_THI, LEVEL_TTC, LEVEL_RR, LEVEL_BITDW, LEVEL_BOWSER_1, LEVEL_BOWSER_2, LEVEL_BOWSER_3, LEVEL_COTMC, LEVEL_TOTWC, LEVEL_VCUTM, LEVEL_WMOTR, LEVEL_SA, LEVEL_ENDING
 #define OMM_LEVEL_HAS_BOWSER                            0

@@ -10,10 +10,10 @@
 //
 
 static const Vtx omm_amp_discharge_vertices[] = {
-    OMM_VTX_RECT(OMM_AMP_DISCHARGE_RADIUS, 0, 0, 2),
-    OMM_VTX_RECT(OMM_AMP_DISCHARGE_RADIUS, 1, 0, 2),
-    OMM_VTX_RECT(OMM_AMP_DISCHARGE_RADIUS, 0, 1, 2),
-    OMM_VTX_RECT(OMM_AMP_DISCHARGE_RADIUS, 1, 1, 2),
+    OMM_VTX_RECT(OMM_AMP_DISCHARGE_RADIUS, 0, 0, 2, 2),
+    OMM_VTX_RECT(OMM_AMP_DISCHARGE_RADIUS, 0, 1, 2, 2),
+    OMM_VTX_RECT(OMM_AMP_DISCHARGE_RADIUS, 1, 0, 2, 2),
+    OMM_VTX_RECT(OMM_AMP_DISCHARGE_RADIUS, 1, 1, 2, 2),
 };
 
 static const Gfx omm_amp_discharge_triangles[] = {

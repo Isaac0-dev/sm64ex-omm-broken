@@ -219,12 +219,12 @@ struct GraphNodeBackground *init_graph_node_background(struct AllocOnlyPool *poo
     return node;
 }
 
-struct GraphNodeHeldObject *init_graph_node_held_object(struct AllocOnlyPool *pool, struct GraphNodeHeldObject *node, struct Object *objNode, Vec3s translation, GraphNodeFunc func, s32 playerIndex) {
+struct GraphNodeHeldObject *init_graph_node_held_object(struct AllocOnlyPool *pool, struct GraphNodeHeldObject *node, struct Object *objNode, Vec3s translation, GraphNodeFunc func, UNUSED s32 playerIndex) {
     init_graph_node(GraphNodeHeldObject, GRAPH_NODE_TYPE_HELD_OBJ);
     vec3s_copy(node->translation, translation);
     node->objNode = objNode;
     node->fnNode.func = func;
-    node->playerIndex = playerIndex;
+    node->playerIndex = 0;
     run_create();
     return node;
 }

@@ -108,7 +108,7 @@ static const s32 sOmmSparklyEndingSounds[3] = {
 
 void omm_sparkly_ending_screen() {
 #if OMM_GAME_IS_SM64
-    const Gfx *gfx = sOmmSparklyEndingScreens[gOmmSparklyEnding][omm_player_get_selected_index()];
+    const Gfx *gfx = sOmmSparklyEndingScreens[gOmmSparklyEnding][omm_player_get_selected_index_model_and_sounds()];
     if (gfx) {
         gSPDisplayList(gDisplayListHead++, gfx);
         static u32 sLastTick = 0;

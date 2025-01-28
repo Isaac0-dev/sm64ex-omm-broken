@@ -353,49 +353,57 @@ static void geo_layout_cmd_node_culling_radius(void) {
     geo_cmd_adv(4);
 }
 
+static void geo_layout_cmd_node_background_ext(void) {
+    geo_cmd_adv(12);
+}
+
 //
 // Geo layout to Graph node
 //
 
 typedef void (*GeoLayoutCommandProc)(void);
 static GeoLayoutCommandProc sGeoLayoutCmdTable[] = {
-    geo_layout_cmd_branch_and_link,
-    geo_layout_cmd_end,
-    geo_layout_cmd_branch,
-    geo_layout_cmd_return,
-    geo_layout_cmd_open_node,
-    geo_layout_cmd_close_node,
-    geo_layout_cmd_assign_as_view,
-    geo_layout_cmd_update_node_flags,
-    geo_layout_cmd_node_root,
-    geo_layout_cmd_node_ortho_projection,
-    geo_layout_cmd_node_perspective,
-    geo_layout_cmd_node_start,
-    geo_layout_cmd_node_master_list,
-    geo_layout_cmd_node_level_of_detail,
-    geo_layout_cmd_node_switch_case,
-    geo_layout_cmd_node_camera,
-    geo_layout_cmd_node_translation_rotation,
-    geo_layout_cmd_node_translation,
-    geo_layout_cmd_node_rotation,
-    geo_layout_cmd_node_animated_part,
-    geo_layout_cmd_node_billboard,
-    geo_layout_cmd_node_display_list,
-    geo_layout_cmd_node_shadow,
-    geo_layout_cmd_node_object_parent,
-    geo_layout_cmd_node_generated,
-    geo_layout_cmd_node_background,
-    geo_layout_cmd_nop,
-    geo_layout_cmd_copy_view,
-    geo_layout_cmd_node_held_obj,
-    geo_layout_cmd_node_scale,
-    geo_layout_cmd_nop2,
-    geo_layout_cmd_nop3,
-    geo_layout_cmd_node_culling_radius,
+/* 0x00 */ geo_layout_cmd_branch_and_link,
+/* 0x01 */ geo_layout_cmd_end,
+/* 0x02 */ geo_layout_cmd_branch,
+/* 0x03 */ geo_layout_cmd_return,
+/* 0x04 */ geo_layout_cmd_open_node,
+/* 0x05 */ geo_layout_cmd_close_node,
+/* 0x06 */ geo_layout_cmd_assign_as_view,
+/* 0x07 */ geo_layout_cmd_update_node_flags,
+/* 0x08 */ geo_layout_cmd_node_root,
+/* 0x09 */ geo_layout_cmd_node_ortho_projection,
+/* 0x0A */ geo_layout_cmd_node_perspective,
+/* 0x0B */ geo_layout_cmd_node_start,
+/* 0x0C */ geo_layout_cmd_node_master_list,
+/* 0x0D */ geo_layout_cmd_node_level_of_detail,
+/* 0x0E */ geo_layout_cmd_node_switch_case,
+/* 0x0F */ geo_layout_cmd_node_camera,
+/* 0x10 */ geo_layout_cmd_node_translation_rotation,
+/* 0x11 */ geo_layout_cmd_node_translation,
+/* 0x12 */ geo_layout_cmd_node_rotation,
+/* 0x13 */ geo_layout_cmd_node_animated_part,
+/* 0x14 */ geo_layout_cmd_node_billboard,
+/* 0x15 */ geo_layout_cmd_node_display_list,
+/* 0x16 */ geo_layout_cmd_node_shadow,
+/* 0x17 */ geo_layout_cmd_node_object_parent,
+/* 0x18 */ geo_layout_cmd_node_generated,
+/* 0x19 */ geo_layout_cmd_node_background,
+/* 0x1A */ geo_layout_cmd_nop,
+/* 0x1B */ geo_layout_cmd_copy_view,
+/* 0x1C */ geo_layout_cmd_node_held_obj,
+/* 0x1D */ geo_layout_cmd_node_scale,
+/* 0x1E */ geo_layout_cmd_nop2,
+/* 0x1F */ geo_layout_cmd_nop3,
+/* 0x20 */ geo_layout_cmd_node_culling_radius,
+    // sm64coopdx //
+/* 0x21 */ geo_layout_cmd_node_background_ext,
+/* 0x22 */ geo_layout_cmd_node_switch_case,
+/* 0x23 */ geo_layout_cmd_node_generated,
 };
 
 struct GraphNode *geo_layout_to_graph_node(struct AllocOnlyPool *pool, const GeoLayout *geoLayout) {
-    static OmmHMap sGraphNodeCache = omm_hmap_zero;
+    static OmmHMap_(struct GraphNode *) sGraphNodeCache = omm_hmap_zero;
 
     // NULL check
     if (!geoLayout) {

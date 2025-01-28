@@ -2,6 +2,7 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 #if OMM_GAME_IS_SM64
+#include "data/omm/omm_constants.h"
 #include "behavior_commands.h"
 #include "levels/castle_grounds/header.h"
 #include "level_commands.h"
@@ -592,7 +593,7 @@ static const LevelScript omm_level_bowser_4[] = {
     END_AREA(),
     AREA(2, omm_level_bowser_4_geo),
         WARP_NODE(0x0A, LEVEL_CASTLE_GROUNDS, 2, 0x0A, WARP_NO_CHECKPOINT),
-        WARP_NODE(0xF1, LEVEL_CASTLE_GROUNDS, 1, 0x03, WARP_NO_CHECKPOINT),
+        WARP_NODE(WARP_NODE_DEATH, LEVEL_CASTLE_GROUNDS, 1, 0x03, WARP_NO_CHECKPOINT),
         JUMP_LINK(script_func_global_13),
         JUMP_LINK(omm_level_bowser_4_objects),
         TERRAIN(omm_level_bowser_4_collision),

@@ -81,25 +81,52 @@ OMM_DIALOG_SPARKLY_MIPS_3, NO_SOUND, 3, 30, 200,
 
 {
 OMM_DIALOG_SPARKLY_TOAD_1, NO_SOUND, 3, 30, 200,
-"Hey Mario! I never lost\n"
-"at hide and seek!\n"
-"Can you believe it?\n"
+"Hey Mario!\n"
+"I'm Star Guardian Toad\n"
+"Number 1!\n"
 
-"The Crystal Star is at\n"
-"the end of the corridor,\n"
+"We hid the Crystal Star\n"
+"beyond the Dark World,\n"
 "but you can't reach it.\n"
 
 "I mean, not alone.\n"
-"I should be able to push\n"
+"We should be able to push\n"
 "you past the trapdoors.\n"
 
+"But one of us has to get\n"
+"out of our hiding...\n"
+"I mean lookout place.\n"
+
 "Just one thing...\n"
-"Don't let me fall into\n"
+"Don't let us fall into\n"
 "Bowser's trap!"
 },
 
 {
 OMM_DIALOG_SPARKLY_TOAD_2, NO_SOUND, 3, 30, 200,
+"Hey Mario!\n"
+"I'm Star Guardian Toad\n"
+"Number 2!\n"
+
+"We hid the Crystal Star\n"
+"beyond the Dark World,\n"
+"but you can't reach it.\n"
+
+"I mean, not alone.\n"
+"We should be able to push\n"
+"you past the trapdoors.\n"
+
+"But one of us has to get\n"
+"out of our hiding...\n"
+"I mean lookout place.\n"
+
+"Just one thing...\n"
+"Don't let us fall into\n"
+"Bowser's trap!"
+},
+
+{
+OMM_DIALOG_SPARKLY_TOAD_3, NO_SOUND, 3, 30, 200,
 "Mario! I was practicing\n"
 "the BLJ, but ended up\n"
 "getting stuck here...\n"

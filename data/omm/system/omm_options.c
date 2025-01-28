@@ -22,6 +22,7 @@ struct SubMenu { struct SubMenu *prev; const u8 *label; struct Option *opts; s32
 
 OmmOptMenu gOmmOptMenu;
 OmmOptMenu gOmmOptModels;
+OmmOptMenu gOmmOptCs;
 OmmOptMenu gOmmOptTimeTrials;
 OmmOptMenu gOmmOptWarpToLevel;
 OmmOptMenu gOmmOptWarpToCastle;
@@ -29,6 +30,7 @@ OmmOptMenu gOmmOptControls;
 #if !OMM_GAME_IS_R96X
 OmmOptMenu gOmmOptCheats;
 #endif
+OmmOptMenu gOmmOptDataManagement;
 OmmOptMenu gOmmOptChangeGame;
 OmmOptMenu gOmmOptExitGame;
 u32 gOmmOptYesFunc[1];
@@ -105,12 +107,20 @@ DEFINE_TOGGLE(gOmmCheatWalkOnDeathBarrier, false);                              
 DEFINE_TOGGLE(gOmmCheatBljAnywhere, false);                                     // Disabled
 #endif
 DEFINE_CHOICE(gOmmFrameRate, OMM_FPS_AUTO, 4);                                  // Auto
+#if OMM_CODE_DEBUG
+DEFINE_CHOICE(gOmmShowFPS, 0, 4);                                               // Disabled
+#else
 DEFINE_TOGGLE(gOmmShowFPS, false);                                              // Disabled
+#endif
 DEFINE_CHOICE(gOmmTextureCaching, OMM_TEXTURE_CACHING_PERMANENT, 3);            // Permanent
 DEFINE_TOGGLE(gOmmModelPackCaching, true);                                      // Enabled
 DEFINE_CHOICE(gOmmHudMode, OMM_HUD_MODE_VANISHING, 4);                          // Vanishing
 DEFINE_CHOICE(gOmmCameraInvert1stPerson, OMM_CAMERA_INVERT_NONE, 4);            // Disabled
 DEFINE_CHOICE(gOmmCameraInvert3rdPerson, OMM_CAMERA_INVERT_NONE, 4);            // Disabled
+DEFINE_TOGGLE(gOmmCsPalettePreset, true);                                       // Enabled
+DEFINE_TOGGLE(gOmmCsAnimations, true);                                          // Enabled
+DEFINE_TOGGLE(gOmmCsVoices, true);                                              // Enabled
+DEFINE_SCROLL(gOmmCsVoiceVolumeFactor, 90);                                     // 90%
 DEFINE_TOGGLE(gOmmTimeTrialsEnabled, false);                                    // Disabled
 DEFINE_TOGGLE(gOmmTimeTrialsShowStarGhosts, true);                              // Enabled
 DEFINE_TOGGLE(gOmmTimeTrialsShowBowserGhosts, true);                            // Enabled
@@ -144,6 +154,7 @@ DEFINE_TOGGLE_SC(gOmmExtrasColoredStars, true);                                 
 DEFINE_TOGGLE_SC(gOmmExtrasRevealSecrets, false);                               // Disabled
 DEFINE_TOGGLE_SC(gOmmExtrasShowStarNumber, true);                               // Enabled
 DEFINE_TOGGLE_SC(gOmmExtrasInvisibleMode, false);                               // Disabled
+DEFINE_TOGGLE_SC(gOmmExtrasMarioMode, false);                                   // Disabled
 #if OMM_CODE_DEBUG
 DEFINE_TOGGLE_SC(gOmmDebugHitbox, false);                                       // Disabled
 DEFINE_TOGGLE_SC(gOmmDebugHurtbox, false);                                      // Disabled
@@ -544,7 +555,7 @@ static void omm_opt_warp_to_level(UNUSED struct Option *opt, s32 arg) {
         s32 areaIndex = omm_opt_get_area_index(sOmmWarp->currArea);
         s32 actNum = omm_opt_get_act_num(sOmmWarp->currAct);
         if (omm_is_main_menu() || !omm_warp_to_level(levelNum, areaIndex, actNum)) {
-            play_sound(SOUND_MENU_CAMERA_BUZZ | 0xFF00, gGlobalSoundArgs);
+            play_buzz_sound();
         }
     }
 }
@@ -553,7 +564,7 @@ static void omm_opt_warp_to_castle(UNUSED struct Option *opt, s32 arg) {
     if (!arg) {
         s32 levelNum = omm_opt_get_level_num(sOmmWarp->currLevel);
         if (omm_is_main_menu() || !omm_exit_level(levelNum, 1, true)) {
-            play_sound(SOUND_MENU_CAMERA_BUZZ | 0xFF00, gGlobalSoundArgs);
+            play_buzz_sound();
         }
     }
 }
@@ -561,7 +572,7 @@ static void omm_opt_warp_to_castle(UNUSED struct Option *opt, s32 arg) {
 #endif
 
 //
-// Change game (init)
+// Change game
 //
 
 typedef struct { const char *code; const char *label; struct Option *opt; } OmmOptGame;
@@ -578,6 +589,20 @@ static const char *get_exe_path(sys_path_t dst, const char *gameCode) {
     snprintf(dst, sizeof(sys_path_t), "%s/sm64.%s", sys_exe_path(), gameCode);
 #endif
     return dst;
+}
+
+static void omm_opt_change_game(struct Option *opt, s32 arg) {
+    if (!arg) {
+        for (u32 i = 0; i != array_length(sOmmOptGames); ++i) {
+            const OmmOptGame *game = &sOmmOptGames[i];
+            if (opt == game->opt) {
+                sys_path_t exePath;
+                launch_game(get_exe_path(exePath, game->code));
+                gOmmGlobals->configNoSave = true;
+                game_exit();
+            }
+        }
+    }
 }
 
 static struct Option omm_opt_init_change_game() {
@@ -601,58 +626,85 @@ static struct Option omm_opt_init_change_game() {
 // Buttons
 //
 
-void omm_opt_return_to_main_menu(UNUSED struct Option *opt, s32 arg) {
-    if (!arg) {
-        if (!omm_is_main_menu()) {
-            omm_return_to_main_menu();
-        } else {
-            play_sound(SOUND_MENU_CAMERA_BUZZ | 0xFF00, gGlobalSoundArgs);
-        }
-    }
-}
-
-void omm_opt_camera_enter_snapshot_mode(UNUSED struct Option *opt, s32 arg) {
-    if (!arg) {
-        if (!omm_camera_snapshot_mode_init()) {
-            play_sound(SOUND_MENU_CAMERA_BUZZ | 0xFF00, gGlobalSoundArgs);
-        }
-    }
-}
-
-void omm_opt_change_game(struct Option *opt, s32 arg) {
-    if (!arg) {
-        for (u32 i = 0; i != array_length(sOmmOptGames); ++i) {
-            const OmmOptGame *game = &sOmmOptGames[i];
-            if (opt == game->opt) {
-                sys_path_t exePath;
-                launch_game(get_exe_path(exePath, game->code));
-                gOmmGlobals->configNoSave = true;
-                game_exit();
-            }
-        }
-    }
-}
-
-void omm_opt_exit_game(UNUSED struct Option *opt, s32 arg) {
-    if (!arg) {
-        game_exit();
-    }
-}
-
-static void omm_opt_reset_controls(UNUSED struct Option *opt, s32 arg) {
-    if (!arg) {
-        for_each_(OmmControlsBind, bind, array_length(sOmmControlsBinds), sOmmControlsBinds) {
-            mem_cpy(bind->binds, bind->defaults, sizeof(bind->defaults));
-        }
-    }
-}
-
 static void omm_opt_clear_shortcuts(UNUSED struct Option *opt, s32 arg) {
     if (!arg) {
         omm_array_for_each(sOmmOptShortcuts, p_shortcut) {
             OmmOptShortcut *shortcut = p_shortcut->as_ptr;
             mem_cpy(shortcut->binds, NO_BIND, sizeof(NO_BIND));
         }
+    }
+}
+
+static void omm_opt_disable_all_model_packs(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        omm_models_disable_all();
+    }
+}
+
+void omm_opt_camera_enter_snapshot_mode(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        if (!omm_camera_snapshot_mode_init()) {
+            play_buzz_sound();
+        }
+    }
+}
+
+static void omm_opt_reset_controls(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        array_for_each_(OmmControlsBind, bind, sOmmControlsBinds) {
+            mem_cpy(bind->binds, bind->defaults, sizeof(bind->defaults));
+        }
+    }
+}
+
+static void omm_opt_reset_mario_palettes(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        omm_mario_colors_reset(false);
+        omm_save_file_do_save();
+    }
+}
+
+static void omm_opt_reset_peach_palettes(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        omm_mario_colors_reset(true);
+        omm_save_file_do_save();
+    }
+}
+
+static void omm_opt_delete_sparkly_stars_data(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        omm_sparkly_clear_all();
+        omm_save_file_do_save();
+    }
+}
+
+static void omm_opt_delete_global_stats(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        omm_stats_reset(gOmmStats);
+        omm_save_file_do_save();
+    }
+}
+
+static void omm_opt_delete_secrets(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        omm_secrets_reset();
+        omm_save_file_do_save();
+    }
+}
+
+void omm_opt_return_to_main_menu(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        if (!omm_is_main_menu()) {
+            omm_return_to_main_menu();
+        } else {
+            play_buzz_sound();
+        }
+    }
+}
+
+static void omm_opt_exit_game(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        game_exit();
     }
 }
 
@@ -763,7 +815,8 @@ static struct Option omm_opt_make_main_menu() {
 #endif
         omm_opt_make_toggle(0, OMM_TEXT_OPT_SHOW_STAR_NUMBER, &gOmmExtrasShowStarNumber, gOmmExtrasShowStarNumberShortcuts),
         omm_opt_make_toggle(0, OMM_TEXT_OPT_INVISIBLE_MODE, &gOmmExtrasInvisibleMode, gOmmExtrasInvisibleModeShortcuts),
-    ), 7 + !OMM_GAME_IS_SMMS + !OMM_GAME_IS_SMGS);
+        omm_opt_make_toggle(0, OMM_TEXT_OPT_MARIO_MODE, &gOmmExtrasMarioMode, gOmmExtrasMarioModeShortcuts),
+    ), 8 + !OMM_GAME_IS_SMMS + !OMM_GAME_IS_SMGS);
 
 #if OMM_CODE_DEBUG
     // Debug
@@ -826,12 +879,13 @@ OMM_AT_STARTUP static void omm_opt_init() {
         const char **packNames = (const char **) packs[0];
         bool **packToggles = (bool **) packs[1];
         s32 numPacks = 0; for (const char **p = packNames; *p; ++p, ++numPacks);
-        struct Option *optPacks = mem_new(struct Option, numPacks);
+        struct Option *optPacks = mem_new(struct Option, numPacks + 1);
         for (s32 i = 0; i != numPacks; ++i) {
             optPacks[i] = omm_opt_make_toggle(0, packNames[i], packToggles[i], NULL);
         }
-        struct Option optModels = omm_opt_make_submenu(0, OMM_TEXT_OPT_MODELS_LABEL, OMM_TEXT_OPT_MODELS_TITLE, optPacks, numPacks);
-        gOmmOptModels.label = mem_dup(optModels.label, omm_opt_text_length(optModels.label) + 1);
+        optPacks[numPacks] = omm_opt_make_button(0, OMM_TEXT_OPT_MODELS_DISABLE_ALL, omm_opt_disable_all_model_packs);
+        struct Option optModels = omm_opt_make_submenu(0, OMM_TEXT_OPT_MODELS_LABEL, OMM_TEXT_OPT_MODELS_TITLE, optPacks, numPacks + 1);
+        gOmmOptModels.label = (const u8 *) OMM_TEXT_OPT_MODELS_LABEL;
         gOmmOptModels.subMenu = mem_dup(optModels.nextMenu, sizeof(struct SubMenu));
         mem_del(packNames);
         mem_del(packToggles);
@@ -839,6 +893,22 @@ OMM_AT_STARTUP static void omm_opt_init() {
     } else {
         gOmmOptModels.label = NULL;
         gOmmOptModels.subMenu = NULL;
+    }
+
+    // Character Select sub-menu
+    if (omm_models_cs_get_size(1)) {
+        struct Option optCs =
+            omm_opt_make_submenu(0, OMM_TEXT_OPT_CS_LABEL, OMM_TEXT_OPT_CS_TITLE, options(
+                omm_opt_make_toggle(0, OMM_TEXT_OPT_CS_PALETTE_PRESET, &gOmmCsPalettePreset, NULL),
+                omm_opt_make_toggle(0, OMM_TEXT_OPT_CS_ANIMATIONS, &gOmmCsAnimations, NULL),
+                omm_opt_make_toggle(0, OMM_TEXT_OPT_CS_VOICES, &gOmmCsVoices, NULL),
+                omm_opt_make_scroll(0, OMM_TEXT_OPT_CS_VOICE_VOLUME_FACTOR, &gOmmCsVoiceVolumeFactor, 0, 200, 5),
+            ), 4);
+        gOmmOptCs.label = mem_dup(optCs.label, omm_opt_text_length(optCs.label) + 1);
+        gOmmOptCs.subMenu = mem_dup(optCs.nextMenu, sizeof(struct SubMenu));
+    } else {
+        gOmmOptCs.label = NULL;
+        gOmmOptCs.subMenu = NULL;
     }
 
     // Time Trials sub-menu
@@ -912,7 +982,7 @@ OMM_AT_STARTUP static void omm_opt_init() {
     // Cheats sub-menu
 #if !OMM_GAME_IS_R96X
     struct Option optCheats =
-        omm_opt_make_submenu(0, OMM_TEXT_OPT_CHEATS_TITLE, OMM_TEXT_OPT_CHEATS_TITLE, options(
+        omm_opt_make_submenu(0, OMM_TEXT_OPT_CHEATS_LABEL, OMM_TEXT_OPT_CHEATS_TITLE, options(
             omm_opt_make_toggle(0, OMM_TEXT_OPT_CHEAT_ENABLE, &gOmmCheatEnable, NULL),
             omm_opt_make_toggle(0, OMM_TEXT_OPT_CHEAT_MOON_JUMP, &gOmmCheatMoonJump, NULL),
             omm_opt_make_toggle(0, OMM_TEXT_OPT_CHEAT_GOD_MODE, &gOmmCheatGodMode, NULL),
@@ -932,6 +1002,18 @@ OMM_AT_STARTUP static void omm_opt_init() {
     gOmmOptCheats.label = mem_dup(optCheats.label, omm_opt_text_length(optCheats.label) + 1);
     gOmmOptCheats.subMenu = mem_dup(optCheats.nextMenu, sizeof(struct SubMenu));
 #endif
+
+    // Data management sub-menu
+    struct Option optDataManagement =
+        omm_opt_make_submenu(0, OMM_TEXT_OPT_DATA_LABEL, OMM_TEXT_OPT_DATA_TITLE, options(
+            omm_opt_make_yes_no(0, OMM_TEXT_OPT_DATA_RESET_MARIO_PALETTES, OMM_TEXT_OPT_DATA_RESET_MARIO_PALETTES_ASK, omm_opt_reset_mario_palettes),
+            omm_opt_make_yes_no(OMM_OPT_STATE_SPARKLY_STARS_UNLOCKED, OMM_TEXT_OPT_DATA_RESET_PEACH_PALETTES, OMM_TEXT_OPT_DATA_RESET_PEACH_PALETTES_ASK, omm_opt_reset_peach_palettes),
+            omm_opt_make_yes_no(OMM_OPT_STATE_SPARKLY_STARS_UNLOCKED, OMM_TEXT_OPT_DATA_DELETE_SPARKLY_STARS_DATA, OMM_TEXT_OPT_DATA_DELETE_SPARKLY_STARS_DATA_ASK, omm_opt_delete_sparkly_stars_data),
+            omm_opt_make_yes_no(0, OMM_TEXT_OPT_DATA_DELETE_GLOBAL_STATS, OMM_TEXT_OPT_DATA_DELETE_GLOBAL_STATS_ASK, omm_opt_delete_global_stats),
+            omm_opt_make_yes_no(0, OMM_TEXT_OPT_DATA_DELETE_SECRETS, OMM_TEXT_OPT_DATA_DELETE_SECRETS_ASK, omm_opt_delete_secrets),
+        ), 5);
+    gOmmOptDataManagement.label = mem_dup(optDataManagement.label, omm_opt_text_length(optDataManagement.label) + 1);
+    gOmmOptDataManagement.subMenu = mem_dup(optDataManagement.nextMenu, sizeof(struct SubMenu));
 
     // Change game sub-menu
     struct Option optChangeGame = omm_opt_init_change_game();
@@ -1080,7 +1162,7 @@ OMM_ROUTINE_PRE_RENDER(omm_opt_update_shortcuts) {
 }
 
 void omm_opt_update_binds() {
-    for_each_(OmmControlsBind, bind, array_length(sOmmControlsBinds), sOmmControlsBinds) {
+    array_for_each_(OmmControlsBind, bind, sOmmControlsBinds) {
 
         // Prevent the game from leaving necessary buttons without any bind
         if (bind->necessary && mem_eq(bind->binds, NO_BIND, sizeof(NO_BIND))) {

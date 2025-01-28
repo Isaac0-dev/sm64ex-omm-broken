@@ -47,7 +47,7 @@
 #define G_SPECIAL_1                         0xd5
 #define G_SPECIAL_2                         0xd4
 #define G_SPECIAL_3                         0xd3
-#define G_COPYMEM                           0xd2
+#define G_COPYMEM                           0xd2 // Color palettes from sm64coopdx
 #define G_VTX                               0x01
 #define G_VTXTC                             0x02
 #define G_VTXEXT                            0x03
@@ -128,6 +128,7 @@
 #endif
 #define G_LIGHTING                          0x020000
 #define G_TEXTURE_GEN                       0x040000
+#define G_TEXTURE_GEN_INVERT                0x000800
 #define G_TEXTURE_GEN_LINEAR                0x080000
 #define G_LOD                               0x100000
 #define G_SHADING_SMOOTH                    0x200000
@@ -1884,6 +1885,9 @@ typedef union {
     _SHIFTL(G_RDPSETOTHERMODE,24,8) | _SHIFTL(mode0,0,24), (u32)(mode1) \
 }}
 
+#define G_TX_BOWSER_PEACH_PAINTING  1
+#define G_TX_UNKNOWN_5              5
+#define G_TX_LOADTILE_TILE_1        6
 #define G_TX_LOADTILE               7
 #define G_TX_RENDERTILE             0
 #define G_TX_NOMIRROR               0

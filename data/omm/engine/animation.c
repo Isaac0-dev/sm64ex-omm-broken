@@ -39,12 +39,18 @@ void geo_obj_init_animation_accel(struct GraphNodeObject *node, struct Animation
     geo_obj_sync_anim_frame(animInfo);
 }
 
-s32 geo_obj_retrieve_animation_index(s32 frame, u16 **attributes) {
-    u16 attr0 = (*attributes)[0];
-    u16 attr1 = (*attributes)[1];
-    s32 index = attr1 + min_s(frame, attr0 - 1);
-    *attributes += 2;
-    return index;
+s16 geo_obj_retrieve_animation_value(const u16 *indices, u32 indicesLen, const s16 *values, u32 valuesLen, s32 frame, u32 *offset) {
+    if (indices && values && (!indicesLen || *offset < indicesLen - 1)) {
+        u16 index0 = (indices + *offset)[0];
+        u16 index1 = (indices + *offset)[1];
+        s32 index = index1 + clamp_s(frame, 0, index0 - 1);
+        if (valuesLen) {
+            index = clamp_s(index, 0, valuesLen - 1);
+        }
+        *offset += 2;
+        return values[index];
+    }
+    return 0;
 }
 
 s32 geo_obj_update_animation_frame(struct_AnimInfo *animInfo) {
@@ -225,4 +231,25 @@ s32 is_anim_past_end(struct MarioState *m) {
 
 s32 is_anim_past_frame(struct MarioState *m, s16 animFrame) {
     return obj_anim_is_past_frame(m->marioObj, animFrame);
+}
+
+s16 find_mario_anim_flags_and_translation(struct Object *obj, s32 yaw, Vec3s translation) {
+    struct Animation *currAnim = obj->oCurrAnim;
+    if (currAnim) {
+        s32 animFrame = geo_obj_update_animation_frame(&obj->oAnimInfo) / ANIM_ACCEL_ONE;
+        const u16 *indices = currAnim->index;
+        const s16 *values = currAnim->values;
+        u32 indicesLen = ANIM_INDEX_LENGTH(currAnim);
+        u32 valuesLen = ANIM_VALUES_LENGTH(currAnim);
+        u32 offset = 0;
+        f32 dx = geo_obj_retrieve_animation_value(indices, indicesLen, values, valuesLen, animFrame, &offset) / 4.f;
+        translation[1] = geo_obj_retrieve_animation_value(indices, indicesLen, values, valuesLen, animFrame, &offset) / 4.0f;
+        f32 dz = geo_obj_retrieve_animation_value(indices, indicesLen, values, valuesLen, animFrame, &offset) / 4.0f;
+        f32 s = (f32) sins(yaw);
+        f32 c = (f32) coss(yaw);
+        translation[0] = (dx * c) + (dz * s);
+        translation[2] = (-dx * s) + (dz * c);
+        return currAnim->flags;
+    }
+    return 0;
 }

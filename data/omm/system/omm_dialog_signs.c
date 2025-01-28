@@ -10,7 +10,7 @@ OMM_DIALOG_CREDITS, NO_SOUND, 6, 95, 200,
 " Odyssey Mario's Moveset\n"
 "----------------------\n"
 "\n"
-"PeachyPeach, 2020-2024\n"
+"PeachyPeach, 2020-2025\n"
 "\n"
 
 "Contributions:\n"
@@ -124,12 +124,35 @@ OMM_DIALOG_LEVEL_VARIANTS, NO_SOUND, 3, 95, 200,
 "Bowser In The Sky..."
 },
 
+#if OMM_GAME_IS_SM74
+
 {
-OMM_DIALOG_STATS_BOARD_RESET, NO_SOUND, 3, 95, 200,
-"Reset the stats board?\n"
-"\n"
-"//No//// Yes"
+OMM_DIALOG_SM74_ROOM_1, NO_SOUND, 4, 95, 200,
+"Banjo-Kazooie (1998)\n"
+"Banjo-Tooie (2000)\n"
+"Grunty's Revenge (2003)\n"
+"Nuts & Bolts (2008)"
 },
+
+{
+OMM_DIALOG_SM74_ROOM_2, NO_SOUND, 4, 95, 200,
+"A hidden room connected\n"
+"to mysterious objects.\n"
+"A display of paintings\n"
+"showing a bear and a bird.\n"
+
+"Something has been written\n"
+"on one of the walls...\n"
+"A few words of unknown\n"
+"significance.\n"
+
+"Is it to remember a\n"
+"glorious past?\n"
+"Or to prepare people\n"
+"against a dark future?"
+},
+
+#endif
 
 {0}
 

@@ -165,12 +165,13 @@ static void omm_star_select_render() {
     if (starSaveFlags & 0x40) {
         s32 coinsStarX = OMM_RENDER_STAR_SELECT_100_COINS_STAR_X;
         s32 coinsStarY = OMM_RENDER_STAR_SELECT_SCORE_Y - ((OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE - 8) / 2) + 1;
-        const void *coinsStarTex = omm_render_get_star_glyph(clamp_s(gCurrCourseNum, 0, 16), OMM_EXTRAS_COLORED_STARS, true);
+        const void *coinsStarTex = omm_render_get_star_glyph(clamp_s(gCurrCourseNum, 0, 16), OMM_GAME_MODE, OMM_EXTRAS_COLORED_STARS, true);
+        const u8 *coinsStarRGB = omm_render_get_star_rgb(OMM_GAME_MODE, OMM_EXTRAS_COLORED_STARS, true);
         omm_render_glyph(coinsStarX + 1, coinsStarY,     OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, coinsStarTex, false);
         omm_render_glyph(coinsStarX - 1, coinsStarY,     OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, coinsStarTex, false);
         omm_render_glyph(coinsStarX,     coinsStarY + 1, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, coinsStarTex, false);
         omm_render_glyph(coinsStarX,     coinsStarY - 1, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0x00, 0x00, 0x00, sOmmStarSelect->alpha, coinsStarTex, false);
-        omm_render_glyph(coinsStarX,     coinsStarY,     OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, 0xFF, 0xFF, 0xFF, sOmmStarSelect->alpha, coinsStarTex, false);
+        omm_render_glyph(coinsStarX,     coinsStarY,     OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, OMM_RENDER_STAR_SELECT_100_COINS_STAR_SIZE, coinsStarRGB[0], coinsStarRGB[1], coinsStarRGB[2], sOmmStarSelect->alpha, coinsStarTex, false);
     }
 
     // Time trials star time
@@ -202,6 +203,10 @@ static s32 omm_level_star_select_should_skip(UNUSED s32 arg, s32 levelNum) {
         }
         return 0;
     }
+#if OMM_GAME_IS_SMMS
+    // Moonshine: Fix act num to 1 for SSL (Yellow dunes)
+    gCurrActNum = 1;
+#endif
     return lvl_set_current_level(arg, levelNum);
 }
 

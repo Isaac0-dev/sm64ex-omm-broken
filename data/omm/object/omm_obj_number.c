@@ -373,12 +373,18 @@ struct Object *omm_obj_spawn_blue_coins_number(struct Object *o) {
 struct Object *omm_obj_spawn_star_number(struct Object *o) {
     u8 starIndex = (u8) (o->oBehParams >> 24);
     if (starIndex < OMM_NUM_STARS_MAX_PER_COURSE) {
-        struct Object *number = obj_spawn_from_geo(o, omm_geo_number, bhvOmmStarNumber);
-        number->oBehParams2ndByte = 0;
         u8 starLevelFlags = omm_stars_get_level_flags(gCurrLevelNum, OMM_GAME_MODE);
-        for (u8 i = 0; i <= starIndex; ++i) {
-            number->oBehParams2ndByte += ((starLevelFlags >> i) & 1);
+        if (starLevelFlags & (1 << starIndex)) {
+            s32 starNumber = 0;
+            for (u8 i = 0; i <= starIndex; ++i) {
+                starNumber += ((starLevelFlags >> i) & 1);
+            }
+            if (starNumber > 0) {
+                struct Object *number = obj_spawn_from_geo(o, omm_geo_number, bhvOmmStarNumber);
+                number->oBehParams2ndByte = starNumber;
+                return number;
+            }
         }
-        return number;
     }
+    return NULL;
 }

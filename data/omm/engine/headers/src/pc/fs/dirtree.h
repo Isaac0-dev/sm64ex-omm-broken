@@ -9,7 +9,7 @@
 typedef struct fs_dirtree_entry_s {
     const char *name;
     bool is_dir;
-    struct fs_dirtree_entry_s *next_hash, *next_child, *next_sibling;
+    struct fs_dirtree_entry_s *next_hash, *next_child, *next_sibling, *prev_sibling;
 } fs_dirtree_entry_t;
 
 // Virtual directory tree

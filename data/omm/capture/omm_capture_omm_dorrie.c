@@ -28,6 +28,7 @@ f32 omm_cappy_omm_dorrie_get_top(struct Object *o) {
 //
 
 s32 omm_cappy_omm_dorrie_update(struct Object *o) {
+    omm_secrets_unlock(OMM_SECRET_FLYING_DORRIE);
 
     // Hitbox
     o->hitboxRadius = omm_capture_get_hitbox_radius(o);

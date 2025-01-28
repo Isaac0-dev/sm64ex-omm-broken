@@ -1,77 +1,10 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
-
-enum {
-    CHARACTER_SOUND_YAH,
-    CHARACTER_SOUND_WAH,
-    CHARACTER_SOUND_HOO,
-    CHARACTER_SOUND_PUNCH_YAH,
-    CHARACTER_SOUND_PUNCH_WAH,
-    CHARACTER_SOUND_PUNCH_HOO,
-    CHARACTER_SOUND_HOOHOO,
-    CHARACTER_SOUND_YAHOO,
-    CHARACTER_SOUND_YAHOO_2,
-    CHARACTER_SOUND_YAHOO_3,
-    CHARACTER_SOUND_YAHOO_4,
-    CHARACTER_SOUND_WAHA,
-    CHARACTER_SOUND_YIPPEE,
-    CHARACTER_SOUND_HAHA,
-    CHARACTER_SOUND_HAHA_2,
-    CHARACTER_SOUND_UH,
-    CHARACTER_SOUND_UH2,
-    CHARACTER_SOUND_UH2_2,
-    CHARACTER_SOUND_HRMM,
-    CHARACTER_SOUND_THROW_WAH,
-    CHARACTER_SOUND_GROUND_POUND_WAH,
-    CHARACTER_SOUND_WHOA,
-    CHARACTER_SOUND_EEUH,
-    CHARACTER_SOUND_ATTACKED,
-    CHARACTER_SOUND_OOOF,
-    CHARACTER_SOUND_OOOF_2,
-    CHARACTER_SOUND_DOH,
-    CHARACTER_SOUND_HERE_WE_GO,
-    CHARACTER_SOUND_YAWNING,
-    CHARACTER_SOUND_SNORING_1,
-    CHARACTER_SOUND_SNORING_2,
-    CHARACTER_SOUND_SNORING_3,
-    CHARACTER_SOUND_PANTING_1,
-    CHARACTER_SOUND_PANTING_2,
-    CHARACTER_SOUND_PANTING_3,
-    CHARACTER_SOUND_PANTING_COLD,
-    CHARACTER_SOUND_COUGHING_1,
-    CHARACTER_SOUND_COUGHING_2,
-    CHARACTER_SOUND_COUGHING_3,
-    CHARACTER_SOUND_WAAAOOOW,
-    CHARACTER_SOUND_ON_FIRE,
-    CHARACTER_SOUND_DYING,
-    CHARACTER_SOUND_DROWNING,
-    CHARACTER_SOUND_MAMA_MIA,
-    CHARACTER_SOUND_TWIRL_BOUNCE,
-    CHARACTER_SOUND_SO_LONGA_BOWSER,
-    CHARACTER_SOUND_IMA_TIRED,
-    CHARACTER_SOUND_STAR_LETS_A_GO,
-    CHARACTER_SOUND_OKEY_DOKEY,
-    CHARACTER_SOUND_GAME_OVER,
-    CHARACTER_SOUND_HELLO,
-    CHARACTER_SOUND_PRESS_START_TO_PLAY,
-    CHARACTER_SOUND_THANK_YOU_PLAYING_MY_GAME,
-    CHARACTER_SOUND_STAR_OKEY_DOKEY,
-    CHARACTER_SOUND_PEACH_MARIO,
-    CHARACTER_SOUND_PEACH_POWER_OF_THE_STARS,
-    CHARACTER_SOUND_PEACH_THANKS_TO_YOU,
-    CHARACTER_SOUND_PEACH_THANK_YOU_MARIO,
-    CHARACTER_SOUND_PEACH_SOMETHING_SPECIAL,
-    CHARACTER_SOUND_PEACH_BAKE_A_CAKE,
-    CHARACTER_SOUND_PEACH_FOR_MARIO,
-    CHARACTER_SOUND_PEACH_MARIO_2,
-    CHARACTER_SOUND_OMM_DEATH,
-    CHARACTER_SOUND_OMM_DEATH_WATER,
-    CHARACTER_SOUND_OMM_DEATH_FALL,
-};
+#include "data/omm/system/omm_audio_character_sound.h"
 
 typedef struct {
-    s32 slot;
+    s32 character_sound;
     s32 type;
     union {
         s32 id_n64;
@@ -88,10 +21,10 @@ typedef struct {
 #define SOUND_TYPE_OMM  (2)
 #define SOUND_TYPE_R96  (3)
 
-#define SOUND_END       { .slot = 0, .type = SOUND_TYPE_NUL }
-#define SOUND_N64(s, x) { .slot = s, .type = SOUND_TYPE_N64, .id_n64 = (x) }
-#define SOUND_OMM(s, x) { .slot = s, .type = SOUND_TYPE_OMM, .id_omm = (x) }
-#define SOUND_R96(s, x) { .slot = s, .type = SOUND_TYPE_R96, .id_r96 = &x  }
+#define SOUND_END       { .character_sound = 0, .type = SOUND_TYPE_NUL }
+#define SOUND_N64(s, x) { .character_sound = s, .type = SOUND_TYPE_N64, .id_n64 = (x) }
+#define SOUND_OMM(s, x) { .character_sound = s, .type = SOUND_TYPE_OMM, .id_omm = (x) }
+#define SOUND_R96(s, x) { .character_sound = s, .type = SOUND_TYPE_R96, .id_r96 = &x  }
 
 static const OmmCharacterSound OMM_CHARACTER_SOUNDS_MARIO_N64[] = {
     SOUND_N64(CHARACTER_SOUND_YAH, SOUND_MARIO_YAH_WAH_HOO + 0x00000),
@@ -159,6 +92,10 @@ static const OmmCharacterSound OMM_CHARACTER_SOUNDS_MARIO_N64[] = {
     SOUND_OMM(CHARACTER_SOUND_OMM_DEATH, OMM_SOUND_EVENT_DEATH_MARIO),
     SOUND_OMM(CHARACTER_SOUND_OMM_DEATH_WATER, OMM_SOUND_EVENT_DEATH_MARIO_WATER),
     SOUND_OMM(CHARACTER_SOUND_OMM_DEATH_FALL, OMM_SOUND_EVENT_DEATH_MARIO_FALL),
+    SOUND_N64(CHARACTER_SOUND_OMM_VIBE_JOY, 0xFF00 | (SOUND_MARIO_YAHOO_WAHA_YIPPEE + 0x40000)),
+    SOUND_N64(CHARACTER_SOUND_OMM_VIBE_RAGE, 0xFF00 | (SOUND_MARIO_HERE_WE_GO)),
+    SOUND_N64(CHARACTER_SOUND_OMM_VIBE_GLOOM, 0xFF00 | (SOUND_MARIO_MAMA_MIA)),
+    SOUND_N64(CHARACTER_SOUND_OMM_VIBE_CALM, 0xFF00 | (SOUND_MARIO_OKEY_DOKEY)),
     SOUND_END,
 };
 
@@ -240,6 +177,10 @@ static const OmmCharacterSound OMM_CHARACTER_SOUNDS_PEACH_OMM[] = {
     SOUND_OMM(CHARACTER_SOUND_OMM_DEATH, OMM_SOUND_EVENT_DEATH_PEACH),
     SOUND_OMM(CHARACTER_SOUND_OMM_DEATH_WATER, OMM_SOUND_EVENT_DEATH_PEACH_WATER),
     SOUND_OMM(CHARACTER_SOUND_OMM_DEATH_FALL, OMM_SOUND_EVENT_DEATH_PEACH_FALL),
+    SOUND_OMM(CHARACTER_SOUND_OMM_VIBE_JOY, OMM_SOUND_PEACH_VIBE_JOY),
+    SOUND_OMM(CHARACTER_SOUND_OMM_VIBE_RAGE, OMM_SOUND_PEACH_VIBE_RAGE),
+    SOUND_OMM(CHARACTER_SOUND_OMM_VIBE_GLOOM, OMM_SOUND_PEACH_VIBE_GLOOM),
+    SOUND_OMM(CHARACTER_SOUND_OMM_VIBE_CALM, OMM_SOUND_PEACH_VIBE_CALM),
     SOUND_END,
 };
 
@@ -310,6 +251,10 @@ static const OmmCharacterSound OMM_CHARACTER_SOUNDS_MARIO_R96[] = {
     SOUND_OMM(CHARACTER_SOUND_OMM_DEATH, OMM_SOUND_EVENT_DEATH_MARIO),
     SOUND_OMM(CHARACTER_SOUND_OMM_DEATH_WATER, OMM_SOUND_EVENT_DEATH_MARIO_WATER),
     SOUND_OMM(CHARACTER_SOUND_OMM_DEATH_FALL, OMM_SOUND_EVENT_DEATH_MARIO_FALL),
+    SOUND_N64(CHARACTER_SOUND_OMM_VIBE_JOY, 0xFF00 | (SOUND_MARIO_YAHOO_WAHA_YIPPEE + 0x40000)),
+    SOUND_N64(CHARACTER_SOUND_OMM_VIBE_RAGE, 0xFF00 | (SOUND_MARIO_HERE_WE_GO)),
+    SOUND_N64(CHARACTER_SOUND_OMM_VIBE_GLOOM, 0xFF00 | (SOUND_MARIO_MAMA_MIA)),
+    SOUND_N64(CHARACTER_SOUND_OMM_VIBE_CALM, 0xFF00 | (SOUND_MARIO_OKEY_DOKEY)),
     SOUND_END,
 };
 
@@ -477,17 +422,28 @@ static const OmmCharacterSound *OMM_CHARACTER_SOUNDS_PER_PLAYER[] = {
 };
 
 static s32 omm_sound_find_character_sound(s32 type, uintptr_t id) {
-    for_each_(const OmmCharacterSound *, sounds, array_length(OMM_CHARACTER_SOUNDS), OMM_CHARACTER_SOUNDS) {
+    array_for_each_(const OmmCharacterSound *, sounds, OMM_CHARACTER_SOUNDS) {
         for (const OmmCharacterSound *sound = *sounds; sound->type; ++sound) {
             if ((type == sound->type) && (
                 (type == SOUND_TYPE_N64 && SOUND_ID(id) == SOUND_ID(sound->id_n64)) ||
                 (type == SOUND_TYPE_OMM && (s32) id == sound->id_omm) ||
                 (type == SOUND_TYPE_R96 && strcmp((const char *) id, *sound->id_r96) == 0))) {
-                return sound->slot;
+                return sound->character_sound;
             }
         }
     }
     return -1;
+}
+
+static bool omm_sound_check_cs_sound(s32 character_sound, f32 *pos, u8 priority, bool play) {
+    u32 cs_index = omm_models_cs_get_current_cs_index();
+    if (!play) {
+        return omm_models_cs_sound_stop(cs_index, character_sound);
+    }
+    if (priority) {
+        return omm_models_cs_sound_play_with_priority(cs_index, character_sound, pos ? pos : gGlobalSoundArgs, priority);
+    }
+    return omm_models_cs_sound_play(cs_index, character_sound, pos ? pos : gGlobalSoundArgs);
 }
 
 static bool omm_sound_process_character_sound(s32 type, uintptr_t id, f32 *pos, u8 priority, bool play) {
@@ -495,15 +451,20 @@ static bool omm_sound_process_character_sound(s32 type, uintptr_t id, f32 *pos, 
     if (exec) return false;
 
     // Find character sound
-    s32 slot = omm_sound_find_character_sound(type, id);
-    if (slot == -1) {
+    s32 character_sound = omm_sound_find_character_sound(type, id);
+    if (character_sound == -1) {
         return false;
     }
 
     // Play (or stop) character sound
-    for (const OmmCharacterSound *sound = OMM_CHARACTER_SOUNDS_PER_PLAYER[omm_player_get_selected_index()]; sound->type; ++sound) {
-        if (sound->slot == slot) {
+    s32 playerIndex = omm_player_get_selected_index_model_and_sounds();
+    for (const OmmCharacterSound *sound = OMM_CHARACTER_SOUNDS_PER_PLAYER[playerIndex]; sound->type; ++sound) {
+        if (sound->character_sound == character_sound) {
             exec = true;
+            if (playerIndex == OMM_PLAYER_MARIO && gOmmCsVoices && omm_sound_check_cs_sound(character_sound, pos, priority, play)) {
+                exec = false;
+                break;
+            }
             switch (sound->type) {
                 case SOUND_TYPE_N64: {
                     if (!play) {

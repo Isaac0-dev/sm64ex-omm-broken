@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "data/omm/omm_constants.h"
 
 struct MacroPreset { const BehaviorScript *behavior; s16 model; s16 param; };
 extern struct MacroPreset MacroObjectPresets[];
@@ -387,11 +388,11 @@ u8 *omm_level_get_act_name(ustr_t dst, s32 levelNum, s32 actNum, MODE_INDEX s32 
             case 0x0D: convert_text_and_copy(dst, OMM_TEXT_LEVEL_VCUTM_STAR_4); break;
             case 0x0E: convert_text_and_copy(dst, OMM_TEXT_LEVEL_VCUTM_STAR_5); break;
             case 0x0F: convert_text_and_copy(dst, OMM_TEXT_LEVEL_VCUTM_STAR_6); break;
-            default:   convert_text_and_copy(dst, OMM_TEXT_LEVEL_EMPTY); break;
+            default:   convert_text_and_copy(dst, OMM_TEXT_EMPTY); break;
         }
 #endif
     } else if (actNum < 0 || actNum > OMM_NUM_STARS_MAX_PER_COURSE || OMM_LEVEL_IS_BOWSER_FIGHT(levelNum)) { // Fake stars, invalid stars, Bowser fights
-        convert_text_and_copy(dst, OMM_TEXT_LEVEL_EMPTY);
+        convert_text_and_copy(dst, OMM_TEXT_EMPTY);
 #if OMM_GAME_IS_SM64
     } else if (levelNum == LEVEL_PSS) {
         convert_text_and_copy(dst, actNum == 1 ? OMM_TEXT_LEVEL_PSS_STAR_1 : OMM_TEXT_LEVEL_PSS_STAR_2);
@@ -452,13 +453,13 @@ Warp *omm_level_get_entry_warp(s32 levelNum, s32 areaIndex) {
 
 Warp *omm_level_get_exit_warp(s32 levelNum, s32 areaIndex) {
     omm_level_init();
-    return omm_level_get_warp(levelNum, areaIndex, 0xF0);
+    return omm_level_get_warp(levelNum, areaIndex, WARP_NODE_STAR_EXIT);
 }
 
 Warp *omm_level_get_death_warp(s32 levelNum, s32 areaIndex) {
     omm_level_init();
-    Warp *warp = omm_level_get_warp(levelNum, areaIndex, 0xF1);
-    if (!warp) warp = omm_level_get_warp(levelNum, areaIndex, 0xF3);
+    Warp *warp = omm_level_get_warp(levelNum, areaIndex, WARP_NODE_DEATH);
+    if (!warp) warp = omm_level_get_warp(levelNum, areaIndex, WARP_NODE_WARP_FLOOR);
     return warp;
 }
 

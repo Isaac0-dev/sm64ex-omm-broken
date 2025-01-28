@@ -7,7 +7,7 @@
 #define OMM_SAVEFILE_NAME   "omm_save_file.txt"
 #define OMM_SAVEFILE_BACKUP "omm_save_file." OMM_VERSION ".backup"
 
-u8 gLastCompletedCourseNum = LEVEL_CASTLE;
+u8 gLastCompletedCourseNum = COURSE_NONE;
 u8 gLastCompletedLevelNum = LEVEL_NONE;
 u8 gLastCompletedStarNum = 0;
 u8 gCurrCourseStarFlags = 0;
@@ -104,6 +104,7 @@ typedef struct {
     u64 captures;
     s32 lastCourseNum;
     OmmSaveCourse courses[array_length(OMM_SAVE_FILE_COURSES)];
+    OmmStats stats[1];
 } OmmSaveFile;
 
 typedef struct {
@@ -256,7 +257,10 @@ static void omm_save_file_write(const char *filename) {
     omm_save_file_write_buffer("#   - Render96:\n");
     omm_save_file_write_buffer("#     - the first 10 digits are the Luigi keys (1 = collected, 0 = not)\n");
     omm_save_file_write_buffer("#     - the last 6 digits are the Wario coins (1 = collected, 0 = not)\n");
-    omm_save_file_write_buffer("# The " OMM_SAVE_FILE_SECTION_SPARKLY_STARS " and " OMM_SAVE_FILE_SECTION_STATS " sections should not be edited manually.\n");
+    omm_save_file_write_buffer("# - Stats:\n");
+    omm_save_file_write_buffer("#   - various stats per save file (these should not be edited manually)\n");
+    omm_save_file_write_buffer("#\n");
+    omm_save_file_write_buffer("# The " OMM_SAVE_FILE_SECTION_SPARKLY_STARS ", " OMM_SAVE_FILE_SECTION_STATS " and " OMM_SAVE_FILE_SECTION_SECRETS " sections should not be edited manually.\n");
     omm_save_file_write_buffer("# The " OMM_SAVE_FILE_SECTION_MARIO_COLORS " and " OMM_SAVE_FILE_SECTION_PEACH_COLORS " sections can be edited in-game with the Palette Editor.\n");
     omm_save_file_write_buffer("#\n");
     omm_save_file_write_buffer("\n");
@@ -332,6 +336,9 @@ static void omm_save_file_write(const char *filename) {
                         }
                         omm_save_file_write_buffer("\n");
                     }
+
+                    // Stats
+                    omm_stats_write(saveFile->stats, OMM_STATS_PREFIX_LOCAL);
                     omm_save_file_write_buffer("\n");
                 }
             }
@@ -341,10 +348,15 @@ static void omm_save_file_write(const char *filename) {
     // Sparkly Stars data
     omm_sparkly_write();
 
-    // Stats data
-    gOmmData->write_stats();
+    // Global stats
+    omm_save_file_write_buffer(OMM_SAVE_FILE_SECTION_STATS "\n");
+    omm_stats_write(gOmmStats, OMM_STATS_PREFIX_GLOBAL);
+    omm_save_file_write_buffer("\n");
 
-    // Mario colors
+    // Secrets
+    omm_secrets_write();
+
+    // Mario/Peach colors
     omm_mario_colors_write();
 
     // Post process
@@ -375,32 +387,37 @@ void omm_save_file_do_save() {
 #define NUM_TOKENS (4)
 
 typedef struct { char args[NUM_TOKENS][TOKEN_LEN]; } Tokens;
-static Tokens __tokenize(const char *buffer) {
+
+static void new_token(Tokens *tokens, u32 *index, const char *temp, u32 *length) {
+    if (*length) {
+        mem_cpy(tokens->args[(*index)++], temp, *length);
+    }
+    *length = 0;
+}
+
+static Tokens tokenize(const char *buffer) {
     Tokens tokens; mem_zero(&tokens, sizeof(tokens));
     char temp[TOKEN_LEN];
     u32 index = 0;
     u32 length = 0;
     u32 maxlen = (s32) strlen(buffer);
-    for (u32 i = 0, dq = 0; i <= maxlen; ++i) {
+    for (u32 i = 0, dq = 0; i <= maxlen && index < NUM_TOKENS; ++i) {
         char c = buffer[i];
         if (c == '"') {
+            new_token(&tokens, &index, temp, &length);
             dq = !dq;
         } else if (c && (dq || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c == '_') || (c == '.'))) {
             if (length < TOKEN_LEN - 1) {
                 temp[length++] = c;
             }
-        } else if (length) {
-            mem_cpy(tokens.args[index++], temp, length);
-            if (index >= NUM_TOKENS) {
-                return tokens;
-            }
-            length = 0;
+        } else {
+            new_token(&tokens, &index, temp, &length);
         }
     }
     return tokens;
 }
 
-static void __trim_left(char *buffer) {
+static void trim_left(char *buffer) {
     s32 l = (s32) strlen(buffer);
     s32 i = 0;
     while (buffer[i] && (u8) buffer[i] <= (u8) ' ') ++i;
@@ -418,9 +435,9 @@ static bool omm_save_file_load(const char *filename) {
         s32 fileIndex = 0, modeIndex = 0;
         char buffer[1024];
         while (fgets(buffer, 1024, f)) {
-            __trim_left(buffer);
+            trim_left(buffer);
             if (*buffer && *buffer != '#') {
-                Tokens tokens = __tokenize(buffer);
+                Tokens tokens = tokenize(buffer);
 
                 // Version
                 if (strcmp(tokens.args[0], "version") == 0 && strcmp(tokens.args[1], OMM_VERSION) == 0) {
@@ -429,6 +446,7 @@ static bool omm_save_file_load(const char *filename) {
 
                 // Section
                 if (buffer[0] == '[') {
+                    saveFile = NULL;
 
                     // Game save
                     for (s32 i = 0; i != array_length(sOmmSaveBuffers); ++i) {
@@ -452,73 +470,23 @@ static bool omm_save_file_load(const char *filename) {
                     continue;
                 }
 
-// !!!!!!!!!!!!!!!!!!!! TODO: Backwards compatibility, remove this in a future update !!!!!!!!!!!!!!!!!!!!
-                // Settings data
-                READ_KBINDS(gOmmControlsButtonA);
-                READ_KBINDS(gOmmControlsButtonB);
-                READ_KBINDS(gOmmControlsButtonX);
-                READ_KBINDS(gOmmControlsButtonY);
-                READ_KBINDS(gOmmControlsButtonStart);
-                READ_KBINDS(gOmmControlsButtonSpin);
-                READ_KBINDS(gOmmControlsTriggerL);
-                READ_KBINDS(gOmmControlsTriggerR);
-                READ_KBINDS(gOmmControlsTriggerZ);
-                READ_KBINDS(gOmmControlsCUp);
-                READ_KBINDS(gOmmControlsCDown);
-                READ_KBINDS(gOmmControlsCLeft);
-                READ_KBINDS(gOmmControlsCRight);
-                READ_KBINDS(gOmmControlsDUp);
-                READ_KBINDS(gOmmControlsDDown);
-                READ_KBINDS(gOmmControlsDLeft);
-                READ_KBINDS(gOmmControlsDRight);
-                READ_KBINDS(gOmmControlsStickUp);
-                READ_KBINDS(gOmmControlsStickDown);
-                READ_KBINDS(gOmmControlsStickLeft);
-                READ_KBINDS(gOmmControlsStickRight);
-                READ_CHOICE(gOmmFrameRate);
-                READ_TOGGLE(gOmmShowFPS);
-                READ_CHOICE(gOmmTextureCaching);
-                READ_CHOICE(gOmmHudMode);
-                READ_CHOICE_SC(gOmmCharacter);
-                READ_CHOICE_SC(gOmmMovesetType);
-                READ_CHOICE_SC(gOmmCapType);
-                READ_CHOICE_SC(gOmmStarsMode);
-                READ_CHOICE_SC(gOmmPowerUpsType);
-                READ_CHOICE_SC(gOmmCameraMode);
-                READ_CHOICE_SC(gOmmSparklyStarsMode);
-                READ_CHOICE_SC(gOmmSparklyStarsHintAtLevelEntry);
-                READ_CHOICE_SC(gOmmSparklyStarsCompletionReward);
-                READ_TOGGLE_SC(gOmmSparklyStarsPerryCharge);
-                READ_CHOICE_SC(gOmmExtrasMarioColors);
-                READ_CHOICE_SC(gOmmExtrasPeachColors);
-                READ_CHOICE_SC(gOmmExtrasObjectsRadar);
-                READ_TOGGLE_SC(gOmmExtrasSMOAnimations);
-                READ_TOGGLE_SC(gOmmExtrasCappyAndTiara);
-                READ_TOGGLE_SC(gOmmExtrasColoredStars);
-                READ_TOGGLE_SC(gOmmExtrasRevealSecrets);
-                READ_TOGGLE_SC(gOmmExtrasShowStarNumber);
-                READ_TOGGLE_SC(gOmmExtrasInvisibleMode);
-#if OMM_CODE_DEBUG
-                READ_TOGGLE_SC(gOmmDebugHitbox);
-                READ_TOGGLE_SC(gOmmDebugHurtbox);
-                READ_TOGGLE_SC(gOmmDebugWallbox);
-                READ_TOGGLE_SC(gOmmDebugSurface);
-                READ_TOGGLE_SC(gOmmDebugMario);
-                READ_TOGGLE_SC(gOmmDebugCappy);
-#endif
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
                 // Sparkly Stars data
                 READ_CHECK_INVALID(omm_sparkly_read, tokens.args[0], tokens.args[1]);
 
-                // Stats data
-                READ_CHECK_INVALID(gOmmData->read_stats, tokens.args[0], tokens.args[1], tokens.args[2]);
+                // Global stats
+                READ_CHECK_INVALID(omm_stats_read, gOmmStats, OMM_STATS_PREFIX_GLOBAL, tokens.args[0], tokens.args[1], tokens.args[2]);
+
+                // Secrets
+                READ_CHECK_INVALID(omm_secrets_read, tokens.args[0], tokens.args[1]);
 
                 // Mario/Peach colors
-                READ_CHECK_INVALID(omm_mario_colors_read, tokens.args[0], tokens.args[1]);
+                READ_CHECK_INVALID(omm_mario_colors_read, tokens.args[0], tokens.args[1], tokens.args[2]);
 
                 // Game data
                 if (saveFile) {
+
+                    // Stats
+                    READ_CHECK_INVALID(omm_stats_read, saveFile->stats, OMM_STATS_PREFIX_LOCAL, tokens.args[0], tokens.args[1], tokens.args[2]);
 
                     // Captures
                     if (strcmp(tokens.args[0], OMM_SAVE_FILE_FIELD_CAPTURES) == 0) {
@@ -540,9 +508,10 @@ static bool omm_save_file_load(const char *filename) {
                                 const char *field = tokens.args[1 + i];
                                 switch (fieldType) {
                                     case 'i': {
+                                        u64 value = 0;
                                         CHECK_VALID(*field);
-                                        u64 x = 0; sscanf(field, "%llu", &x);
-                                        OMM_SAVE_FILE_COLLECTIBLE_SET_I(saveFile->collectibles, fieldStart, fieldLength, x);
+                                        CHECK_VALID(sscanf(field, "%llu", &value) == 1);
+                                        OMM_SAVE_FILE_COLLECTIBLE_SET_I(saveFile->collectibles, fieldStart, fieldLength, value);
                                     } break;
 
                                     case 'b': {
@@ -581,9 +550,9 @@ static bool omm_save_file_load(const char *filename) {
                             saveFile->courses[courseNum].cannon = (*tokens.args[2] == '1');
 
                             // Score
-                            CHECK_VALID(*tokens.args[3]);
                             s32 coinScore = 0;
-                            sscanf(tokens.args[3], "%d", &coinScore);
+                            CHECK_VALID(*tokens.args[3]);
+                            CHECK_VALID(sscanf(tokens.args[3], "%d", &coinScore) == 1);
                             saveFile->courses[courseNum].score = clamp_s(coinScore, 0, 999);
                             break;
                         }
@@ -594,7 +563,7 @@ static bool omm_save_file_load(const char *filename) {
                         CHECK_VALID(*tokens.args[1]);
 
                         // Check course number
-                        if (!sscanf(tokens.args[1], "%d", &saveFile->lastCourseNum)) {
+                        if (sscanf(tokens.args[1], "%d", &saveFile->lastCourseNum) != 1) {
 
                             // Check course name
                             for (s32 i = 0; i != array_length(OMM_SAVE_FILE_COURSES); ++i) {
@@ -623,7 +592,7 @@ static bool omm_save_file_load(const char *filename) {
 
         // If the version of the save file is not found or is not the current version, try to load the backup file
         if (!versionMatch && omm_save_file_load(OMM_SAVEFILE_BACKUP)) {
-            omm_log("[!] Version mismatch! Backup file successfully loaded.\n");
+            omm_log_warning("Version mismatch! Backup file successfully loaded.\n");
             omm_save_file_write(OMM_SAVEFILE_NAME);
             return true;
         }
@@ -642,7 +611,7 @@ void omm_save_file_load_all() {
         if (omm_save_file_load(OMM_SAVEFILE_NAME)) {
             omm_save_file_write(OMM_SAVEFILE_BACKUP);
         } else if (omm_save_file_load(OMM_SAVEFILE_BACKUP)) {
-            omm_log("[!] Unable to load the save file! Backup file successfully loaded.\n");
+            omm_log_warning("Unable to load the save file! Backup file successfully loaded.\n");
             omm_save_file_write(OMM_SAVEFILE_NAME);
         }
     }
@@ -807,6 +776,12 @@ s32 omm_save_file_get_wario_coins_count(s32 fileIndex, s32 modeIndex) {
 #endif
 }
 
+OmmStats *omm_save_file_get_stats(s32 fileIndex, s32 modeIndex) {
+    CHECK_FILE_INDEX(fileIndex, return NULL);
+    CHECK_MODE_INDEX(modeIndex, return NULL);
+    return sOmmSaveFile->stats;
+}
+
 //
 // Set
 //
@@ -885,6 +860,7 @@ void omm_save_file_collect_star_or_key(s32 fileIndex, s32 modeIndex, s32 levelIn
     CHECK_COURSE_INDEX(courseIndex, return);
 
     // Update globals
+    gLastCompletedCourseNum = courseIndex + 1;
     gLastCompletedLevelNum = OMM_BOWSER_IN_THE_LEVEL(levelIndex + 1);
     gLastCompletedStarNum = starIndex + 1;
     gGotFileCoinHiScore = 0;
@@ -906,13 +882,13 @@ void omm_save_file_collect_star_or_key(s32 fileIndex, s32 modeIndex, s32 levelIn
         case LEVEL_BOWSER_3: {
             omm_save_file_set_flags(fileIndex, modeIndex, 0);
             omm_speedrun_split(OMM_SPLIT_BOWSER);
-            gOmmStats->starsCollected++;
+            omm_stats_increase(starsCollected, 1);
         } break;
 
         default: {
             omm_save_file_set_star_flags(fileIndex, modeIndex, courseIndex, starFlag);
             omm_speedrun_split(OMM_SPLIT_STAR);
-            gOmmStats->starsCollected++;
+            omm_stats_increase(starsCollected, 1);
         } break;
     }
 

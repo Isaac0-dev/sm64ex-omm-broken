@@ -20,7 +20,7 @@ static bool packdir_walkfn(void *userdata, const char *path) {
 
 static void *fs_packtype_dir_mount(const char *realpath) {
     if (fs_sys_dir_exists(realpath)) {
-        void *pack = (void *) sys_strdup(realpath);
+        void *pack = (void *) str_dup(realpath);
         return pack;
     }
     return NULL;

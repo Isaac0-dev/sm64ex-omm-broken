@@ -98,7 +98,7 @@ static const OmmCappyEyesParams OMM_CAPPY_EYES_PARAMS[] = {
 };
 
 static const OmmCappyEyesParams *omm_cappy_gfx_get_eyes_params(u32 id) {
-    for_each_(const OmmCappyEyesParams, params, array_length(OMM_CAPPY_EYES_PARAMS), OMM_CAPPY_EYES_PARAMS) {
+    array_for_each_(const OmmCappyEyesParams, params, OMM_CAPPY_EYES_PARAMS) {
         if (params->id == id) {
             return params;
         }

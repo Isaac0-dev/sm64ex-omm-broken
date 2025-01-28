@@ -26,7 +26,7 @@ static s32 omm_act_holding_bowser(struct MarioState *m) {
     bool aDown = (gPlayer1Controller->buttonDown & A_BUTTON) != 0;
 
     // If A is down, B is pressed and Mario spins fast enough, try to locate the nearest bomb
-    if (!m->actionState && aDown && bPressed && abs_s(m->angleVel[1]) >= 0xE00) {
+    if (!m->actionState && aDown && bPressed && abs_s(m->angleVel[1]) >= 0xF00) {
         f32 distTarget = LEVEL_BOUNDARY_MAX;
         sTargetBomb = NULL;
         for_each_object_with_behavior(obj, bhvBowserBomb) {
@@ -34,6 +34,7 @@ static s32 omm_act_holding_bowser(struct MarioState *m) {
             if (distToObj < distTarget) {
                 distTarget = distToObj;
                 sTargetBomb = obj;
+                m->angleVel[1] = 0x1000 * sign_s(m->angleVel[1]);
                 m->actionState = 1;
             }
         }
@@ -43,16 +44,27 @@ static s32 omm_act_holding_bowser(struct MarioState *m) {
     if (m->actionState && sTargetBomb) {
         if (aDown) {
             s16 angleToTarget = obj_get_object1_angle_yaw_to_object2(m->marioObj, sTargetBomb);
-            if (abs_s((s16) (angleToTarget - m->faceAngle[1])) <= abs_s(m->angleVel[1]) / 2) {
+            if (abs_s((s16) (angleToTarget - m->faceAngle[1])) <= 0x800) {
                 m->faceAngle[1] = angleToTarget;
                 m->input |= INPUT_B_PRESSED;
             } else {
+                // Force these values to keep spinning
                 m->intendedMag = max_f(21.f, m->intendedMag);
                 m->twirlYaw = m->intendedYaw;
                 m->input &= ~INPUT_B_PRESSED;
             }
         } else {
             m->input |= INPUT_B_PRESSED;
+        }
+    }
+
+    // Update Bowser values
+    if (m->input & INPUT_B_PRESSED) {
+        struct Object *bowser = m->heldObj;
+        if (bowser && bowser->behavior == bhvBowser) {
+            bowser->oBowserHeldAnglePitch = m->marioObj->oGfxAngle[0];
+            bowser->oBowserHeldAngleVelYaw = m->angleVel[1];
+            bowser->oMoveAngleYaw = m->faceAngle[1];
         }
     }
 

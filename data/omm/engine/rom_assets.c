@@ -2,8 +2,53 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 
-#define U32_BE(buf) (u32) (((buf)[0] << 24) | ((buf)[1] << 16) | ((buf)[2] << 8) | ((buf)[3] << 0))
-#define U32_LE(buf) (u32) (((buf)[3] << 24) | ((buf)[2] << 16) | ((buf)[1] << 8) | ((buf)[0] << 0))
+//
+// Baserom
+//
+
+static struct {
+    sys_path_t filepath;
+    bool appdata;
+} sBaseromUsZ64[1] = {0};
+
+static void rom_asset_remember_baserom(sys_path_t filepath, bool appdata) {
+    str_cpy(sBaseromUsZ64->filepath, sizeof(sys_path_t), filepath);
+    sBaseromUsZ64->appdata = appdata;
+}
+
+void rom_asset_copy_baserom_to_appdata() {
+    if (!sBaseromUsZ64->appdata) {
+        sys_path_t filepathAppdata;
+        fs_cat_paths(filepathAppdata, sys_user_path(), BASEROM_FILENAME);
+        fs_sys_copy_file(sBaseromUsZ64->filepath, filepathAppdata);
+    }
+}
+
+static void rom_asset_delete_baserom_from_appdata() {
+    if (sBaseromUsZ64->appdata && fs_sys_file_exists(sBaseromUsZ64->filepath)) {
+        fs_sys_delete_file(sBaseromUsZ64->filepath);
+    }
+}
+
+#define rom_asset_fatal(fmt, ...) { \
+    rom_asset_delete_baserom_from_appdata(); \
+    sys_fatal("%s: " fmt "%s%s%s", \
+        __FUNCTION__ \
+        __VA_ARGS__, \
+        (*sBaseromUsZ64->filepath ? "\nROM file: \"" : ""), \
+        (sBaseromUsZ64->filepath), \
+        (*sBaseromUsZ64->filepath ? "\"" : "") \
+    ); \
+}
+
+//
+// ROM Assets
+//
+
+#define ROM_ASSET_TYPE_NONE          (0)
+#define ROM_ASSET_TYPE_TEXTURE       (1)
+#define ROM_ASSET_TYPE_TEXTURE_MIO0  (2)
+#define ROM_ASSET_TYPE_SKYBOX        (3)
 
 typedef struct {
     u32 type;
@@ -15,23 +60,65 @@ typedef struct {
     sys_path_t name;
 } RomAsset;
 
-typedef struct {
-    u8 *data;
-    u32 size;
-} Mio0Buffer;
+static OmmArray_(RomAsset *) sRomAssets = omm_array_zero;
+
+static void rom_asset_register(u32 type, u32 address, u32 offset, u32 size, s32 width, s32 height, const char *name) {
+    if (type) {
+        RomAsset *asset = mem_new(RomAsset, 1);
+        asset->type = type;
+        asset->address = address;
+        asset->offset = offset;
+        asset->size = size;
+        asset->width = width;
+        asset->height = height;
+        str_cpy(asset->name, sizeof(sys_path_t), name);
+        omm_array_add(sRomAssets, ptr, asset);
+    }
+}
+
+#define rom_asset_texture(address, size, width, height, name) \
+    rom_asset_register(ROM_ASSET_TYPE_TEXTURE, address, 0, size, width, height, name)
+
+#define rom_asset_texture_mio0(address, offset, size, width, height, name) \
+    rom_asset_register(ROM_ASSET_TYPE_TEXTURE_MIO0, address, offset, size, width, height, name)
+
+#define rom_asset_skybox(address, size, name) \
+    rom_asset_register(ROM_ASSET_TYPE_SKYBOX, address, 0, size, 0, 0, name)
+
+OMM_AT_STARTUP static void rom_asset_init() {
+#include "rom_assets.inl"
+}
+
+#undef rom_asset_texture
+#undef rom_asset_texture_mio0
+#undef rom_asset_skybox
 
 //
 // MIO0 decompression
 //
 
-#define MIO0_MAGIC              "MIO0"
-#define MIO0_GET_BIT(buf, bit)  ((buf)[(bit) / 8] & (1 << (7 - ((bit) % 8))))
+#define U32_BE(buf) (u32) (((buf)[0] << 24) | ((buf)[1] << 16) | ((buf)[2] << 8) | ((buf)[3] << 0))
+#define U32_LE(buf) (u32) (((buf)[3] << 24) | ((buf)[2] << 16) | ((buf)[1] << 8) | ((buf)[0] << 0))
+
+#define MIO0_MAGIC "MIO0"
+#define MIO0_GET_BIT(buf, bit) ((buf)[(bit) / 8] & (1 << (7 - ((bit) % 8))))
+
+typedef struct {
+    u8 *data;
+    u32 size;
+} Mio0Buffer;
+
+static bool rom_asset_is_mio0(const u8 *data) {
+    return mem_eq(data, MIO0_MAGIC, 4);
+}
 
 static u8 *rom_asset_decompress_mio0(const u8 *data, u32 *size) {
 
     // Extract header
-    if (!mem_eq(data, MIO0_MAGIC, 4)) {
-        sys_fatal("rom_asset_decompress_mio0: Input data is not MIO0-compressed!");
+    if (!rom_asset_is_mio0(data)) {
+        rom_asset_fatal(
+            "Input data is not MIO0-compressed!"
+        );
     }
     u32 destSize = U32_BE(data + 4);
     u32 compOffset = U32_BE(data + 8);
@@ -62,69 +149,92 @@ static u8 *rom_asset_decompress_mio0(const u8 *data, u32 *size) {
     return decompressed;
 }
 
-//
-// ROM
-//
-
-static bool rom_asset_load_rom_data(u8 *data, u32 size, const char *filepath) {
-    FILE *f = fopen(filepath, "rb");
-    if (f) {
-        if (fread(data, 1, size, f) != size) {
-            sys_fatal("rom_asset_load_rom: File \"%s\" is not a valid Super Mario 64 US ROM file.", filepath);
-        }
-        fclose(f);
-        return true;
-    }
-    return false;
-}
-
-static void rom_asset_load_rom(u8 *data, u32 size) {
-    OMM_DO_ONCE {
-
-        // AppData
-        sys_path_t filepathAppdata;
-        fs_cat_paths(filepathAppdata, sys_user_path(), BASEROM_US_Z64);
-        if (rom_asset_load_rom_data(data, size, filepathAppdata)) {
-            return;
-        }
-
-        // Exe directory
-        sys_path_t filepathExe;
-        fs_cat_paths(filepathExe, sys_exe_path(), BASEROM_US_Z64);
-        if (rom_asset_load_rom_data(data, size, filepathExe)) {
-            fs_sys_copy_file(filepathExe, filepathAppdata); // Copy file to AppData
-            return;
-        }
-
-        // Not found
-        sys_fatal(
-            "rom_asset_load_rom: Unable to find a Super Mario 64 US ROM file.\n\n"
-            "Please put a valid copy of the Super Mario 64 US ROM in the executable directory and rename it \"" BASEROM_US_Z64 "\".\n"
-            "On Windows systems, make sure to enable 'File name extensions' to rename the file properly."
-        );
-    }
-}
-
-static u8 *rom_asset_get_rom() {
-    static u8 sRomData[0x800000]; // 8MB
-    rom_asset_load_rom(sRomData, sizeof(sRomData));
-    return sRomData;
-}
-
-static Mio0Buffer *rom_asset_load_mio0(u32 address) {
+static Mio0Buffer *rom_asset_load_mio0(const u8 *data) {
     static OmmHMap_(Mio0Buffer *) sMio0Buffers = omm_hmap_zero;
 
     // Check the cache
-    s32 i = omm_hmap_find(sMio0Buffers, address);
+    s32 i = omm_hmap_find(sMio0Buffers, (uintptr_t) data);
     if (i != -1) {
         return omm_hmap_get(sMio0Buffers, Mio0Buffer *, i);
     }
 
     // Load and decompress buffer
     Mio0Buffer *buffer = mem_new(Mio0Buffer, 1);
-    buffer->data = rom_asset_decompress_mio0(rom_asset_get_rom() + address, &buffer->size);
-    omm_hmap_insert(sMio0Buffers, address, buffer);
+    buffer->data = rom_asset_decompress_mio0(data, &buffer->size);
+    omm_hmap_insert(sMio0Buffers, (uintptr_t) data, buffer);
     return buffer;
+}
+
+//
+// ROM
+//
+
+static bool rom_asset_load_rom_data(u8 *data, u32 size, sys_path_t filepath, bool appdata) {
+
+    // Open baserom
+    FILE *f = fopen(filepath, "rb");
+    if (!f) {
+        return false;
+    }
+
+    // Read ROM data
+    u32 read = fread(data, 1, size, f);
+    fclose(f);
+    if (read != size) {
+        return false;
+    }
+
+    // Check MIO0 sections
+    omm_array_for_each(sRomAssets, p_asset) {
+        RomAsset *asset = p_asset->as_ptr;
+        if (asset->type == ROM_ASSET_TYPE_TEXTURE_MIO0 ||
+            asset->type == ROM_ASSET_TYPE_SKYBOX) {
+            if (!rom_asset_is_mio0(data + asset->address)) {
+                return false;
+            }
+        }
+    }
+
+    // OK
+    omm_log("Loading ROM data from file: \"%s\"\n",, filepath);
+    rom_asset_remember_baserom(filepath, appdata);
+    return true;
+}
+
+static void rom_asset_load_rom(u8 *data, u32 size) {
+    OMM_DO_ONCE {
+        sys_path_t filepath;
+
+        // AppData
+        fs_cat_paths(filepath, sys_user_path(), BASEROM_FILENAME);
+        if (rom_asset_load_rom_data(data, size, filepath, true)) {
+            return;
+        }
+
+        // Exe directory
+        fs_cat_paths(filepath, sys_exe_path(), BASEROM_FILENAME);
+        if (rom_asset_load_rom_data(data, size, filepath, false)) {
+            return;
+        }
+
+        // Handle Windows stupid 'feature' that hides the file extensions by default
+        fs_cat_paths(filepath, sys_exe_path(), BASEROM_FILENAME BASEROM_EXT);
+        if (rom_asset_load_rom_data(data, size, filepath, false)) {
+            return;
+        }
+
+        // Not found
+        rom_asset_fatal(
+            "Unable to find a Super Mario 64 US ROM file.\n"
+            "Please put a valid copy of the Super Mario 64 US ROM in the executable directory and rename it \"" BASEROM_FILENAME "\"."
+        );
+    }
+}
+
+static u8 *rom_asset_get_rom() {
+    static u8 sRomData[BASEROM_SIZE];
+    rom_asset_load_rom(sRomData, sizeof(sRomData));
+    return sRomData;
 }
 
 //
@@ -242,12 +352,14 @@ static u8 *rom_asset_texture_convert_to_rgba32(const char *name, const u8 *data,
     if (strstr(name, ".ia16"))   return rom_asset_texture_convert_ia16  (data, size);
     if (strstr(name, ".i4"))     return rom_asset_texture_convert_i4    (data, size);
     if (strstr(name, ".i8"))     return rom_asset_texture_convert_i8    (data, size);
-    sys_fatal("rom_asset_texture_convert_to_rgba32: File \"%s\": Unknown texture format.", name);
+    rom_asset_fatal(
+        "File \"%s\": Unknown texture format.",, name
+    );
 }
 
 static u8 *rom_asset_texture_extract(const RomAsset *asset, bool mio0) {
     if (mio0) {
-        Mio0Buffer *buffer = rom_asset_load_mio0(asset->address);
+        Mio0Buffer *buffer = rom_asset_load_mio0(rom_asset_get_rom() + asset->address);
         return rom_asset_texture_convert_to_rgba32(asset->name, buffer->data + asset->offset, asset->size);
     }
     return rom_asset_texture_convert_to_rgba32(asset->name, rom_asset_get_rom() + asset->address, asset->size);
@@ -312,7 +424,7 @@ static u8 *rom_asset_skybox_extract_and_assemble_tiles(
 }
 
 static u8 *rom_asset_skybox_extract(const RomAsset *asset, s32 *width, s32 *height) {
-    Mio0Buffer *buffer = rom_asset_load_mio0(asset->address);
+    Mio0Buffer *buffer = rom_asset_load_mio0(rom_asset_get_rom() + asset->address);
     if (strcmp(asset->name, "levels/ending/cake") == 0) {
         return rom_asset_skybox_extract_and_assemble_tiles(buffer->data, asset->size, width, height, 4, 12, 80, 20, 0, 0);
     }
@@ -337,48 +449,6 @@ static void rom_asset_sound_load_data(u8 *data, u64 size) {
         }
     }
 }
-
-//
-// Init
-//
-
-static OmmArray_(RomAsset *) sRomAssets = omm_array_zero;
-
-static void rom_asset_register(u32 type, u32 address, u32 offset, u32 size, s32 width, s32 height, const char *name) {
-    if (type) {
-        RomAsset *asset = mem_new(RomAsset, 1);
-        asset->type = type;
-        asset->address = address;
-        asset->offset = offset;
-        asset->size = size;
-        asset->width = width;
-        asset->height = height;
-        str_cpy(asset->name, sizeof(sys_path_t), name);
-        omm_array_add(sRomAssets, ptr, asset);
-    }
-}
-
-#define ROM_ASSET_TYPE_NONE          (0)
-#define ROM_ASSET_TYPE_TEXTURE       (1)
-#define ROM_ASSET_TYPE_TEXTURE_MIO0  (2)
-#define ROM_ASSET_TYPE_SKYBOX        (3)
-
-#define rom_asset_texture(address, size, width, height, name) \
-    rom_asset_register(ROM_ASSET_TYPE_TEXTURE, address, 0, size, width, height, name)
-
-#define rom_asset_texture_mio0(address, offset, size, width, height, name) \
-    rom_asset_register(ROM_ASSET_TYPE_TEXTURE_MIO0, address, offset, size, width, height, name)
-
-#define rom_asset_skybox(address, size, name) \
-    rom_asset_register(ROM_ASSET_TYPE_SKYBOX, address, 0, size, 0, 0, name)
-
-OMM_AT_STARTUP static void rom_asset_init() {
-#include "rom_assets.inl"
-}
-
-#undef rom_asset_texture
-#undef rom_asset_texture_mio0
-#undef rom_asset_skybox
 
 //
 // Precache

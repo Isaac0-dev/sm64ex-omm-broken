@@ -96,6 +96,7 @@ bool omm_mario_is_reading                       (struct MarioState *m);
 bool omm_mario_is_picking_up                    (struct MarioState *m);
 bool omm_mario_is_holding                       (struct MarioState *m);
 bool omm_mario_is_hanging                       (struct MarioState *m);
+bool omm_mario_is_ledge_climbing                (struct MarioState *m);
 bool omm_mario_is_burning                       (struct MarioState *m);
 bool omm_mario_is_sliding                       (struct MarioState *m);
 bool omm_mario_is_grabbed                       (struct MarioState *m);
@@ -118,12 +119,18 @@ bool omm_mario_check_death_warp                 (struct MarioState *m, s32 warpO
 bool omm_mario_check_grab                       (struct MarioState *m, struct Object *o, bool ignoreAngles);
 bool omm_mario_check_npc_dialog                 (struct MarioState *m, s32 actionArg, s32 *dialogState);
 bool omm_mario_check_flooded                    (struct MarioState *m);
+#if OMM_GAME_IS_R96X
+bool omm_mario_is_milk                          (struct MarioState *m);
+#else
+#define omm_mario_is_milk(m)                    false
+#endif
 
 //
 // Update
 //
 
 void omm_mario_update_platform                  (struct MarioState *m);
+void omm_mario_unset_cap                        (struct MarioState *m);
 void omm_mario_lock_camera                      (struct MarioState *m, bool isStarCutscene);
 bool omm_mario_start_dialog                     (struct MarioState *m, struct Object *o, s16 dialogId, bool dialogWithChoice, bool freezeObject, s16 angleVelTurnObjectTowardsMario);
 void omm_mario_update_l_actions                 (struct MarioState *m);
@@ -142,5 +149,21 @@ bool omm_mario_lock_once                        (struct MarioState *m, s32 durat
 bool omm_mario_unlock                           (struct MarioState *m);
 bool omm_mario_is_locked                        (struct MarioState *m);
 s32  omm_act_possession                         (struct MarioState *m);
+
+//
+// Colors
+//
+
+bool omm_mario_colors_read                      (const char *name, const char *value1, const char *value2, bool *invalid);
+void omm_mario_colors_write                     ();
+void omm_mario_colors_reset                     (bool peach);
+s32  omm_mario_colors_count                     ();
+s32  omm_mario_colors_lights_count              (bool peach);
+s32  omm_mario_colors_light_groups_count        (bool peach);
+u32 *omm_mario_colors_get_light                 (bool peach, s32 palette, s32 index);
+const char **omm_mario_colors_choices           (bool peach);
+const char  *omm_mario_colors_light_name        (bool peach, s32 index);
+const char  *omm_mario_colors_light_group_name  (bool peach, s32 index);
+const void  *omm_mario_colors_part_to_light     (s32 part);
 
 #endif // OMM_MARIO_H

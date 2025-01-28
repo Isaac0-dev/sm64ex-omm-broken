@@ -31,14 +31,14 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 #endif
-#if OMM_GAME_IS_SM64
+#if OMM_GAME_IS_SM64 || OMM_GAME_IS_SM74
 extern Vtx omm_level_peachy_room_carpet_vtx[];
 extern Vtx omm_level_peachy_room_walls_vtx[];
 extern f32 omm_level_peachy_room_prev_z;
 extern f32 omm_level_peachy_room_curr_z;
 
 static void omm_level_peachy_room_update_tex_coords() {
-    f32 z = lerp_f(sLerpDelta, omm_level_peachy_room_prev_z, omm_level_peachy_room_curr_z);
+    f32 z = lerp_f(sFps->lerp, omm_level_peachy_room_prev_z, omm_level_peachy_room_curr_z);
 
     // Carpet
     s32 cw = TEX_UNIT * ROOM_LENGTH;
@@ -94,8 +94,10 @@ const Gfx omm_level_peachy_room_gfx_disable[] = {
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 #include "behavior_commands.h"
-#if OMM_GAME_IS_SM64
+#if OMM_GAME_IS_SM64 || OMM_GAME_IS_SM74
+#include "data/omm/omm_constants.h"
 #include "level_commands.h"
+#include "levels/bits/header.h"
 #include "levels/castle_courtyard/header.h"
 extern const Gfx omm_level_peachy_room_gfx_enable[];
 extern const Gfx omm_level_peachy_room_gfx_disable[];
@@ -106,10 +108,17 @@ extern struct Cutscene sCutsceneEnterPainting[];
 // Textures
 //
 
+#if OMM_GAME_IS_SM74
+static const u8 OMM_TEXTURE_PEACHY_0[] = "menu/sm74/room_0.rgba32";
+static const u8 OMM_TEXTURE_PEACHY_1[] = "menu/sm74/room_1.rgba32";
+static const u8 OMM_TEXTURE_PEACHY_2[] = "menu/sm74/room_2.rgba32";
+static const u8 OMM_TEXTURE_PEACHY_3[] = "menu/sm74/room_2.rgba32";
+#else
 static const u8 OMM_TEXTURE_PEACHY_0[] = "peach/omm_texture_peachy_0.rgba32";
 static const u8 OMM_TEXTURE_PEACHY_1[] = "peach/omm_texture_peachy_1.rgba32";
 static const u8 OMM_TEXTURE_PEACHY_2[] = "peach/omm_texture_peachy_2.rgba32";
 static const u8 OMM_TEXTURE_PEACHY_3[] = "peach/omm_texture_peachy_3.rgba32";
+#endif
 
 //
 // Gfx data
@@ -482,6 +491,8 @@ static void bhv_omm_level_peachy_room_update_obj_coords(f32 dz) {
 f32 omm_level_peachy_room_prev_z = 0;
 f32 omm_level_peachy_room_curr_z = 0;
 static void bhv_omm_level_peachy_room_update() {
+    omm_secrets_unlock(OMM_GAME_IS_SM74 ? OMM_SECRET_SM74_SECRET : OMM_SECRET_PEACHY_ROOM);
+
     struct MarioState *m = gMarioState;
     struct Object *o = gCurrentObject;
 
@@ -508,8 +519,8 @@ static void bhv_omm_level_peachy_room_update() {
         o->oHomeZ = (exit2 ? N : P) * ROOM_LENGTH;
         mem_cpy(sCutsceneEnterPainting, __EXPAND(array_of(struct Cutscene) { { cutscene_enter_paintings, CUTSCENE_LOOP } }), sizeof(struct Cutscene));
         start_cutscene(gCamera, CUTSCENE_ENTER_PAINTING);
-        if (exit2) initiate_warp(OMM_LEVEL_RETURN_TO_CASTLE /* warp to nebula stars ending */);
-        else initiate_warp(OMM_LEVEL_RETURN_TO_CASTLE);
+        if (exit2 && OMM_GAME_IS_SM64) initiate_warp(OMM_LEVEL_RETURN_TO_CASTLE, 0 /* warp to nebula stars ending */);
+        else initiate_warp(OMM_LEVEL_RETURN_TO_CASTLE, 0);
         play_transition_after_delay(WARP_TRANSITION_FADE_INTO_COLOR, 30, 0xFF, 0xFF, 0xFF, 45);
         level_set_transition(74, basic_update);
         omm_mario_unpossess_object_before_warp(m);
@@ -520,7 +531,7 @@ static void bhv_omm_level_peachy_room_update() {
     }
 
     // "Infinite" corridor
-    if (true /* not all nebulas */) {
+    if (!OMM_GAME_IS_SM64 || true /* not all nebulas */) {
         omm_level_peachy_room_prev_z = o->oPosZ;
         if (m->pos[2] < 0 || o->oPosZ > 0) {
             f32 dz = -min_f(m->pos[2], o->oPosZ);
@@ -538,7 +549,11 @@ static void bhv_omm_level_peachy_room_update() {
     // Update the signpost text
     struct Object *signpost = obj_get_first_with_behavior(bhvMessagePanel);
     if (signpost) {
+#if OMM_GAME_IS_SM74
+        s16 dialogId = OMM_DIALOG_SM74_ROOM_2;
+#else
         s16 dialogId = (false /* all nebulas */ ? OMM_DIALOG_PEACHY_ROOM_FINAL : OMM_DIALOG_PEACHY_ROOM);
+#endif
         signpost->oBehParams = dialogId << 16;
         signpost->oBehParams2ndByte = dialogId;
     }
@@ -546,17 +561,23 @@ static void bhv_omm_level_peachy_room_update() {
     // Update the credits text
     struct Object *credits = obj_get_first_with_behavior(bhvSignOnWall);
     if (credits) {
+#if OMM_GAME_IS_SM74
+        s16 dialogId = OMM_DIALOG_SM74_ROOM_1;
+#else
         s16 dialogId = OMM_DIALOG_CREDITS;
+#endif
         credits->oBehParams = dialogId << 16;
         credits->oBehParams2ndByte = dialogId;
     }
 
+#if OMM_GAME_IS_SM64
     // Trigger an automatic dialog if entering through warp 0x0B
     if (!o->oBehParams2ndByte && sWarpDest.nodeId == 0x0B && !omm_is_transition_active() && m->action != ACT_TELEPORT_FADE_IN) {
         omm_mario_set_action(m, ACT_READING_AUTOMATIC_DIALOG, OMM_DIALOG_PEACHY_ROOM_FINAL, 0);
         audio_play_puzzle_jingle();
         o->oBehParams2ndByte = 1;
     }
+#endif
 }
 
 static const BehaviorScript bhvOmmLevelPeachyRoom[] = {
@@ -614,7 +635,9 @@ const LevelScript omm_level_peachy_room_objects[] = {
     LOAD_MODEL_FROM_GEO(MODEL_LEVEL_GEOMETRY_03, sign_on_wall_geo),
     OBJECT(MODEL_NONE, 0, 0, 0, 0, 0, 0, 0, bhvOmmLevelPeachyRoom),
     OBJECT(MODEL_NONE, 0, N / 2, (s16) (P * (ROOM_LENGTH - 1.f)), 0, 0, 0, 0x000A0000, bhvFadingWarp),
+#if OMM_GAME_IS_SM64
     OBJECT(MODEL_NONE, 0, N / 2, (s16) (P * (ROOM_LENGTH - 2.f)), 0, 180, 0, 0x000B0000, bhvFadingWarp),
+#endif
     OBJECT(MODEL_WOODEN_SIGNPOST, 0, N, (s16) (P * (ROOM_LENGTH - 0.5f)), 0, 180, 0, 0, bhvMessagePanel),
     OBJECT(MODEL_LEVEL_GEOMETRY_03, 0, N, (s16) (P * ROOM_LENGTH), 0, 180, 0, 0, bhvSignOnWall),
     RETURN(),
@@ -624,13 +647,55 @@ const LevelScript omm_level_peachy_room_objects[] = {
 // Script
 //
 
+#if OMM_GAME_IS_SM74
+
+static const LevelScript omm_level_sm74_room[] = {
+    END_AREA(),
+    AREA(SM74_MODE_EXTREME, omm_level_peachy_room_geo),
+        WARP_NODE(0x0A, LEVEL_ENDING, SM74_MODE_EXTREME, 0x0A, WARP_NO_CHECKPOINT),
+        WARP_NODE(0x10, LEVEL_CASTLE_COURTYARD, SM74_MODE_EXTREME, 0x40, 0),
+        WARP_NODE(WARP_NODE_DEATH, LEVEL_CASTLE_COURTYARD, SM74_MODE_EXTREME, 0x40, 0),
+        JUMP_LINK(omm_level_peachy_room_objects),
+        TERRAIN(omm_level_peachy_room_collision),
+        TERRAIN_TYPE(TERRAIN_STONE),
+    END_AREA(),
+    FREE_LEVEL_POOL(),
+    MARIO_POS(SM74_MODE_EXTREME, 0, 0, 0, 0),
+    CALL(0, lvl_init_or_update),
+    CALL_LOOP(1, lvl_init_or_update),
+    CLEAR_LEVEL(),
+    SLEEP_BEFORE_EXIT(1),
+    EXIT(),
+};
+
+static const LevelScript omm_level_warp_to_sm74_room[] = {
+    SET_BACKGROUND_MUSIC(0, 0x2E),
+    OBJECT(MODEL_NONE, -1585, 1343, 5750, 0, 0, 0, 0x00770000, bhvFadingWarp),
+    WARP_NODE(0x77, LEVEL_ENDING, SM74_MODE_EXTREME, 0x0A, WARP_NO_CHECKPOINT),
+    RETURN(),
+};
+
+LEVEL_CMD_BRANCH(
+    level_script_find(level_ending_entry, array_of(LevelScript) { END_AREA() }, 1),
+    level_script_find(level_ending_entry, array_of(LevelScript) { FREE_LEVEL_POOL() }, 1),
+    omm_level_sm74_room
+);
+
+LEVEL_CMD_BRANCH(
+    level_script_find(local_area_bits_2_, array_of(LevelScript) { SET_BACKGROUND_MUSIC(0, 0x2E) }, 1),
+    level_script_find(local_area_bits_2_, array_of(LevelScript) { TERRAIN_TYPE(0) }, 1),
+    omm_level_warp_to_sm74_room
+);
+
+#else
+
 static const LevelScript omm_level_peachy_room[] = {
     END_AREA(),
     AREA(4, omm_level_peachy_room_geo),
         WARP_NODE(0x0A, LEVEL_CASTLE_COURTYARD, 4, 0x0A, WARP_NO_CHECKPOINT),
         WARP_NODE(0x0B, LEVEL_CASTLE_COURTYARD, 4, 0x0B, WARP_NO_CHECKPOINT),
-        UNPACK(WARP_NODE, 0x10, OMM_LEVEL_RETURN_TO_CASTLE),
-        UNPACK(WARP_NODE, 0xF1, OMM_LEVEL_RETURN_TO_CASTLE),
+        UNPACK(WARP_NODE, 0x10, OMM_LEVEL_RETURN_TO_CASTLE, 0),
+        UNPACK(WARP_NODE, WARP_NODE_DEATH, OMM_LEVEL_RETURN_TO_CASTLE, 0),
         JUMP_LINK(omm_level_peachy_room_objects),
         TERRAIN(omm_level_peachy_room_collision),
         TERRAIN_TYPE(TERRAIN_STONE),
@@ -653,6 +718,8 @@ static struct { Vec3f pos; f32 radius; } OMM_PEACHY_ROOM_TRIGGERS[3] = {
     { { -2488, -2866, -4968 }, 310 },
     { { -4741, -3057, -2985 }, 310 },
 };
+
+static const s32 OMM_PEACHY_ROOM_ALL_TRIGGERS = ((1 << array_length(OMM_PEACHY_ROOM_TRIGGERS)) - 1);
 
 static const Vtx omm_peachy_room_trigger_vtx[] = {
 
@@ -734,10 +801,11 @@ static void bhv_omm_peachy_room_trigger_update() {
                     f32 hdist = vec3f_hdist(OMM_PEACHY_ROOM_TRIGGERS[i].pos, m->pos);
                     if (hdist < OMM_PEACHY_ROOM_TRIGGERS[i].radius) {
                         o->oBehParams2ndByte |= (1 << i);
-                        // uncomment when nebulas
-                        // if (o->oBehParams2ndByte == OMM_PEACHY_ROOM_ALL_TRIGGERS) {
-                        //     audio_play_puzzle_jingle();
-                        // }
+                        if (o->oBehParams2ndByte == OMM_PEACHY_ROOM_ALL_TRIGGERS) {
+                            audio_play_puzzle_jingle();
+                        } else {
+                            play_sound(SOUND_GENERAL2_RIGHT_ANSWER, gGlobalSoundArgs);
+                        }
                         break;
                     }
                 }
@@ -756,6 +824,7 @@ static void bhv_omm_peachy_room_trigger_update() {
     }
 }
 
+#define OMM_PEACHY_ROOM_TRIGGER_DEFINED
 const BehaviorScript bhvOmmPeachyRoomTrigger[] = {
     OBJ_TYPE_DEFAULT,
     BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
@@ -766,12 +835,16 @@ const BehaviorScript bhvOmmPeachyRoomTrigger[] = {
     BHV_END_LOOP(),
 };
 
-#else
+#endif // OMM_GAME_IS_SM64
+#endif // OMM_GAME_IS_SM64 || OMM_GAME_IS_SM74
+
+#ifndef OMM_PEACHY_ROOM_TRIGGER_DEFINED
 
 const BehaviorScript bhvOmmPeachyRoomTrigger[] = {
     OBJ_TYPE_DEFAULT,
     BHV_BREAK(),
 };
 
-#endif
-#endif
+#endif // OMM_PEACHY_ROOM_TRIGGER_DEFINED
+
+#endif // GFX_PC_C

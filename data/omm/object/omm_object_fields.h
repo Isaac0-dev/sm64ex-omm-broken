@@ -3,13 +3,12 @@
 
 #include "types.h"
 #include "object_fields.h"
+#include "data/omm/system/omm_system.h" // OmmStats
 
 struct OmmData {
     void (*reset)(void);
     void (*reset_mario)(void);
     void (*reset_object)(void);
-    bool (*read_stats)(const char *name, const char *value1, const char *value2, bool *invalid);
-    void (*write_stats)();
 
     // Mario data
     struct {
@@ -290,51 +289,22 @@ struct OmmData {
     } level[8];
 
     // Stats data
+    OmmStats stats[1];
+
+    // Allow list
     struct {
-
-        // Objects
-        u64 starsCollected;
-        u64 sparklyStarsCollected;
-        u64 coinsCollected;
-        u64 capsCollected;
-        u64 mushrooms1upCollected;
-        u64 secretsCollected;
-        u64 exclamationBoxesBroken;
-        u64 enemiesDefeated;
-        u64 bowsersDefeated;
-
-        // Actions
-        u64 aPresses;
-        u64 jumps;
-        u64 attacks;
-        u64 cappyThrows;
-        u64 cappyBounces;
-        u64 captures;
-        u64 hitsTaken;
-        u64 restarts;
-        u64 deaths;
-
-        // Distance (Mario/Capture)
-        u64 distanceTotal[2];
-        u64 distanceOnGround[2];
-        u64 distanceAirborne[2];
-        u64 distanceUnderwater[2];
-        u64 distanceWingCap[2];
-        u64 distanceMetalCap[2];
-        u64 distanceVanishCap[2];
-
-        // Time (Mario/Capture)
-        u64 timeTotal[2];
-        u64 timeOnGround[2];
-        u64 timeAirborne[2];
-        u64 timeUnderwater[2];
-        u64 timeWingCap[2];
-        u64 timeMetalCap[2];
-        u64 timeVanishCap[2];
-    } stats[1];
+        bool captures;
+        bool capModifier;
+        bool yoshiSummon;
+        bool vibes;
+        bool joyVibe;
+    } allow[1];
 
     // Globals
     struct {
+#if OMM_GAME_IS_SMSR
+        bool booZeroLife;
+#endif
         bool cameraSnapshotMode;
         bool cameraUpdate;
         bool cameraNoInit;
@@ -342,10 +312,15 @@ struct OmmData {
         bool findFloorForCutsceneStar;
         bool hideHudCamera;
         bool hideHudRadar;
+#if OMM_GAME_IS_SM64
         bool isMirrorObj;
         bool isMirrorRoom;
         f32 mirrorRoomX;
         f32 mirrorX;
+#endif
+#if OMM_GAME_IS_R96X
+        u32 milkTimer;
+#endif
         u32 marioTimer;
         s32 mouseDeltaX;
         s32 mouseDeltaY;
@@ -364,6 +339,7 @@ extern struct OmmData gOmmData[1];
 #define gOmmLevel     gOmmData->level
 #define gOmmArea    (&gOmmData->level[gCurrAreaIndex])
 #define gOmmStats     gOmmData->stats
+#define gOmmAllow     gOmmData->allow
 #define gOmmGlobals   gOmmData->globals
 
 #endif // OMM_OBJECT_FIELDS_H

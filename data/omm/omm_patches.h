@@ -5,6 +5,10 @@
 // Patches
 //
 
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#error "Big Endian systems are not compatible with OMM."
+#endif
+
 #if defined(DYNOS) && !defined(r96x)
 #error "Standalone DynOS is not compatible with OMM."
 #endif
@@ -54,6 +58,7 @@
 #define omm_patch__update_walking_speed__update_walking_speed                   OMM_RETURN_IF_TRUE(OMM_LIKELY(omm_mario_update_walking_speed(m)),,);
 #define omm_patch__cheats_play_as__disable                                      return FALSE;
 #define omm_patch__obj_resolve_object_collisions__ignore_capture_goomba_stack   && otherObject != gOmmCapture && (!omm_obj_is_goomba_stack(otherObject) || otherObject->oGoombaStackParent != o)
+#define omm_patch__cur_obj_apply_drag_xz__fix_xz_vel                            { obj_apply_drag_xz(o, dragStrength); return; }
 #define omm_patch__obj_set_hitbox__obj_fix_hitbox                               obj_fix_hitbox(obj);
 #define omm_patch__cur_obj_update_dialog__skip_if_capture                       OMM_RETURN_IF_TRUE(omm_mario_is_capture(gMarioState), TRUE, gDialogLineNum = 1; handle_special_dialog_text(dialogID); o->oDialogResponse = 1;);
 #define omm_patch__cur_obj_update_dialog_with_cutscene__skip_if_capture         OMM_RETURN_IF_TRUE(omm_mario_is_capture(gMarioState), TRUE, gDialogLineNum = 1; handle_special_dialog_text(dialogID); o->oDialogResponse = 1;);
@@ -63,6 +68,7 @@
 #define omm_patch__render_painting__interpolate_painting                        extern void gfx_interpolate_painting(Vtx *, s32); gfx_interpolate_painting(verts, numVtx);
 #define omm_patch__geo_painting_update__fix_floor_pointer                       geo_painting_update_fix_floor();
 #define omm_patch__r96_get_intended_level_music__bowser_4_music                 OMM_RETURN_IF_TRUE(omm_sparkly_is_bowser_4_battle(), R96_LEVEL_BOWSER_3,);
+#define omm_patch__r96_get_intended_level_music__fix_milk_music                 && !omm_mario_is_milk(gMarioState)
 
 //
 // Some preprocessor magic
@@ -78,6 +84,14 @@
 #define patch_interpolations_0 ;
 #define patch_interpolations_1 patch_interpolations()
 #define patch_interpolations(...) CAT(patch_interpolations_, N_ARGS(__VA_ARGS__))
+
+// Configure properly the camera settings
+#define newcam_init_settings_0 omm_camera_update_settings()
+#define newcam_init_settings_1 newcam_init_settings()
+#define newcam_init_settings(...) CAT(newcam_init_settings_, N_ARGS(__VA_ARGS__))
+#define puppycam_default_config_0 omm_camera_update_settings()
+#define puppycam_default_config_1 puppycam_default_config()
+#define puppycam_default_config(...) CAT(puppycam_default_config_, N_ARGS(__VA_ARGS__))
 
 // render_hud is replaced by omm_render_hud
 #define render_hud_0 omm_render_hud()
@@ -140,7 +154,7 @@
 omm_stats_update_defeated_enemies() { \
     for_each_object_in_interaction_lists(obj) { \
         if (omm_obj_is_enemy_defeated(obj)) { \
-            gOmmStats->enemiesDefeated++; \
+            omm_stats_increase(enemiesDefeated, 1); \
         } \
     } \
     extern void _unload_deactivated_objects(); \
@@ -234,5 +248,9 @@ update_camera(struct Camera *c) { \
 } \
 void update_camera_
 #endif
+
+// For convenience
+#define play_buzz_sound() \
+    play_sound(SOUND_MENU_CAMERA_BUZZ | 0xFF00, gGlobalSoundArgs)
 
 #endif

@@ -25,12 +25,12 @@ static void omm_wing_set_vertex_color(Vtx *vertex, f32 ratio, u8 *alpha) {
 }
 
 static void omm_wing_compute_mario_hand_pos(struct MarioState *m, Vec3f dest, bool isLeft) {
-    Vec3f fpos; vec3f_copy(fpos, geo_get_marios_forearm_pos(isLeft));
-    Vec3f hpos; vec3f_copy(hpos, geo_get_marios_hand_pos(isLeft));
+    Vec3f fpos; geo_get_marios_forearm_pos(fpos, isLeft);
+    Vec3f hpos; geo_get_marios_hand_pos(hpos, isLeft);
     Vec3f dpos; vec3f_dif(dpos, hpos, fpos);
     vec3f_normalize(dpos);
     vec3f_mult(dpos, dpos, m->marioObj->oGfxScale);
-    vec3f_mul(dpos, OMM_PLAYER_IS_PEACH ? 10.f : 15.f);
+    vec3f_mul(dpos, OMM_PLAYER_MODEL_IS_PEACH ? 10.f : 15.f);
     vec3f_sum(dest, hpos, dpos);
 }
 
@@ -119,13 +119,13 @@ static void bhv_omm_wing_glow_update() {
     obj_set_always_rendered(o, true);
     o->oGraphNode = geo_layout_to_graph_node(NULL, omm_geo_wing_glow);
     o->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
-    if ((m->marioObj->oNodeFlags & GRAPH_RENDER_INVISIBLE) ||
-       !(m->marioObj->oNodeFlags & GRAPH_RENDER_ACTIVE)) {
+    if ((m->marioObj->oNodeFlags & GRAPH_RENDER_INVISIBLE) != 0 ||
+        (m->marioObj->oNodeFlags & GRAPH_RENDER_ACTIVE) == 0 ||
+        (m->marioBodyState->modelState & 0x1FF) == 0x100) {
         o->oNodeFlags &= ~GRAPH_RENDER_ACTIVE;
     } else {
         o->oNodeFlags |= GRAPH_RENDER_ACTIVE;
     }
-
 }
 
 //

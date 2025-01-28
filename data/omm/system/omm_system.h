@@ -33,12 +33,11 @@ bool omm_is_ending_cake_screen();
 #define OMM_PRF_GFX (4) // Count the elapsed time spent by gfx_run_dl() during 1 game update (1/30 second).
 #define OMM_PRF_RDR (5) // Count the elapsed time spent by the scene rendering during 1 game update (1/30 second).
 #define OMM_PRF_FRM (6) // Count the elapsed time between every call to gfx_start_frame() and gfx_end_frame() during 1 game update (1/30 second).
-#define OMM_PRF_FPS (7) // Count the elapsed time between 2 successive game updates. Used to compute the actual frame rate.
-#define OMM_PRF_MAX (8)
+#define OMM_PRF_MAX (7)
 
 void omm_profiler_start(s32 prf);
 void omm_profiler_stop(s32 prf);
-void omm_profiler_frame_drawn();
+void omm_profiler_update_fps(f32 fps, u32 refreshRate);
 void omm_profiler_display();
 
 //
@@ -46,9 +45,9 @@ void omm_profiler_display();
 //
 
 bool omm_player_is_unlocked(s32 playerIndex);
-bool omm_player_is_selected(s32 playerIndex);
 void omm_player_select(s32 playerIndex);
 s32  omm_player_get_selected_index();
+s32  omm_player_get_selected_index_model_and_sounds();
 
 const char *omm_player_properties_get_name(s32 playerIndex);
 const char *omm_player_properties_get_name_upper(s32 playerIndex);
@@ -152,6 +151,7 @@ struct DialogEntry *omm_dialog_get_entry(void **dialogTable, s16 dialogId);
 
 void omm_camera_init();
 bool omm_camera_update(struct Camera *c, struct MarioState *m);
+void omm_camera_update_settings();
 bool omm_camera_is_available(struct MarioState *m);
 bool omm_camera_is_bowser_fight();
 s16  omm_camera_get_intended_yaw(struct MarioState *m);
@@ -241,32 +241,122 @@ void omm_palette_editor_set_closed();
 s32  omm_palette_editor_get_current_palette();
 
 //
+// Stats
+//
+
+typedef struct OmmStats {
+
+    // Objects
+    u64 starsCollected;
+    u64 sparklyStarsCollected;
+    u64 coinsCollected;
+    u64 capsCollected;
+    u64 mushrooms1upCollected;
+    u64 secretsCollected;
+    u64 exclamationBoxesBroken;
+    u64 enemiesDefeated;
+    u64 bowsersDefeated;
+
+    // Actions
+    u64 aPresses;
+    u64 jumps;
+    u64 attacks;
+    u64 cappyThrows;
+    u64 cappyBounces;
+    u64 captures;
+    u64 hitsTaken;
+    u64 restarts;
+    u64 deaths;
+
+    // Distance (Mario/Capture)
+    u64 distanceTotal[2];
+    u64 distanceOnGround[2];
+    u64 distanceAirborne[2];
+    u64 distanceUnderwater[2];
+    u64 distanceWingCap[2];
+    u64 distanceMetalCap[2];
+    u64 distanceVanishCap[2];
+
+    // Time (Mario/Capture)
+    u64 timeTotal[2];
+    u64 timeOnGround[2];
+    u64 timeAirborne[2];
+    u64 timeUnderwater[2];
+    u64 timeWingCap[2];
+    u64 timeMetalCap[2];
+    u64 timeVanishCap[2];
+
+} OmmStats;
+
+#define OMM_STATS_PREFIX_LOCAL  "stat_"
+#define OMM_STATS_PREFIX_GLOBAL "stats_"
+
+bool omm_stats_read(OmmStats *stats, const char *prefix, const char *name, const char *value1, const char *value2, bool *invalid);
+void omm_stats_write(const OmmStats *stats, const char *prefix);
+void omm_stats_reset(OmmStats *stats);
+
+#define omm_stats_increase(stat, value) { \
+    u64 inc = (u64) (value); \
+    gOmmStats->stat += inc; \
+    OmmStats *stats = omm_save_file_get_stats(gCurrSaveFileNum - 1, OMM_GAME_MODE); \
+    if (stats) { stats->stat += inc; } \
+}
+
+//
 // Rewards
 //
 
-#define OMM_REWARD_WEAR_ANY_CAP                         (0)
-#define OMM_REWARD_WEAR_ANY_CAP_ANYWHERE                (1)
-#define OMM_REWARD_SUMMON_YOSHI                         (2)
-#define OMM_REWARD_SPARKLY_STARS                        (3)
-#define OMM_REWARD_SPARKLY_SPARKLES                     (4)
-#define OMM_REWARD_PLAYABLE_PEACH                       (5)
-#define OMM_REWARD_PERRY_CHARGE                         (6)
-#define OMM_REWARD__REDACTED_                           (7)
+#define OMM_REWARD_INSTANT_CAPS     (0x00)
+#define OMM_REWARD_UNLIMITED_CAPS   (0x01)
+#define OMM_REWARD_SUMMON_YOSHI     (0x02)
+#define OMM_REWARD_SPARKLY_STARS    (0x03)
+#define OMM_REWARD_SPARKLY_SPARKLES (0x04)
+#define OMM_REWARD_PLAYABLE_PEACH   (0x05)
+#define OMM_REWARD_PERRY_CHARGE     (0x06)
+#define OMM_REWARD__REDACTED_       (0x07)
 
-#define OMM_REWARD_IS_WEAR_ANY_CAP_UNLOCKED             omm_rewards_is_unlocked(OMM_REWARD_WEAR_ANY_CAP, true)
-#define OMM_REWARD_IS_WEAR_ANY_CAP_ANYWHERE_UNLOCKED    omm_rewards_is_unlocked(OMM_REWARD_WEAR_ANY_CAP_ANYWHERE, true)
-#define OMM_REWARD_IS_SUMMON_YOSHI_UNLOCKED             omm_rewards_is_unlocked(OMM_REWARD_SUMMON_YOSHI, true)
-#define OMM_REWARD_IS_SPARKLY_STARS_UNLOCKED            omm_rewards_is_unlocked(OMM_REWARD_SPARKLY_STARS, true)
-#define OMM_REWARD_IS_SPARKLY_SPARKLES_UNLOCKED         omm_rewards_is_unlocked(OMM_REWARD_SPARKLY_SPARKLES, true)
-#define OMM_REWARD_IS_PLAYABLE_PEACH_UNLOCKED           omm_rewards_is_unlocked(OMM_REWARD_PLAYABLE_PEACH, true)
-#define OMM_REWARD_IS_PERRY_CHARGE_UNLOCKED             omm_rewards_is_unlocked(OMM_REWARD_PERRY_CHARGE, true)
-#define OMM_REWARD_IS__REDACTED__UNLOCKED               omm_rewards_is_unlocked(OMM_REWARD__REDACTED_, true)
+#define OMM_REWARD_IS_INSTANT_CAPS_UNLOCKED         omm_rewards_is_unlocked(OMM_REWARD_INSTANT_CAPS, true)
+#define OMM_REWARD_IS_UNLIMITED_CAPS_UNLOCKED       omm_rewards_is_unlocked(OMM_REWARD_UNLIMITED_CAPS, true)
+#define OMM_REWARD_IS_SUMMON_YOSHI_UNLOCKED         omm_rewards_is_unlocked(OMM_REWARD_SUMMON_YOSHI, true)
+#define OMM_REWARD_IS_SPARKLY_STARS_UNLOCKED        omm_rewards_is_unlocked(OMM_REWARD_SPARKLY_STARS, true)
+#define OMM_REWARD_IS_SPARKLY_SPARKLES_UNLOCKED     omm_rewards_is_unlocked(OMM_REWARD_SPARKLY_SPARKLES, true)
+#define OMM_REWARD_IS_PLAYABLE_PEACH_UNLOCKED       omm_rewards_is_unlocked(OMM_REWARD_PLAYABLE_PEACH, true)
+#define OMM_REWARD_IS_PERRY_CHARGE_UNLOCKED         omm_rewards_is_unlocked(OMM_REWARD_PERRY_CHARGE, true)
+#define OMM_REWARD_IS__REDACTED__UNLOCKED           omm_rewards_is_unlocked(OMM_REWARD__REDACTED_, true)
 
-u32 omm_rewards_get_count();
-u32 omm_rewards_get_unlocked_count();
-bool omm_rewards_is_unlocked(s32 index, bool local);
-const char *omm_rewards_get_title(s32 index);
-const char *omm_rewards_get_line(s32 index, s32 line, bool locked);
+u32  omm_rewards_get_count();
+u32  omm_rewards_get_unlocked_count(bool local);
+bool omm_rewards_is_unlocked(u32 reward, bool local);
+bool omm_rewards_get(u32 reward, const char **name, const char **cond, const char **text);
+
+//
+// Secrets
+//
+
+#define OMM_SECRET_BOWSER_THROW     (0x00)
+#define OMM_SECRET_DARK_BASEMENT    (0x01)
+#define OMM_SECRET_PEACHY_ROOM      (0x02)
+#define OMM_SECRET_FLYING_DORRIE    (0x03)
+#define OMM_SECRET_TOAD_CHEAT_CODE  (0x04)
+#define OMM_SECRET_CHEATER_FISH     (0x05)
+#define OMM_SECRET_PEACH_SECRET_1   (0x06)
+#define OMM_SECRET_PEACH_SECRET_2   (0x07)
+#define OMM_SECRET_YOSHI_SECRET     (0x08)
+#define OMM_SECRET_SMMS_SECRET      (0x09)
+#define OMM_SECRET_SM74_SECRET      (0x0A)
+#define OMM_SECRET_SMSR_SECRET      (0x0B)
+#define OMM_SECRET_SMGS_SECRET      (0x0C)
+#define OMM_SECRET_R96_SECRET       (0x0D)
+
+u32  omm_secrets_get_count();
+u32  omm_secrets_get_unlocked_count();
+bool omm_secrets_is_unlocked(u32 secret);
+bool omm_secrets_get(u32 secret, const char **name, const char **cond, const char **text);
+
+bool omm_secrets_read(const char *name, const char *value, bool *invalid);
+void omm_secrets_write();
+void omm_secrets_reset();
+bool omm_secrets_unlock(u32 secret);
 
 //
 // Speedrun

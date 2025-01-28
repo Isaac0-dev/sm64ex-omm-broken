@@ -2,6 +2,8 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 
+extern void omm_act_roll_update_gfx(struct MarioState *m);
+
 static f32 omm_get_initial_upwards_velocity(struct MarioState *m, f32 max) {
     static const struct { u32 action; s32 inc; f32 apply; } OMM_MARIO_AIR_COMBO_ACTIONS[] = {
         { ACT_DIVE,                     -1, 0 },
@@ -125,7 +127,7 @@ static s32 omm_act_airborne_cancels__cappy_pound_kick_spins(struct MarioState *m
 }
 
 static s32 omm_act_triple_jump(struct MarioState *m) {
-    action_init(m->forwardVel, 69.f + 0.3f * max_f(0.f, m->forwardVel / 0.8f - 20.f), 0, 0, obj_anim_play_with_sound(m->marioObj, MARIO_ANIM_TRIPLE_JUMP, 1.f, 0, true););
+    action_init(m->forwardVel, 69.f + (OMM_MOVESET_ODYSSEY ? 0.25f * max_f(0.f, m->forwardVel / 0.8f - 20.f) : 0.f), 0, 0, obj_anim_play_with_sound(m->marioObj, MARIO_ANIM_TRIPLE_JUMP, 1.f, 0, true););
     return omm_act_airborne_cancels__cappy_pound_kick_spins(m);
 }
 
@@ -312,7 +314,7 @@ static s32 omm_act_riding_shell_air(struct MarioState *m) {
 }
 
 static s32 omm_act_vertical_wind(struct MarioState *m) {
-    action_a_pressed(OMM_PLAYER_IS_PEACH, ACT_OMM_PEACH_GLIDE, 0, RETURN_CANCEL);
+    action_a_pressed(OMM_PLAYER_IS_PEACH && !omm_mario_is_milk(m), ACT_OMM_PEACH_GLIDE, 0, RETURN_CANCEL);
     action_condition(OMM_MOVESET_ODYSSEY && m->actionTimer > 15, ACT_FREEFALL, 0, RETURN_CANCEL);
     m->actionTimer = (m->actionTimer + 1) * (m->vel[1] < 0 && m->floor->type != SURFACE_VERTICAL_WIND);
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
@@ -385,6 +387,14 @@ static s32 omm_act_ground_pound(struct MarioState *m) {
             m->ceilHeight = m->pos[1] + 300.f;
         }
     }
+
+    // Rage Vibe makes the ground pound faster
+    if (omm_peach_vibe_is_rage()) {
+        m->actionTimer += 1;
+        m->marioObj->oAnimFrame += 1;
+        m->marioObj->oAnimInfo.animFrameAccelAssist += ANIM_ACCEL_ONE;
+    }
+
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }
 
@@ -688,15 +698,9 @@ static s32 omm_act_roll_air(struct MarioState *m) {
     f32 speed = m->forwardVel / 60.f;
     s16 prevAngle = m->faceAngle[0];
     m->faceAngle[0] += (s16) (0x1C00 * speed);
-    ANM(MARIO_ANIM_FORWARD_SPINNING, 1.f);
+    ANM(MARIO_ANIM_FORWARD_SPINNING, 0.01f);
     obj_anim_set_frame(m->marioObj, 0);
-    Vec3f v = { 0, -60, -20 };
-    vec3f_rotate_zxy(v, v, m->faceAngle[0], m->faceAngle[1], 0);
-    m->marioObj->oGfxPos[0] += v[0];
-    m->marioObj->oGfxPos[1] += v[1] + 50.f + 10.f * sins(m->faceAngle[0]);
-    m->marioObj->oGfxPos[2] += v[2];
-    m->marioObj->oGfxAngle[0] = m->faceAngle[0];
-    m->marioObj->oFlags |= OBJ_FLAG_SHADOW_COPY_OBJ_POS;
+    omm_act_roll_update_gfx(m);
     if (prevAngle > m->faceAngle[0]) SFX(SOUND_ACTION_TWIRL);
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }

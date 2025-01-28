@@ -2,6 +2,7 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 #if OMM_GAME_IS_SM64
+#include "data/omm/omm_constants.h"
 #include "levels/castle_inside/header.h"
 #include "behavior_commands.h"
 #include "level_commands.h"
@@ -3600,28 +3601,70 @@ static void spawn_fish_group(struct Object *o, f32 x, f32 y, f32 z, s16 yaw) {
     for (s32 i = 0; i != 15; ++i) {
         struct Object *fish = spawn_object_relative(0, 300, 0, -200, o, MODEL_FISH, bhvBlueFish);
         obj_translate_xyz_random(fish, 200);
+        fish->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
+        obj_set_always_rendered(fish, true);
     }
     obj_set_xyz(o, 0, 0, 0);
     obj_set_angle(o, 0, 0, 0);
 }
 
 static void bhv_omm_level_fish_update() {
+    omm_secrets_unlock(OMM_SECRET_CHEATER_FISH);
+
     struct MarioState *m = gMarioState;
     struct Object *o = gCurrentObject;
     o->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
+    obj_set_always_rendered(o, true);
 
-    // Init: set the camera angle, spawn fishes
-    if (o->oTimer == 1) {
-        gCamera->yaw = 0;
-        omm_camera_init();
-        m->faceAngle[1] += 0x8000;
-        spawn_fish_group(o, 2774, 507, -1716, 0x4000);
-        spawn_fish_group(o, 3672, 507, -1307, 0x2000);
-        spawn_fish_group(o, 3748, 507,   773, 0xE000);
-        spawn_fish_group(o, 2778, 507,  1255, 0xC000);
+    // States
+    switch (o->oSubAction) {
+
+        // Spawn fishes
+        case 0: {
+            spawn_fish_group(o, 2774, 507, -1716, 0x4000);
+            spawn_fish_group(o, 3672, 507, -1307, 0x2000);
+            spawn_fish_group(o, 3748, 507,   773, 0xE000);
+            spawn_fish_group(o, 2778, 507,  1255, 0xC000);
+            o->oSubAction = 1;
+        } break;
+
+        // Init camera and spawn fishes
+        case 1: {
+            gCamera->yaw = 0;
+            omm_camera_init();
+            m->faceAngle[1] += 0x8000;
+            o->oSubAction = 2;
+        } break;
+
+        // Start music as soon as the dialog box opens
+        case 2: {
+            if (m->action == ACT_READING_AUTOMATIC_DIALOG) {
 #if OMM_GAME_IS_R96X
-        r96_play_jingle(R96_EVENT_MERRY_GO_ROUND, 0.1, 1.0, 1500);
+                r96_play_jingle(R96_EVENT_MERRY_GO_ROUND, 0.1f, 1.0f, 1500);
+#else
+                set_background_music(0, SEQ_EVENT_MERRY_GO_ROUND, 1);
 #endif
+                o->oSubAction = 3;
+                o->oTimer = 0;
+            }
+        } break;
+
+        // Update music
+        case 3: {
+#if !OMM_GAME_IS_R96X
+            fade_volume_scale(SEQ_PLAYER_LEVEL, relerp_0_1_s(o->oTimer, 0, 30, 0, 127), 1);
+#endif
+            if (omm_is_transition_active() && gWarpTransition.type == WARP_TRANSITION_FADE_INTO_BOWSER) {
+                o->oSubAction = 4;
+            }
+        } break;
+
+        // Waiting to respawn
+        case 4: {
+            if (gWarpTransition.type != WARP_TRANSITION_FADE_INTO_BOWSER) {
+                o->oSubAction = 1;
+            }
+        } break;
     }
 
     // Bubbles
@@ -3636,11 +3679,18 @@ static void bhv_omm_level_fish_update() {
     gPlayer1Controller->buttonPressed &= ~START_BUTTON;
     gPlayer2Controller->buttonPressed &= ~START_BUTTON;
     gPlayer3Controller->buttonPressed &= ~START_BUTTON;
+    gPlayer1Controller->buttonDown &= ~START_BUTTON;
+    gPlayer2Controller->buttonDown &= ~START_BUTTON;
+    gPlayer3Controller->buttonDown &= ~START_BUTTON;
 
-    // Disable Cap modifier and Yoshi summon
-    gPlayer1Controller->buttonDown &= ~L_TRIG;
-    gPlayer2Controller->buttonDown &= ~L_TRIG;
-    gPlayer3Controller->buttonDown &= ~L_TRIG;
+    // Disable captures, Cap modifier, Yoshi summon and Vibes
+    omm_mario_unset_cap(m);
+    omm_peach_vibe_deactivate(m);
+    omm_mario_unpossess_object(m, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
+    gOmmAllow->captures = false;
+    gOmmAllow->capModifier = false;
+    gOmmAllow->yoshiSummon = false;
+    gOmmAllow->vibes = false;
 
     // Change the anti-cheat messages
     gOmmSparklyCheats->introId = OMM_DIALOG_SPARKLY_ANTI_CHEAT_INTRO;
@@ -3664,7 +3714,7 @@ static const LevelScript omm_level_fish_objects[] = {
     WARP_NODE(0x0B, LEVEL_CASTLE, 0x04, 0x0B, WARP_NO_CHECKPOINT),
     WARP_NODE(0x0C, LEVEL_CASTLE, 0x04, 0x0C, WARP_NO_CHECKPOINT),
     WARP_NODE(0x0D, LEVEL_CASTLE, 0x04, 0x0D, WARP_NO_CHECKPOINT),
-    WARP_NODE(0xF1, LEVEL_CASTLE, 0x04, 0x0A, WARP_NO_CHECKPOINT),
+    WARP_NODE(WARP_NODE_DEATH, LEVEL_CASTLE, 0x04, 0x0A, WARP_NO_CHECKPOINT),
     OBJECT(MODEL_NONE, 2760, 407,  1690, 0,   0, 0, 0x000A0000, bhvDeathWarp),
     OBJECT(MODEL_NONE, 4050, 407,  1100, 0,  45, 0, 0x000B0000, bhvDeathWarp),
     OBJECT(MODEL_NONE, 2760, 407, -2160, 0, 180, 0, 0x000C0000, bhvDeathWarp),
@@ -3683,7 +3733,6 @@ static const LevelScript omm_level_fish[] = {
         JUMP_LINK(omm_level_fish_objects),
         TERRAIN(omm_level_fish_collision),
         TERRAIN_TYPE(TERRAIN_STONE),
-        SET_BACKGROUND_MUSIC(1, SEQ_EVENT_MERRY_GO_ROUND),
     END_AREA(),
     RETURN(),
 };

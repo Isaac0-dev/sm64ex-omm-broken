@@ -120,11 +120,12 @@
                                                         0, 14, 2, 3, 5, 9, 6, 10, 1, 7, 4, 11, 12, 13, 8, 15, 16, 17, 18, 19,
 #define OMM_STAR_COLOR_OFFSET(modeIndex)                (modeIndex * 20)
 #define OMM_STAR_COLOR_COUNT                            40
+#define OMM_STAR_COLOR_CLASSIC                          { 0xFF, 0xFF, 0x00 }, { 0xFF, 0x00, 0x00 }
 #define OMM_LEVEL_ENTRY_WARP(levelNum)                  0x0A
 #define OMM_LEVEL_EXIT_DISTANCE                         150
 #define OMM_LEVEL_SLIDE                                 LEVEL_PSS
 #define OMM_LEVEL_ENTRY_POINT                           LEVEL_CASTLE_COURTYARD
-#define OMM_LEVEL_RETURN_TO_CASTLE                      LEVEL_CASTLE_COURTYARD, OMM_GAME_MODE + 1, 0x40, 0
+#define OMM_LEVEL_RETURN_TO_CASTLE                      LEVEL_CASTLE_COURTYARD, OMM_GAME_MODE + 1, 0x40
 #define OMM_LEVEL_YELLOW_COIN_BOO                       LEVEL_NONE
 #define OMM_LEVEL_EXCLUDE_LIST                          LEVEL_NONE
 #define OMM_LEVEL_HAS_BOWSER                            1

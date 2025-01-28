@@ -14,7 +14,7 @@ void omm_cappy_init_behavior(struct Object *cappy, struct MarioState *m) {
         case OMM_CAPPY_BHV_DEFAULT_GROUND:
         case OMM_CAPPY_BHV_DEFAULT_AIR:
             cappy->oPosX = m->pos[0];
-            cappy->oPosY = m->pos[1] + OMM_CAPPY_BHV_DEFAULT_OFFSET * !isWater;
+            cappy->oPosY = m->pos[1] + OMM_CAPPY_BHV_DEFAULT_OFFSET * OMM_CAPPY_SCALE_MULTIPLIER_Y * !isWater;
             cappy->oPosZ = m->pos[2];
             cappy->oVelX = OMM_CAPPY_BHV_DEFAULT_VEL * throwStrength * coss(m->faceAngle[0] * isWater) * sins(m->faceAngle[1]);
             cappy->oVelY = OMM_CAPPY_BHV_DEFAULT_VEL * throwStrength * sins(m->faceAngle[0] * isWater);
@@ -23,9 +23,9 @@ void omm_cappy_init_behavior(struct Object *cappy, struct MarioState *m) {
 
         case OMM_CAPPY_BHV_UPWARDS_GROUND:
         case OMM_CAPPY_BHV_UPWARDS_AIR:
-            cappy->oPosX = m->pos[0] + OMM_CAPPY_BHV_UPWARDS_OFFSET * sins(m->faceAngle[1]);
-            cappy->oPosY = m->pos[1] + OMM_CAPPY_BHV_UPWARDS_OFFSET;
-            cappy->oPosZ = m->pos[2] + OMM_CAPPY_BHV_UPWARDS_OFFSET * coss(m->faceAngle[1]);
+            cappy->oPosX = m->pos[0] + OMM_CAPPY_BHV_UPWARDS_OFFSET * OMM_CAPPY_SCALE_MULTIPLIER_X * sins(m->faceAngle[1]);
+            cappy->oPosY = m->pos[1] + OMM_CAPPY_BHV_UPWARDS_OFFSET * OMM_CAPPY_SCALE_MULTIPLIER_Y;
+            cappy->oPosZ = m->pos[2] + OMM_CAPPY_BHV_UPWARDS_OFFSET * OMM_CAPPY_SCALE_MULTIPLIER_X * coss(m->faceAngle[1]);
             cappy->oVelX = 0.f;
             cappy->oVelY = OMM_CAPPY_BHV_UPWARDS_VEL;
             cappy->oVelZ = 0.f;
@@ -33,9 +33,9 @@ void omm_cappy_init_behavior(struct Object *cappy, struct MarioState *m) {
 
         case OMM_CAPPY_BHV_DOWNWARDS_GROUND:
         case OMM_CAPPY_BHV_DOWNWARDS_AIR:
-            cappy->oPosX = m->pos[0] + OMM_CAPPY_BHV_DOWNWARDS_OFFSET * sins(m->faceAngle[1]);
-            cappy->oPosY = m->pos[1] + OMM_CAPPY_BHV_DOWNWARDS_OFFSET;
-            cappy->oPosZ = m->pos[2] + OMM_CAPPY_BHV_DOWNWARDS_OFFSET * coss(m->faceAngle[1]);
+            cappy->oPosX = m->pos[0] + OMM_CAPPY_BHV_DOWNWARDS_OFFSET * OMM_CAPPY_SCALE_MULTIPLIER_X * sins(m->faceAngle[1]);
+            cappy->oPosY = m->pos[1] + OMM_CAPPY_BHV_DOWNWARDS_OFFSET * OMM_CAPPY_SCALE_MULTIPLIER_Y;
+            cappy->oPosZ = m->pos[2] + OMM_CAPPY_BHV_DOWNWARDS_OFFSET * OMM_CAPPY_SCALE_MULTIPLIER_X * coss(m->faceAngle[1]);
             cappy->oVelX = 0.f;
             cappy->oVelY = -OMM_CAPPY_BHV_DOWNWARDS_VEL;
             cappy->oVelZ = 0.f;
@@ -44,7 +44,7 @@ void omm_cappy_init_behavior(struct Object *cappy, struct MarioState *m) {
         case OMM_CAPPY_BHV_SPIN_GROUND:
         case OMM_CAPPY_BHV_SPIN_AIR:
             cappy->oPosX = m->pos[0];
-            cappy->oPosY = m->pos[1] + OMM_CAPPY_BHV_SPIN_OFFSET;
+            cappy->oPosY = m->pos[1] + OMM_CAPPY_BHV_SPIN_OFFSET * OMM_CAPPY_SCALE_MULTIPLIER_Y;
             cappy->oPosZ = m->pos[2];
             cappy->oFaceAngleYaw = m->faceAngle[1];
             break;
@@ -214,7 +214,7 @@ bool omm_cappy_perform_step_return_to_mario(struct Object *cappy, struct MarioSt
 
     // Move Cappy closer to Mario
     f32 dx = (m->pos[0] - cappy->oPosX);
-    f32 dy = (m->pos[1] - cappy->oPosY) + (0.4f * m->marioObj->hitboxHeight * m->marioObj->oScaleY);
+    f32 dy = (m->pos[1] - cappy->oPosY) + (0.4f * m->marioObj->hitboxHeight * (omm_mario_is_milk(m) ? 1.f : m->marioObj->oScaleY));
     f32 dz = (m->pos[2] - cappy->oPosZ);
     f32 dv = sqrtf(sqr_f(dx) + sqr_f(dy) + sqr_f(dz));
     if (dv > OMM_CAPPY_RETURN_VEL) {
@@ -397,7 +397,7 @@ void omm_cappy_update_behavior(struct Object *cappy, struct MarioState *m) {
             f32 r = min_f(cappy->oCappyLifeTimer * OMM_CAPPY_BHV_SPIN_RADIUS_GROWTH, OMM_CAPPY_BHV_SPIN_RADIUS_MAX);
             s16 a = (s16) (cappy->oFaceAngleYaw + (s32) (cappy->oCappyLifeTimer) * OMM_CAPPY_BHV_SPIN_ANGLE_VEL);
             cappy->oPosX = m->pos[0];
-            cappy->oPosY = m->pos[1] + OMM_CAPPY_BHV_SPIN_OFFSET;
+            cappy->oPosY = m->pos[1] + OMM_CAPPY_BHV_SPIN_OFFSET * OMM_CAPPY_SCALE_MULTIPLIER_Y;
             cappy->oPosZ = m->pos[2];
             omm_cappy_perform_step(cappy, m, r * coss(a), 0, r * sins(a), omm_cappy_collision_handler_wall_full_stop, NULL, NULL);
             omm_cappy_call_back(cappy, m, OMM_CAPPY_BHV_SPIN_CALL_BACK_START);

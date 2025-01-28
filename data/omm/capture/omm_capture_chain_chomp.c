@@ -135,9 +135,7 @@ s32 omm_cappy_chain_chomp_update(struct Object *o) {
         if (freeChainChomp) {
             set_camera_shake_from_point(SHAKE_POS_SMALL, o->oPosX, o->oPosY, o->oPosZ);
             if (woodenPost) {
-                obj_spawn_white_puff(woodenPost, POBJ_SOUND_WALL_EXPLOSION);
-                obj_spawn_triangle_break_particles(woodenPost, OBJ_SPAWN_TRI_BREAK_PRESET_DIRT);
-                obj_mark_for_deletion(woodenPost);
+                obj_destroy(woodenPost);
             } else {
                 obj_spawn_white_puff_at(
                     gOmmObject->state._initialHome[0],

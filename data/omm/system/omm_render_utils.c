@@ -263,7 +263,7 @@ const char *gOmmFontText[0x100] = {
     /* 0xF9 */ "levels/menu/main_menu_seg7_us.0B540.ia8",
     /* 0xFA */ "levels/menu/main_menu_seg7_us.0B5C0.ia8",
     /* 0xFB */ "levels/menu/main_menu_seg7_us.0B580.ia8",
-    /* 0xFC */ FONT_TEXT_MISSING,
+    /* 0xFC */ OMM_TEXTURE_FONT_TEXT_CAPPY,
     /* 0xFD */ OMM_TEXTURE_FONT_TEXT_STAR_EMPTY,
     /* 0xFE */ FONT_TEXT_MISSING,
     /* 0xFF */ FONT_TEXT_MISSING,
@@ -323,7 +323,11 @@ const char *gOmmFontHud[0x100] = {
     /* 0x32 */ "textures/segment2/segment2.05600.rgba16",
     /* 0x33 */ "textures/segment2/segment2.05800.rgba16",
     /* 0x34 */ "textures/segment2/segment2.05A00.rgba16",
+#if OMM_GAME_IS_SMMS
+    /* 0x35 */ "menu/smms/moon.rgba32",
+#else
     /* 0x35 */ "textures/segment2/segment2.05C00.rgba16",
+#endif
     /* 0x36 */ FONT_HUD_MISSING,
     /* 0x37 */ FONT_HUD_MISSING,
     /* 0x38 */ "textures/segment2/segment2.04800.rgba16",
@@ -730,6 +734,15 @@ s32 omm_render_get_string_width(const u8 *str64) {
     return width;
 }
 
+s32 omm_render_get_string_width_sized(const u8 *str64, s16 w) {
+    s32 width = 0;
+    f32 wRatio = (f32) w / 8.f;
+    for (; *str64 != 0xFF; str64++) {
+        width += (s16) ((f32) omm_render_get_char_width(*str64) * wRatio + 0.5f);
+    }
+    return width;
+}
+
 s32 omm_render_get_string_width_hud(const u8 *str64) {
     s32 width = 0;
     for (; *str64 != 0xFF; str64++) {
@@ -738,11 +751,16 @@ s32 omm_render_get_string_width_hud(const u8 *str64) {
     return width;
 }
 
-const void *omm_render_get_star_glyph(s32 index, bool colored, bool collected) {
+const void *omm_render_get_star_glyph(s32 index, MODE_INDEX s32 modeIndex, bool colored, bool collected) {
     return (const void *) gOmmFontHud[colored ?
-        (collected ? 0x80 + OMM_STAR_COLOR_[index + OMM_STAR_COLOR_OFFSET(OMM_GAME_MODE)] : 0x7F) :
+        (collected ? 0x80 + OMM_STAR_COLOR_[index + OMM_STAR_COLOR_OFFSET(modeIndex)] : 0x7F) :
         (collected ? GLYPH_STAR : 0x7E)
     ];
+}
+
+const u8 *omm_render_get_star_rgb(s32 modeIndex, bool colored, bool collected) {
+    static const u8 sStarRGB[][3] = { { 0xFF, 0xFF, 0xFF }, OMM_STAR_COLOR_CLASSIC };
+    return sStarRGB[(!colored && collected) * (modeIndex + 1)];
 }
 
 OMM_AT_STARTUP static void omm_patch_dialog_char_widths() {

@@ -122,7 +122,10 @@ static bool omm_obj_effect_metal_get_parameter(struct Object *obj, bool enable, 
     }
 
     // Sparkly Bowser (Bowser 4)
-    if ((obj_has_geo_layout(obj, bowser_geo) || obj_has_geo_layout(obj, bowser2_geo)) && omm_sparkly_is_bowser_4_battle()) {
+    if ((obj_has_geo_layout(obj, bowser_geo) || obj_has_geo_layout(obj, bowser2_geo)) &&        // Bowser
+        (obj->behavior != bhvBowser || obj->oAction != 4) &&                                    // Not dead
+        omm_sparkly_is_bowser_4_battle()                                                        // Bowser 4
+    ) {
         *parameter = ((enable ? gOmmSparklyMode + 1 : 0) << 8) | (obj->oOpacity & 0xFF);
         return true;
     }

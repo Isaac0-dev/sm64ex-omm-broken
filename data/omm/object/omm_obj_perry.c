@@ -37,6 +37,13 @@ static void bhv_omm_perry_update() {
         obj_reset_hitbox(o, 0, 0, 0, 0, 0, 0);
     }
 
+    // Update model
+    if (OMM_CHEAT_SHADOW_MARIO) {
+        o->oGraphNode = geo_layout_to_graph_node(NULL, omm_geo_brush);
+    } else {
+        o->oGraphNode = geo_layout_to_graph_node(NULL, omm_geo_perry);
+    }
+
     // Preprocess
     geo_preprocess_object_graph_node(o);
 }
@@ -58,7 +65,7 @@ OMM_ROUTINE_UPDATE(omm_obj_spawn_perry) {
         if (OMM_PERRY_SWORD_ACTION) {
             struct Object *perry = omm_perry_get_object();
             if (!perry) {
-                gOmmPerry = obj_spawn_from_geo(gMarioObject, OMM_PLAYER_IS_PEACH ? omm_geo_perry : omm_geo_brush, bhvOmmPerry);
+                gOmmPerry = spawn_object(gMarioObject, MODEL_NONE, bhvOmmPerry);
             }
         } else {
             obj_deactivate_all_with_behavior(bhvOmmPerry);

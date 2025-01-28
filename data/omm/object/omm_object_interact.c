@@ -141,6 +141,10 @@ bool omm_obj_is_unagis_tail(struct Object *o) {
     return (omm_behavior_data_get_types(o->behavior) & BHV_TYPE_UNAGIS_TAIL) != 0 && (o->oBehParams2ndByte == -4);
 }
 
+bool omm_obj_is_water_diamond(struct Object *o) {
+    return (omm_behavior_data_get_types(o->behavior) & BHV_TYPE_WATER_DIAMOND) != 0 && (o->oAction == WATER_LEVEL_DIAMOND_ACT_IDLE) && (gWDWWaterLevelChanging == 0);
+}
+
 bool omm_obj_is_treasure_chest(struct Object *o) {
     return (omm_behavior_data_get_types(o->behavior) & BHV_TYPE_TREASURE_CHEST) != 0;
 }
@@ -428,6 +432,7 @@ static bool omm_obj_interact_defeat_in_one_hit(struct Object *o, struct Object *
                     obj_set_forward_vel(target, 0, 0, 0);
                     target->oAction = 7;
                     target->oHealth = 0;
+                    target->oInteractType = 0;
                     return true;
                 }
             } break;
@@ -446,6 +451,7 @@ static bool omm_obj_interact_defeat_in_one_hit(struct Object *o, struct Object *
             case BOSS_TYPE_BIG_BOO: {
                 target->oHealth = 1;
                 target->oInteractStatus = (ATTACK_GROUND_POUND_OR_TWIRL | INT_STATUS_INTERACTED | INT_STATUS_WAS_ATTACKED);
+                target->oInteractType = 0;
                 return true;
             } break;
 
@@ -455,6 +461,7 @@ static bool omm_obj_interact_defeat_in_one_hit(struct Object *o, struct Object *
                 target->oMoveAngleYaw = obj_get_object1_angle_yaw_to_object2(o->parentObj ? o->parentObj : o, target);
                 target->oFaceAngleYaw = target->oMoveAngleYaw + 0x8000;
                 target->oInteractStatus = (ATTACK_KICK_OR_TRIP | INT_STATUS_INTERACTED | INT_STATUS_WAS_ATTACKED);
+                target->oInteractType = 0;
                 obj_play_sound(target, SOUND_OBJ_BULLY_METAL);
                 return true;
             } break;
@@ -471,6 +478,7 @@ static bool omm_obj_interact_defeat_in_one_hit(struct Object *o, struct Object *
             case BOSS_TYPE_WIGGLER: {
                 target->oHealth = 2;
                 target->oInteractStatus = (ATTACK_GROUND_POUND_OR_TWIRL | INT_STATUS_INTERACTED | INT_STATUS_WAS_ATTACKED);
+                target->oInteractType = 0;
                 return true;
             } break;
 
@@ -491,8 +499,13 @@ static bool omm_obj_interact_defeat_in_one_hit(struct Object *o, struct Object *
                     bowser->oTimer = 0;
                     bowser->oHealth = 1;
                     bowser->oBowserCameraState = 10;
+                    bowser->oInteractType = 0;
+                    target->oInteractType = 0;
                     obj_anim_play(bowser, 2, 1.f);
-                    spawn_object(bowser, MODEL_NONE, bhvBowserBomb);
+                    struct Object *bomb = spawn_object(bowser, MODEL_NONE, bhvBowserBomb);
+                    obj_update(bomb);
+                    obj_update(bowser);
+                    omm_secrets_unlock(OMM_SECRET_PEACH_SECRET_1);
                     return true;
                 }
             } break;
@@ -695,6 +708,15 @@ OMM_CAPPY_ONLY_CODE(
                         omm_cappy_return_to_mario(o);
                         return OBJ_INT_RESULT_STOP;
                     }
+                }
+);
+
+OMM_CAPPY_ONLY_CODE(
+                // Water diamond
+                if (omm_obj_is_water_diamond(target)) {
+                    target->oAction = WATER_LEVEL_DIAMOND_ACT_CHANGE_WATER_LEVEL;
+                    gWDWWaterLevelChanging = 1;
+                    result = OBJ_INT_RESULT_INTERACT;
                 }
 );
 

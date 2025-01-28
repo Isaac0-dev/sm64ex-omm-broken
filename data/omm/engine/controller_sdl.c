@@ -2,6 +2,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "data/omm/omm_constants.h"
 
 #define VK_OFS_SDL_MOUSE            (0x0100)
 #define VK_BASE_SDL_MOUSE           (VK_BASE_SDL_GAMEPAD + VK_OFS_SDL_MOUSE)
@@ -39,7 +40,7 @@ static void controller_sdl_update_joystick_button(s32 index, bool down) {
 //
 
 static u32 controller_sdl_get_mouse_state() {
-    SDL_SetRelativeMouseMode(BETTER_CAM_MOUSE_CAM && OMM_CAMERA_CLASSIC && sCurrPlayMode != 2);
+    SDL_SetRelativeMouseMode(BETTER_CAM_MOUSE_CAM && OMM_CAMERA_CLASSIC && sCurrPlayMode != PLAY_MODE_PAUSED);
     return SDL_GetRelativeMouseState(&gOmmGlobals->mouseDeltaX, &gOmmGlobals->mouseDeltaY);
 }
 

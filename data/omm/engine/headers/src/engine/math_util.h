@@ -139,7 +139,8 @@ void  vec3f_set_dist_and_angle(Vec3f from, Vec3f to, f32  dist, s16  pitch, s16 
 void *vec3f_set_mag(Vec3f v, f32 mag);
 void  vec3f_to_polar_coords(Vec3f v, f32 *dist, s16 *pitch, s16 *yaw);
 void  vec3f_get_nullspace(Vec3f destAxisN, Vec3f destAxisE1, Vec3f destAxisE2, Vec3f n);
-void *vec3f_project_point(Vec3f dest, Vec3f v, Vec3f o, Vec3f n);
+void *vec3f_project_point(Vec3f dest, Vec3f p, Vec3f o, Vec3f n);
+void *vec3f_project_point_dir(Vec3f dest, Vec3f p, Vec3f d, Vec3f o, Vec3f n);
 void *vec3f_project_vector(Vec3f dest, Vec3f v, Vec3f n);
 void *vec3f_get_projected_point_on_line(Vec3f dest, f32 *t, Vec3f p, Vec3f a, Vec3f b);
 void  vec3f_to_2d_plane(Vec2f dest2d, f32 *dist2d, Vec3f src3d, Vec3f o, Vec3f n, Vec3f e1, Vec3f e2);

@@ -54,11 +54,6 @@ static bool omm_peach_vibe_check_type(struct MarioState *m, s32 vibeType) {
 
 static bool omm_peach_vibe_check(struct MarioState *m) {
 
-    // Bowser 4 battle
-    if (!OMM_SPARKLY_ALLOW_VIBES) {
-        return false;
-    }
-
     // Per vibe
     if (!omm_peach_vibe_check_type(m, gOmmPeach->vibeType)) {
         return false;
@@ -213,34 +208,40 @@ static s32 omm_peach_vibe_handle_inputs() {
 static bool omm_peach_vibe_toggle(struct MarioState *m, s32 vibeAction) {
 
     // Activation or switch + end cap power-up
-    if (vibeAction > 0 && gOmmPeach->vibeType != vibeAction && omm_peach_vibe_check_type(m, vibeAction)) {
-        gOmmPeach->vibeType = vibeAction;
-        gOmmPeach->vibeTimer = 0;
-        gOmmPeach->vibeGfxTimer = gGlobalTimer;
-        omm_sound_play(OMM_SOUND_EFFECT_PEACH_VIBE, gGlobalSoundArgs);
-        switch (vibeAction) {
-            case OMM_PEACH_VIBE_TYPE_JOY: {
-                omm_sound_play(OMM_SOUND_PEACH_VIBE_JOY, m->marioObj->oCameraToObject);
-                omm_mario_set_action(m, ACT_OMM_PEACH_VIBE_JOY_MOVE, 0, 0);
-                gOmmMario->spin.yaw = m->faceAngle[1];
-            } break;
-
-            case OMM_PEACH_VIBE_TYPE_RAGE: {
-                omm_sound_play(OMM_SOUND_PEACH_VIBE_RAGE, m->marioObj->oCameraToObject);
-            } break;
-
-            case OMM_PEACH_VIBE_TYPE_GLOOM: {
-                omm_sound_play(OMM_SOUND_PEACH_VIBE_GLOOM, m->marioObj->oCameraToObject);
-            } break;
-
-            case OMM_PEACH_VIBE_TYPE_CALM: {
-                omm_sound_play(OMM_SOUND_PEACH_VIBE_CALM, m->marioObj->oCameraToObject);
-            } break;
+    if (vibeAction > 0 && gOmmPeach->vibeType != vibeAction && !omm_mario_is_milk(m)) {
+        if (!gOmmAllow->vibes || (!gOmmAllow->joyVibe && vibeAction == OMM_PEACH_VIBE_TYPE_JOY)) {
+            play_buzz_sound();
+            return false;
         }
-        if (m->flags & (MARIO_METAL_CAP | MARIO_WING_CAP | MARIO_VANISH_CAP)) {
-            m->capTimer = 1;
+        if (omm_peach_vibe_check_type(m, vibeAction)) {
+            gOmmPeach->vibeType = vibeAction;
+            gOmmPeach->vibeTimer = 0;
+            gOmmPeach->vibeGfxTimer = gGlobalTimer;
+            omm_sound_play(OMM_SOUND_EFFECT_PEACH_VIBE, gGlobalSoundArgs);
+            switch (vibeAction) {
+                case OMM_PEACH_VIBE_TYPE_JOY: {
+                    omm_sound_play(OMM_SOUND_PEACH_VIBE_JOY, m->marioObj->oCameraToObject);
+                    omm_mario_set_action(m, ACT_OMM_PEACH_VIBE_JOY_MOVE, 0, 0);
+                    gOmmMario->spin.yaw = m->faceAngle[1];
+                } break;
+
+                case OMM_PEACH_VIBE_TYPE_RAGE: {
+                    omm_sound_play(OMM_SOUND_PEACH_VIBE_RAGE, m->marioObj->oCameraToObject);
+                } break;
+
+                case OMM_PEACH_VIBE_TYPE_GLOOM: {
+                    omm_sound_play(OMM_SOUND_PEACH_VIBE_GLOOM, m->marioObj->oCameraToObject);
+                } break;
+
+                case OMM_PEACH_VIBE_TYPE_CALM: {
+                    omm_sound_play(OMM_SOUND_PEACH_VIBE_CALM, m->marioObj->oCameraToObject);
+                } break;
+            }
+            if (m->flags & (MARIO_METAL_CAP | MARIO_WING_CAP | MARIO_VANISH_CAP)) {
+                m->capTimer = 1;
+            }
+            return true;
         }
-        return true;
     }
 
     // Deactivation

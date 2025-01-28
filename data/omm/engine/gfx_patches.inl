@@ -33,6 +33,12 @@ static OmmHMap sGfxPatches = omm_hmap_zero;
 
 OMM_AT_STARTUP static void gfx_init_patch_display_lists() {
     omm_hmap_insert(sGfxPatches, (uintptr_t) dl_ia_text_tex_settings, gfx_ia8_char);
+
+#if OMM_GAME_IS_SMMS
+    // Moonshine's moon shine dirty fix
+    extern Gfx mat_star_Shine[];
+    gDPSetEnvColor(mat_star_Shine, 0xFF, 0xFF, 0xFF, 0xFF);
+#endif
 }
 
 OMM_INLINE void *gfx_patch_display_list(void *gfx) {

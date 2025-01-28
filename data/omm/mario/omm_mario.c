@@ -334,6 +334,14 @@ bool omm_mario_is_hanging(struct MarioState *m) {
            (m->action == ACT_HANG_MOVING);
 }
 
+bool omm_mario_is_ledge_climbing(struct MarioState *m) {
+    return (m->action == ACT_LEDGE_GRAB) ||
+           (m->action == ACT_LEDGE_CLIMB_SLOW_1) ||
+           (m->action == ACT_LEDGE_CLIMB_SLOW_2) ||
+           (m->action == ACT_LEDGE_CLIMB_DOWN) ||
+           (m->action == ACT_LEDGE_CLIMB_FAST);
+}
+
 bool omm_mario_is_burning(struct MarioState *m) {
     return (m->action == ACT_BURNING_GROUND) ||
            (m->action == ACT_BURNING_JUMP) ||
@@ -425,15 +433,41 @@ bool omm_mario_allow_first_person(struct MarioState *m) {
                !omm_mario_is_locked(m) &&
                 obj_is_on_ground(o);
     }
-    return (m->action & ACT_FLAG_ALLOW_FIRST_PERSON) != 0;
+    return (m->action & ACT_FLAG_ALLOW_FIRST_PERSON) != 0 ||
+            // Underwater actions //
+           (m->action == ACT_WATER_IDLE) ||
+           (m->action == ACT_WATER_ACTION_END) ||
+           (m->action == ACT_BREASTSTROKE) ||
+           (m->action == ACT_SWIMMING_END) ||
+           (m->action == ACT_FLUTTER_KICK) ||
+           (m->action == ACT_OMM_WATER_FIRST_PERSON) ||
+            // Improved Metal water actions //
+           (m->action == ACT_OMM_METAL_WATER_IDLE) ||
+           (m->action == ACT_OMM_METAL_WATER_FIRST_PERSON) ||
+           (m->action == ACT_OMM_METAL_WATER_WALKING) ||
+           (m->action == ACT_OMM_METAL_WATER_START_CROUCHING) ||
+           (m->action == ACT_OMM_METAL_WATER_CROUCHING) ||
+           (m->action == ACT_OMM_METAL_WATER_STOP_CROUCHING) ||
+           (m->action == ACT_OMM_METAL_WATER_START_CRAWLING) ||
+           (m->action == ACT_OMM_METAL_WATER_CRAWLING) ||
+           (m->action == ACT_OMM_METAL_WATER_STOP_CRAWLING) ||
+           (m->action == ACT_OMM_METAL_WATER_JUMP_LAND) ||
+           (m->action == ACT_OMM_METAL_WATER_DOUBLE_JUMP_LAND) ||
+           (m->action == ACT_OMM_METAL_WATER_TRIPLE_JUMP_LAND) ||
+           (m->action == ACT_OMM_METAL_WATER_BACKFLIP_LAND) ||
+           (m->action == ACT_OMM_METAL_WATER_SIDE_FLIP_LAND) ||
+           (m->action == ACT_OMM_METAL_WATER_LONG_JUMP_LAND) ||
+           (m->action == ACT_OMM_METAL_WATER_FREEFALL_LAND) ||
+           (m->action == ACT_OMM_METAL_WATER_GROUND_POUND_LAND_STOP) ||
+           (m->action == ACT_OMM_METAL_WATER_SPIN_POUND_LAND);
 }
 
 bool omm_mario_should_walk(struct MarioState *m) {
-    return OMM_PLAYER_IS_PEACH || (max_3_f(4.f, m->intendedMag, m->forwardVel) < 18.f);
+    return OMM_PLAYER_MODEL_IS_PEACH || (max_3_f(4.f, m->intendedMag, m->forwardVel) < 18.f);
 }
 
 bool omm_mario_should_run(struct MarioState *m) {
-    return !OMM_PLAYER_IS_PEACH && (max_3_f(4.f, m->intendedMag, m->forwardVel) > 22.f);
+    return !OMM_PLAYER_MODEL_IS_PEACH && (max_3_f(4.f, m->intendedMag, m->forwardVel) > 22.f);
 }
 
 bool omm_mario_has_wing_cap(struct MarioState *m) {
@@ -516,9 +550,7 @@ bool omm_mario_check_dead(struct MarioState *m, s32 health) {
 }
 
 bool omm_mario_check_death_warp(struct MarioState *m, s32 warpOp) {
-    if (warpOp == WARP_OP_STAR_EXIT) {
-        omm_speedrun_split(OMM_SPLIT_EXIT);
-    } else if (OMM_STARS_NON_STOP && !OMM_LEVEL_NO_WARP(gCurrLevelNum) && !gOmmGlobals->marioTimer) {
+    if (OMM_STARS_NON_STOP && !OMM_LEVEL_NO_WARP(gCurrLevelNum) && !gOmmGlobals->marioTimer) {
         switch (warpOp) {
             case WARP_OP_DEATH: {
                 return omm_mario_check_dead(m, OMM_HEALTH_DEAD);
@@ -636,6 +668,16 @@ bool omm_mario_check_flooded(struct MarioState *m) {
     return false;
 }
 
+#if OMM_GAME_IS_R96X
+
+bool omm_mario_is_milk(struct MarioState *m) {
+    return (gOmmGlobals->milkTimer != 0) ||
+           (m->action == ACT_OMM_MILK_POWER_UP) ||
+           (m->action == ACT_OMM_MILK_POWER_DOWN);
+}
+
+#endif
+
 //
 // Update
 //
@@ -648,6 +690,10 @@ void omm_mario_update_platform(struct MarioState *m) {
     } else {
         update_mario_platform();
     }
+}
+
+void omm_mario_unset_cap(struct MarioState *m) {
+    m->capTimer = min_s(m->capTimer, 1);
 }
 
 void omm_mario_lock_camera(struct MarioState *m, bool isStarCutscene) {
@@ -803,7 +849,7 @@ static void omm_mario_update_spin(struct MarioState *m) {
     }
 
     // Update midair spin timer
-    if (!OMM_PLAYER_IS_PEACH) {
+    if (!OMM_PLAYER_IS_PEACH || omm_mario_is_milk(m)) {
         if (gOmmMario->midairSpin.timer > 0) {
             gOmmMario->midairSpin.timer--;
         }
@@ -888,6 +934,20 @@ static void omm_mario_update_spin(struct MarioState *m) {
     }
 }
 
+static void omm_mario_play_fall_sound(struct MarioState *m) {
+    if (!(m->flags & MARIO_UNKNOWN_13)) {
+        SFX(SOUND_MARIO_WAAAOOOW);
+        m->flags |= (MARIO_UNKNOWN_18 | MARIO_UNKNOWN_13);
+    }
+}
+
+static void omm_mario_stop_fall_sound(struct MarioState *m) {
+    if (m->flags & MARIO_UNKNOWN_13) {
+        omm_sound_stop_character_sound_n64(SOUND_MARIO_WAAAOOOW, m->marioObj->oCameraToObject);
+        m->flags &= ~(MARIO_UNKNOWN_18 | MARIO_UNKNOWN_13);
+    }
+}
+
 static void omm_mario_update_fall(struct MarioState *m) {
     if (OMM_CHEAT_NO_FALL_DAMAGE) {
         m->peakHeight = gOmmMario->state.peakHeight = m->pos[1];
@@ -896,12 +956,12 @@ static void omm_mario_update_fall(struct MarioState *m) {
 
     // Odyssey fall
     if (OMM_MOVESET_ODYSSEY) {
-        s32 actionGroup = (m->action & ACT_GROUP_MASK);
+        u32 actionGroup = (m->action & ACT_GROUP_MASK);
         
         // Airborne
         if (actionGroup == ACT_GROUP_AIRBORNE) {
 
-            // Set peak height
+            // Set peak height (and stop the WAAAOOOW sound if it's playing)
             if (omm_mario_has_metal_cap(m) ||
                 omm_mario_is_ground_pounding(m) ||
                 (m->vel[1] >= 0.f) ||
@@ -914,16 +974,17 @@ static void omm_mario_update_fall(struct MarioState *m) {
                 (m->action == ACT_OMM_MIDAIR_SPIN) ||
                 (m->action == ACT_OMM_ROLL_AIR) ||
                 (m->action == ACT_OMM_WALL_SLIDE) ||
+                (m->action == ACT_OMM_PEACH_FLOAT) ||
                 (m->action == ACT_OMM_PEACH_GLIDE) ||
                 (m->action == ACT_OMM_PEACH_PERRY_CHARGE_AIR)) {
                 gOmmMario->state.peakHeight = m->pos[1];
+                omm_mario_stop_fall_sound(m);
             }
 
             // Play the WAAAOOOW sound after falling for a while
             f32 fallHeight = gOmmMario->state.peakHeight - m->pos[1];
-            if (fallHeight > OMM_MARIO_FALL_DAMAGE_HEIGHT - 400.f && !(m->action & ACT_FLAG_INVULNERABLE) && !(m->flags & MARIO_UNKNOWN_13)) {
-                SFX(SOUND_MARIO_WAAAOOOW);
-                m->flags |= (MARIO_UNKNOWN_18 | MARIO_UNKNOWN_13);
+            if (fallHeight > OMM_MARIO_FALL_DAMAGE_HEIGHT - 400.f && !(m->action & ACT_FLAG_INVULNERABLE)) {
+                omm_mario_play_fall_sound(m);
             }
 
         } else {
@@ -968,10 +1029,7 @@ static void omm_mario_update_fall(struct MarioState *m) {
 
             // Reset peak height (and stop the WAAAOOOW sound)
             gOmmMario->state.peakHeight = m->pos[1];
-            if (m->flags & MARIO_UNKNOWN_13) {
-                omm_sound_stop_character_sound_n64(SOUND_MARIO_WAAAOOOW, m->marioObj->oCameraToObject);
-                m->flags &= ~(MARIO_UNKNOWN_18 | MARIO_UNKNOWN_13);
-            }
+            omm_mario_stop_fall_sound(m);
         }
     }
 
@@ -1080,6 +1138,17 @@ static void omm_mario_update_action(struct MarioState *m) {
     if (!unused80339F10) {
         u32 action = m->action;
         u32 actionArg = m->actionArg;
+#if OMM_GAME_IS_SMSR
+        if (gOmmGlobals->booZeroLife) {
+            gOmmWarp->state = POBJ_WARP_STATE_WARPING;
+            gOmmWarp->georef = boo_geo;
+            gOmmWarp->behavior = bhvBoo;
+            gOmmWarp->object = NULL;
+            gOmmWarp->behParams = 0;
+            gOmmWarp->behParams2ndByte = 0;
+            gOmmGlobals->booZeroLife = false;
+        }
+#endif
         if (omm_mario_possess_object_after_warp(m)) {
             struct Object *o = gOmmCapture;
             switch (action) {
@@ -1167,6 +1236,78 @@ static void omm_mario_update_inputs(struct MarioState *m) {
         }
     }
 }
+
+#if OMM_GAME_IS_R96X
+
+static void omm_mario_update_milk(struct MarioState *m) {
+    bool updateMilk = (
+        !omm_mario_is_reading(m) &&
+        !omm_mario_is_star_dancing(m) &&
+        !omm_mario_is_dead(m) &&
+        m->action != ACT_IN_CANNON
+    );
+    switch (m->action) {
+
+        // Make Mario BIG
+        case ACT_OMM_MILK_POWER_UP: {
+            ANM(MARIO_ANIM_SUMMON_STAR, 1.5f);
+            obj_anim_clamp_frame(m->marioObj, 18, 63);
+            obj_scale(m->marioObj, relerp_0_1_f(m->actionTimer, 0, 30, 1.f, 4.f));
+            if (m->actionTimer % 5 == 1) {
+                for (s32 i = 0; i != 8; ++i) {
+                    struct Object *particle = spawn_object_abs_with_rot(m->marioObj, 0, MODEL_CARTOON_STAR, bhvPoundTinyStarParticle,
+                        m->pos[0],
+                        m->pos[1] + relerp_0_1_f(m->actionTimer, 0, 30, 0, 160 * m->marioObj->oScaleY),
+                        m->pos[2],
+                        0, i * 0x2000, 0
+                    );
+                    particle->oCollisionParticleUnkF4 = 0.5f;
+                    particle->oForwardVel = 30.f;
+                    particle->oVelY = 0.f;
+                    particle->oTimer = 1;
+                }
+            }
+        } break;
+
+        // Scale down
+        case ACT_OMM_MILK_POWER_DOWN: {
+            ANM(MARIO_ANIM_START_CROUCHING, 1.f);
+            obj_scale(m->marioObj, relerp_0_1_f(m->actionTimer, 0, 30, 4.f, 1.f));
+        } break;
+
+        // Milk
+        default: {
+            obj_scale(m->marioObj, 4.f);
+            if (updateMilk && --gOmmGlobals->milkTimer == 1) {
+                omm_mario_set_action(m, ACT_OMM_MILK_POWER_DOWN, 0, 0xFFFF);
+            }
+            if (dynos_music_is_playing(r96_get_intended_level_music())) {
+                r96_play_music(R96_EVENT_GOT_MILK, 1.f, 1.f, 0);
+            }
+        } break;
+    }
+
+    // Update hitbox and attack
+    m->squishTimer = 0;
+    m->marioObj->hitboxRadius = 37.f * m->marioObj->oScaleX;
+    m->marioObj->hitboxHeight *= m->marioObj->oScaleY;
+    if (updateMilk) {
+
+        // Negate fall damage
+        m->peakHeight = gOmmMario->state.peakHeight = m->pos[1];
+
+        // Object interactions
+        omm_obj_process_interactions(m->marioObj, OBJ_INT_PRESET_ATTACK_DESTRUCTIBLE);
+
+        // Surface interactions
+        if (OMM_POWER_UPS_IMPROVED) {
+            extern void omm_mario_milk_process_surface_interactions(struct MarioState *);
+            omm_mario_milk_process_surface_interactions(m);
+        }
+    }
+}
+
+#endif
 
 //
 // Mario update
@@ -1333,26 +1474,43 @@ void bhv_mario_update() {
                 cap->oFlags &= ~OBJ_FLAG_GFX_INITED;
             }
         }
+    } else if (!m->floor) {
+        m->floorHeight = find_floor(m->pos[0], m->pos[1], m->pos[2], &m->floor);
+    }
+
+    // Out of Bounds after an instant warp (shouldn't happen)
+    if (!m->floor) {
+        return;
     }
 
     // World objects
     omm_world_update(m);
 
     // Gfx & camera stuff
-#if OMM_GAME_IS_R96X
-    if (!m->milk) squish_mario_model(m);
-#else
     squish_mario_model(m);
-#endif
     sink_mario_in_quicksand(m);
     set_submerged_cam_preset_and_spawn_bubbles(m);
     update_mario_info_for_cam(m);
     mario_update_hitbox_and_cap_model(m);
     omm_mario_update_burn(m);
+#if OMM_GAME_IS_R96X
+    m->milk = 0;
+    m->defeatEnemy = 0;
+    if (omm_mario_is_milk(m)) {
+        omm_mario_update_milk(m);
+    } else {
+        m->marioObj->hitboxRadius = 37;
+    }
+#endif
 
     // Vibes (Peach only)
     if (OMM_PLAYER_IS_PEACH) {
         omm_peach_vibe_update(m);
+    }
+
+    // Rage Vibe damage
+    if (omm_peach_vibe_is_rage()) {
+        omm_obj_process_interactions(m->marioObj, OBJ_INT_PRESET_PEACH_VIBE_RAGE_AURA);
     }
 
     // Health
@@ -1378,15 +1536,15 @@ void bhv_mario_update() {
     m->numStars = omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE);
 
     // Update Mario object
-    obj_set_xyz(gMarioObject, m->pos[0], m->pos[1], m->pos[2]);
-    obj_set_vel(gMarioObject, m->vel[0], m->vel[1], m->vel[2]);
-    obj_set_angle(gMarioObject, gMarioObject->oGfxAngle[0], gMarioObject->oGfxAngle[1], gMarioObject->oGfxAngle[2]);
-    obj_set_angle_vel(gMarioObject, m->angleVel[0], m->angleVel[1], m->angleVel[2]);
-    gMarioObject->oInteractStatus = 0;
-    gMarioObject->oMarioParticleFlags = m->particleFlags;
+    obj_set_xyz(m->marioObj, m->pos[0], m->pos[1], m->pos[2]);
+    obj_set_vel(m->marioObj, m->vel[0], m->vel[1], m->vel[2]);
+    obj_set_angle(m->marioObj, m->marioObj->oGfxAngle[0], m->marioObj->oGfxAngle[1], m->marioObj->oGfxAngle[2]);
+    obj_set_angle_vel(m->marioObj, m->angleVel[0], m->angleVel[1], m->angleVel[2]);
+    m->marioObj->oInteractStatus = 0;
+    m->marioObj->oMarioParticleFlags = m->particleFlags;
 
     // Update Peach's body state
-    if (OMM_PLAYER_IS_PEACH) {
+    if (OMM_PLAYER_MODEL_IS_PEACH) {
 
         // Torso
         // Between Mario and Beytah
@@ -1451,7 +1609,7 @@ void bhv_mario_update() {
 
     // Graph node preprocessing
     // Compute Mario's hands, arms, head and root positions
-    geo_preprocess_object_graph_node(gMarioObject);
+    geo_preprocess_object_graph_node(m->marioObj);
 
     // Spawn particles
     for (u32 i = 0; i != 32; ++i) {
@@ -1460,4 +1618,11 @@ void bhv_mario_update() {
             obj_spawn_particle_preset(m->marioObj, particle, true);
         }
     }
+
+    // Update allow list
+    gOmmAllow->captures = true;
+    gOmmAllow->capModifier = true;
+    gOmmAllow->yoshiSummon = true;
+    gOmmAllow->vibes = true;
+    gOmmAllow->joyVibe = true;
 }

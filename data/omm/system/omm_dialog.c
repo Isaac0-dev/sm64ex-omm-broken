@@ -10,7 +10,6 @@ static struct OmmDialogEntry *sOmmDialogs[] = {
     gOmmDialogSparklyStars1,
     gOmmDialogSparklyStars2,
     // gOmmDialogSparklyStars3, // TODO, nebulas
-    NULL,
 };
 
 #if OMM_GAME_IS_R96X
@@ -29,7 +28,7 @@ static OmmHMap_(struct DialogEntry *) *omm_dialog_load_omm_entries() {
         if (languageIndex == -1) {
             OmmHMap_(struct DialogEntry *) *dialogEntries = mem_new(OmmHMap, 1);
             omm_map_add(sOmmDialogEntriesPerLanguage, ptr, language, ptr, dialogEntries);
-            for_each_until_null(struct OmmDialogEntry *, entries, sOmmDialogs) {
+            array_for_each_(struct OmmDialogEntry *, entries, sOmmDialogs) {
                 for (struct OmmDialogEntry *entry = *entries; entry->id; entry++) {
                     str_t dialogEntryName;
                     struct DialogEntry *dialog = mem_new(struct DialogEntry, 1);
@@ -38,7 +37,7 @@ static OmmHMap_(struct DialogEntry *) *omm_dialog_load_omm_entries() {
                     dialog->leftOffset = (s16) entry->leftOffset;
                     dialog->width = (s16) entry->downOffset;
                     dialog->str = get_key_string(omm_dialog_get_omm_entry_name(dialogEntryName, entry->id));
-                    omm_hmap_insert(*dialogEntries, entry->id, dialog);
+                    omm_hmap_insert(*dialogEntries, entry->id + 1, dialog);
                 }
             }
             return dialogEntries;
@@ -51,7 +50,7 @@ static OmmHMap_(struct DialogEntry *) *omm_dialog_load_omm_entries() {
 static struct DialogEntry *omm_dialog_get_omm_entry(s16 dialogId) {
     OmmHMap_(struct DialogEntry *) *dialogEntries = omm_dialog_load_omm_entries();
     if (dialogEntries) {
-        s32 dialogIndex = omm_hmap_find(*dialogEntries, dialogId);
+        s32 dialogIndex = omm_hmap_find(*dialogEntries, dialogId + 1);
         if (dialogIndex != -1) {
             return omm_hmap_get(*dialogEntries, struct DialogEntry *, dialogIndex);
         }
@@ -65,7 +64,7 @@ static OmmHMap_(struct DialogEntry *) sOmmDialogEntries = omm_hmap_zero;
 
 static void omm_dialog_load_omm_entries() {
     OMM_DO_ONCE {
-        for_each_until_null(struct OmmDialogEntry *, entries, sOmmDialogs) {
+        array_for_each_(struct OmmDialogEntry *, entries, sOmmDialogs) {
             for (struct OmmDialogEntry *entry = *entries; entry->id; entry++) {
                 struct DialogEntry *dialog = mem_new(struct DialogEntry, 1);
                 dialog->unused = (u32) entry->soundBits;
@@ -73,7 +72,7 @@ static void omm_dialog_load_omm_entries() {
                 dialog->leftOffset = (s16) entry->leftOffset;
                 dialog->width = (s16) entry->downOffset;
                 dialog->str = omm_text_convert(entry->str, true);
-                omm_hmap_insert(sOmmDialogEntries, entry->id, dialog);
+                omm_hmap_insert(sOmmDialogEntries, entry->id + 1, dialog);
             }
         }
     }
@@ -81,7 +80,7 @@ static void omm_dialog_load_omm_entries() {
 
 static struct DialogEntry *omm_dialog_get_omm_entry(s16 dialogId) {
     omm_dialog_load_omm_entries();
-    s32 i = omm_hmap_find(sOmmDialogEntries, dialogId);
+    s32 i = omm_hmap_find(sOmmDialogEntries, dialogId + 1);
     if (i != -1) {
         return omm_hmap_get(sOmmDialogEntries, struct DialogEntry *, i);
     }
@@ -153,6 +152,16 @@ OMM_ROUTINE_PRE_RENDER(omm_dialog_update) {
 // For Render96: Auto-generates *.omm.json at execution time
 //
 
+static void omm_r96x_json_write_string(FILE *f, const char *str) {
+    for (; *str; str++) {
+        switch (*str) {
+            case '"': fputc('\\', f); fputc('"', f); break;
+            case '\n': fputc('\\', f); fputc('n', f); break;
+            default: fputc(*str, f); break;
+        }
+    }
+}
+
 void omm_r96x_generate_json() {
     sys_path_t dirpath;
     DIR *dir = opendir(fs_get_game_path(dirpath, "texts"));
@@ -213,25 +222,20 @@ void omm_r96x_generate_json() {
 #undef OMM_TEXT_
                                         };
                                         for (s32 i = 0; i != array_length(sOmmStrings); ++i) {
-                                            fprintf(f, "    \"%s\": \"%s\",\n", sOmmStrings[i][0], sOmmStrings[i][1]);
+                                            fprintf(f, "    \"%s\": \"", sOmmStrings[i][0]);
+                                            omm_r96x_json_write_string(f, sOmmStrings[i][1]);
+                                            fprintf(f, "\",\n");
                                         }
 
                                         // Dialogs
                                         // Render96 cannot load more than 256 dialog entries,
                                         // so OMM dialog entries have to be stored as text strings
-                                        for_each_until_null(struct OmmDialogEntry *, entries, sOmmDialogs) {
+                                        array_for_each_(struct OmmDialogEntry *, entries, sOmmDialogs) {
                                             for (struct OmmDialogEntry *entry = *entries; entry->id; entry++) {
-                                                char buffer[0x2000] = {0};
-                                                for (s32 i = 0, j = 0; entry->str[i]; ++i) {
-                                                    if (entry->str[i] == '\n') {
-                                                        buffer[j++] = '\\';
-                                                        buffer[j++] = 'n';
-                                                    } else {
-                                                        buffer[j++] = entry->str[i];
-                                                    }
-                                                }
                                                 str_t dialogEntryName;
-                                                fprintf(f, "    \"%s\": \"%s\",\n", omm_dialog_get_omm_entry_name(dialogEntryName, entry->id), buffer);
+                                                fprintf(f, "    \"%s\": \"", omm_dialog_get_omm_entry_name(dialogEntryName, entry->id), buffer);
+                                                omm_r96x_json_write_string(f, entry->str);
+                                                fprintf(f, "\",\n");
                                             }
                                         }
                                         fprintf(f, "    \"END_OF_STRINGS\": \"\"\n");

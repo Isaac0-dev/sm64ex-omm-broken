@@ -245,6 +245,13 @@ static void omm_mario_capture_update_transparency(struct Object *o, f32 factor) 
 
 static void omm_mario_capture_update_opacity(struct MarioState *m, struct Object *o) {
 
+    // Invisible mode
+    if (OMM_EXTRAS_INVISIBLE_MODE) {
+        o->oFlags |= OBJ_FLAG_INVISIBLE_MODE;
+    } else {
+        o->oFlags &= ~OBJ_FLAG_INVISIBLE_MODE;
+    }
+
     // Invincibility flicker
     if (gOmmObject->state._invincTimer > 0) {
         if (gOmmObject->state._invincTimer & 1) {
@@ -733,6 +740,11 @@ bool omm_mario_possess_object(struct MarioState *m, struct Object *o, u32 posses
         }
     }
 
+    // No milk
+    if (omm_mario_is_milk(m)) {
+        return false;
+    }
+
     // Not tangible
     if ((possessFlags & OMM_MARIO_POSSESS_CHECK_TANGIBILITY) && o->oIntangibleTimer != 0) {
         return false;
@@ -763,7 +775,7 @@ bool omm_mario_possess_object(struct MarioState *m, struct Object *o, u32 posses
 
     // Captures other than flaming bob-ombs cannot be possessed during the Bowser 4 fight if mode is not completed
     u64 captureType = omm_capture_get_type(o);
-    if (captureType != OMM_CAPTURE_FLAMING_BOBOMB && !OMM_SPARKLY_ALLOW_CAPTURES) {
+    if (captureType != OMM_CAPTURE_FLAMING_BOBOMB && !gOmmAllow->captures) {
         o->oCaptureData = NULL;
         return false;
     }
@@ -820,7 +832,7 @@ bool omm_mario_possess_object(struct MarioState *m, struct Object *o, u32 posses
     omm_mario_set_action(m, ACT_OMM_POSSESSION, 0, Z_TRIG);
     omm_sound_play(OMM_SOUND_EVENT_CAPTURE, m->marioObj->oCameraToObject);
     omm_cappy_unload();
-    gOmmStats->captures++;
+    omm_stats_increase(captures, 1);
     return true;
 }
 
@@ -830,7 +842,7 @@ bool omm_mario_possess_object_after_warp(struct MarioState *m) {
     }
 
     // Captures cannot enter the Bowser 4 fight if mode is not completed
-    if (!OMM_SPARKLY_ALLOW_CAPTURES) {
+    if (omm_sparkly_is_bowser_4_battle() && !OMM_SPARKLY_BYPASS_BOWSER_RULES) {
         return false;
     }
 
@@ -976,6 +988,7 @@ static bool __omm_mario_unpossess_object(struct MarioState *m, s32 unpossessAct,
     m->pos[1] += action->fromTop * captureTopY;
     m->vel[1] = action->yVel;
     m->input &= ~(INPUT_FIRST_PERSON | INPUT_A_PRESSED | INPUT_A_DOWN | INPUT_B_PRESSED | INPUT_Z_DOWN | INPUT_Z_PRESSED);
+    m->squishTimer = 0;
     m->controller->buttonPressed = 0;
     m->marioObj->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
     m->marioObj->oNodeFlags |= GRAPH_RENDER_ACTIVE;
@@ -1001,6 +1014,7 @@ static bool __omm_mario_unpossess_object(struct MarioState *m, s32 unpossessAct,
     o->oMoveFlags = 0;
     o->oIntangibleTimer = objIntangibleFrames;
     o->oTransparency = 0;
+    o->oFlags &= ~OBJ_FLAG_INVISIBLE_MODE;
     o->oNodeFlags |= GRAPH_RENDER_ACTIVE;
     o->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
     o->activeFlags &= ~(ACTIVE_FLAG_IN_DIFFERENT_ROOM | ACTIVE_FLAG_DITHERED_ALPHA);

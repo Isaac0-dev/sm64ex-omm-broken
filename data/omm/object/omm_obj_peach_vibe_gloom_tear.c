@@ -72,6 +72,18 @@ const GeoLayout omm_geo_peach_vibe_gloom_tear[] = {
 // Behavior
 //
 
+static void bhv_omm_peach_vibe_gloom_tear_get_vector(Vec3f dest, Mat4 rot, f32 x, f32 y, f32 z) {
+    Mat4 mtx = {
+        { 1, 0, 0, 0 },
+        { 0, 1, 0, 0 },
+        { 0, 0, 1, 0 },
+        { x, y, z, 1 }
+    };
+    mtxf_mul(mtx, mtx, rot);
+    vec3f_copy(dest, mtx[3]);
+    vec3f_normalize(dest);
+}
+
 static void bhv_omm_peach_vibe_gloom_tear_update() {
     struct Object *o = gCurrentObject;
     OmmPeachVibeGloomTearGeoData *data = geo_get_geo_data(o,
@@ -149,14 +161,18 @@ static void bhv_omm_peach_vibe_gloom_tear_update() {
 
     // If Gloom is active, add new point, and spawn a small tear
     if (omm_peach_vibe_is_gloom()) {
-        f32 *p = geo_get_marios_head_pos();
-        f32 *u = geo_get_marios_head_up();
-        f32 *f = geo_get_marios_head_forward();
-        f32 *r = geo_get_marios_head_right();
-        f32 du = 11.f * gMarioObject->oScaleY;
-        f32 df = 14.f * gMarioObject->oScaleX;
-        f32 dr = 10.f * gMarioObject->oScaleX;
+        Mat4 rot; geo_get_marios_head_mtx(rot);
+        Vec3f p; vec3f_copy(p, rot[3]);
+        vec3f_zero(rot[3]);
         vec3f_sub(p, mp);
+
+        Vec3f u; bhv_omm_peach_vibe_gloom_tear_get_vector(u, rot, 1, 0, 0);
+        Vec3f f; bhv_omm_peach_vibe_gloom_tear_get_vector(f, rot, 0, 1, 0);
+        Vec3f r; bhv_omm_peach_vibe_gloom_tear_get_vector(r, rot, 0, 0, -1);
+
+        f32 du = 14.f * gMarioObject->oScaleY;
+        f32 df = 15.f * gMarioObject->oScaleX;
+        f32 dr = 10.f * gMarioObject->oScaleX;
 
         // Handle separately the running animation
         if (gMarioObject->oAnimID == MARIO_ANIM_RUNNING) {
@@ -169,7 +185,7 @@ static void bhv_omm_peach_vibe_gloom_tear_update() {
             f[0] = sins(gMarioState->faceAngle[1]);
             f[1] = 0.f;
             f[2] = coss(gMarioState->faceAngle[1]);
-            df = 8.f * gMarioObject->oScaleX;
+            df = 10.f * gMarioObject->oScaleX;
             dr = 12.f * gMarioObject->oScaleX;
         }
 
@@ -303,7 +319,7 @@ static void bhv_omm_peach_vibe_gloom_tear_update() {
                         vtx->n.n[0]  = (s8) (dv[0] * 127.f / radius);
                         vtx->n.n[1]  = (s8) (dv[1] * 127.f / radius);
                         vtx->n.n[2]  = (s8) (dv[2] * 127.f / radius);
-                        vtx->n.a     = OMM_PEACH_VIBE_GLOOM_TEAR_OPACITY * relerp_0_1_f(i, OMM_PEACH_VIBE_GLOOM_TEAR_OPACITY_MAX_POINT, OMM_PEACH_VIBE_GLOOM_TEAR_OPACITY_ZERO_POINT, 1.f, 0.f);
+                        vtx->n.a     = (i != 0) * OMM_PEACH_VIBE_GLOOM_TEAR_OPACITY * relerp_0_1_f(i, OMM_PEACH_VIBE_GLOOM_TEAR_OPACITY_MAX_POINT, OMM_PEACH_VIBE_GLOOM_TEAR_OPACITY_ZERO_POINT, 1.f, 0.f);
                         vtx++;
                     }
                 }

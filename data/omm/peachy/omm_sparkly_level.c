@@ -184,16 +184,17 @@ static const s32 params_1_20[] = {
 
 static const s32 params_1_25[] = {
 // Num toads
-    1,
+    2,
 // Toads
-    OMM_DIALOG_SPARKLY_TOAD_1, -670, 0, -320, 0xA000,
+    OMM_DIALOG_SPARKLY_TOAD_1, -1075, -101, -5479, 0x4000,
+    OMM_DIALOG_SPARKLY_TOAD_2,  -975, -101, -5479, 0xC000,
 };
 
 static const s32 params_1_27[] = {
 // Num toads
     1,
 // Toads
-    OMM_DIALOG_SPARKLY_TOAD_2, -205, 2253, 7200, 0x7000,
+    OMM_DIALOG_SPARKLY_TOAD_3, -205, 2253, 7200, 0x7000,
 };
 
 static const s32 params_1_28[] = {
@@ -221,7 +222,7 @@ static const OmmSparklyLevel sOmmSparklyLevels[4][OMM_SPARKLY_STARS_MAX] = {
 [ 7] = { NULL, NULL },
 [ 8] = { NULL, NULL },
 [ 9] = { omm_sparkly_level_sl__snowmen_at_top, params_0_09 },
-[10] = { NULL, NULL },
+[10] = { omm_sparkly_level_wdw__secret, NULL },
 [11] = { NULL, NULL },
 [12] = { omm_sparkly_level__ten_goombas_stack, params_0_12 },
 [13] = { omm_sparkly_level__all_boxes, params_0_13 },

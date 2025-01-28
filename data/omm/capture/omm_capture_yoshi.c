@@ -61,6 +61,9 @@ static const OmmCappyYoshiBubbleParams OMM_CAPPY_YOSHI_BUBBLE_PARAMS[] = {
     { omm_geo_sparkly_star_1_box,   40, 0.25f, false },
     { omm_geo_sparkly_star_2_box,   40, 0.25f, false },
     { omm_geo_sparkly_star_3_box,   40, 0.25f, false },
+    { omm_geo_sparkly_star_1_hint,  35, 0.60f, false },
+    { omm_geo_sparkly_star_2_hint,  35, 0.60f, false },
+    { omm_geo_sparkly_star_3_hint,  35, 0.60f, false },
     { mips_geo,                      0, 0.80f, false },
     { moneybag_geo,                 30, 0.55f, false },
     { monty_mole_geo,                5, 0.80f, false },
@@ -87,6 +90,7 @@ static const OmmCappyYoshiBubbleParams OMM_CAPPY_YOSHI_BUBBLE_PARAMS[] = {
     { swoop_geo,                    25, 0.80f, false },
     { toad_geo,                     40, 0.80f, false },
     { ukiki_geo,                    10, 0.75f, false },
+    { wooden_signpost_geo,          35, 0.60f, false },
     { yoshi_geo,                    45, 0.40f, false },
     { yoshi_egg_geo,                30, 1.00f, false },
 #if OMM_GAME_IS_SMSR
@@ -481,6 +485,7 @@ s32 omm_cappy_yoshi_update(struct Object *o) {
             if (abilitySpinJump && gOmmMario->spin.timer) {
                 gOmmObject->state.actionTimer = 8;
                 o->oVelY = max_f(o->oVelY, 1.35f * pobj_get_jump_velocity(o));
+                omm_secrets_unlock(OMM_SECRET_YOSHI_SECRET);
             }
         }
 

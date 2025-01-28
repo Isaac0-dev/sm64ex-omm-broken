@@ -349,11 +349,21 @@ void vec3f_get_nullspace(Vec3f destAxisN, Vec3f destAxisE1, Vec3f destAxisE2, Ve
     vec3f_normalize(destAxisE2);
 }
 
-void *vec3f_project_point(Vec3f dest, Vec3f v, Vec3f o, Vec3f n) {
-    f32 dot = (v[0] - o[0]) * n[0] + (v[1] - o[1]) * n[1] + (v[2] - o[2]) * n[2];
-    dest[0] = v[0] - dot * n[0];
-    dest[1] = v[1] - dot * n[1];
-    dest[2] = v[2] - dot * n[2];
+void *vec3f_project_point(Vec3f dest, Vec3f p, Vec3f o, Vec3f n) {
+    f32 dot = (p[0] - o[0]) * n[0] + (p[1] - o[1]) * n[1] + (p[2] - o[2]) * n[2];
+    dest[0] = p[0] - dot * n[0];
+    dest[1] = p[1] - dot * n[1];
+    dest[2] = p[2] - dot * n[2];
+    return dest;
+}
+
+void *vec3f_project_point_dir(Vec3f dest, Vec3f p, Vec3f d, Vec3f o, Vec3f n) {
+    f32 dotDN = vec3f_dot(d, n);
+    f32 dotOPN = (o[0] - p[0]) * n[0] + (o[1] - p[1]) * n[1] + (o[2] - p[2]) * n[2];
+    f32 t = dotOPN / dotDN;
+    dest[0] = p[0] + t * d[0];
+    dest[1] = p[1] + t * d[1];
+    dest[2] = p[2] + t * d[2];
     return dest;
 }
 
@@ -588,8 +598,7 @@ OMM_OPTIMIZE void *vec3s_interpolate_angles(Vec3s dest, Vec3s from, Vec3s to, f3
 //
 
 #define IS_ZERO(x)      ((x) > -0.0001f && (x) < +0.0001f)
-#define MTXF_ONE(m, k)  ((u32 *) (m))[k] = 0x3F800000
-#define MTXF_33_1(m)    MTXF_ONE(m, 15)
+#define MTXF_33_1(m)    m[3][3] = 1.f
 
 void mtxf_translate(Mat4 dest, Vec3f b) {
     mtxf_identity(dest);
@@ -694,14 +703,13 @@ OMM_OPTIMIZE void mtxf_billboard(Mat4 dest, Mat4 mtx, Vec3f position, s16 angle)
     __m128 p0 = _mm_set1_ps(position[0]);
     __m128 p1 = _mm_set1_ps(position[1]);
     __m128 p2 = _mm_set1_ps(position[2]);
-    __m128 p3 = _mm_set1_ps(1.f);
     __m128 m0 = _mm_loadu_ps(mtx[0]);
     __m128 m1 = _mm_loadu_ps(mtx[1]);
     __m128 m2 = _mm_loadu_ps(mtx[2]);
     __m128 m3 = _mm_loadu_ps(mtx[3]);
     __m128 d3 = _mm_add_ps(
         _mm_add_ps(_mm_mul_ps(m0, p0), _mm_mul_ps(m1, p1)),
-        _mm_add_ps(_mm_mul_ps(m2, p2), _mm_mul_ps(m3, p3))
+        _mm_add_ps(_mm_mul_ps(m2, p2), m3)
     );
     _mm_storeu_ps(dest[3], d3);
     MTXF_33_1(dest);
@@ -715,14 +723,13 @@ OMM_OPTIMIZE void mtxf_cylboard(Mat4 dest, Mat4 mtx, Vec3f position, s16 angle) 
     __m128 p0 = _mm_set1_ps(position[0]);
     __m128 p1 = _mm_set1_ps(position[1]);
     __m128 p2 = _mm_set1_ps(position[2]);
-    __m128 p3 = _mm_set1_ps(1.f);
     __m128 m0 = _mm_loadu_ps(mtx[0]);
     __m128 m1 = _mm_loadu_ps(mtx[1]);
     __m128 m2 = _mm_loadu_ps(mtx[2]);
     __m128 m3 = _mm_loadu_ps(mtx[3]);
     __m128 d3 = _mm_add_ps(
         _mm_add_ps(_mm_mul_ps(m0, p0), _mm_mul_ps(m1, p1)),
-        _mm_add_ps(_mm_mul_ps(m2, p2), _mm_mul_ps(m3, p3))
+        _mm_add_ps(_mm_mul_ps(m2, p2), m3)
     );
     _mm_storeu_ps(dest[3], d3);
     MTXF_33_1(dest);
@@ -842,8 +849,8 @@ void mtxf_rotate_xy(Mtx *mtx, s16 angle) {
     mtx->m[0][1] = sins(angle);
     mtx->m[1][0] = -mtx->m[0][1];
     mtx->m[1][1] = +mtx->m[0][0];
-    MTXF_ONE(mtx->m, 10);
-    MTXF_ONE(mtx->m, 15);
+    mtx->m[2][2] = 1.f;
+    mtx->m[3][3] = 1.f;
 }
 
 void mtxf_ortho(Mtx *mtx, f32 left, f32 right, f32 bottom, f32 top, f32 near, f32 far, f32 scale) {

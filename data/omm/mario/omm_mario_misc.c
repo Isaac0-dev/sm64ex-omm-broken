@@ -16,18 +16,22 @@ static bool omm_mario_try_to_interact_cap(struct MarioState *m, u32 capFlag, con
             m->capTimer *= !OMM_CHEAT_CAP_MODIFIER || capBhv == bhvNormalCap;
             return true;
         }
+    } else if (capFlag) {
+        play_buzz_sound();
     }
     return false;
 }
 
 static bool omm_mario_check_cap_modifier(struct MarioState *m) {
-    if (OMM_CHEAT_CAP_MODIFIER || (OMM_SPARKLY_ALLOW_CAP_MODIFIER && (OMM_REWARD_IS_WEAR_ANY_CAP_ANYWHERE_UNLOCKED || OMM_REWARD_IS_WEAR_ANY_CAP_UNLOCKED))) {
+    if (OMM_CHEAT_CAP_MODIFIER || (gOmmAllow->capModifier && (OMM_REWARD_IS_UNLIMITED_CAPS_UNLOCKED || OMM_REWARD_IS_INSTANT_CAPS_UNLOCKED))) {
         switch (m->controller->buttonPressed & (U_JPAD | D_JPAD | L_JPAD | R_JPAD)) {
             case U_JPAD: return omm_mario_try_to_interact_cap(m, !OMM_CHEAT_CAP_MODIFIER * SAVE_FLAG_HAVE_WING_CAP, bhvWingCap);
             case L_JPAD: return omm_mario_try_to_interact_cap(m, !OMM_CHEAT_CAP_MODIFIER * SAVE_FLAG_HAVE_VANISH_CAP, bhvVanishCap);
             case R_JPAD: return omm_mario_try_to_interact_cap(m, !OMM_CHEAT_CAP_MODIFIER * SAVE_FLAG_HAVE_METAL_CAP, bhvMetalCap);
             case D_JPAD: return omm_mario_try_to_interact_cap(m, 0, bhvNormalCap);
         }
+    } else if (!gOmmAllow->capModifier && (m->controller->buttonPressed & (U_JPAD | D_JPAD | L_JPAD | R_JPAD)) != 0) {
+        play_buzz_sound();
     }
     return false;
 }
@@ -39,10 +43,12 @@ static bool omm_mario_check_cap_modifier(struct MarioState *m) {
 //
 
 static bool omm_mario_check_yoshi_summon(struct MarioState *m) {
-    if (OMM_SPARKLY_ALLOW_YOSHI_SUMMON && OMM_REWARD_IS_SUMMON_YOSHI_UNLOCKED && !omm_bowser_is_active()) { // Disable Yoshi summon during OMM Bowser fights
+    if (gOmmAllow->yoshiSummon && OMM_REWARD_IS_SUMMON_YOSHI_UNLOCKED && !omm_bowser_is_active()) { // Disable Yoshi summon during OMM Bowser fights
         switch (m->controller->buttonPressed & (Y_BUTTON)) {
             case Y_BUTTON: return omm_obj_spawn_yoshi(m->marioObj, m->faceAngle[1]) != NULL;
         }
+    } else if (!gOmmAllow->yoshiSummon && (m->controller->buttonPressed & (Y_BUTTON)) != 0) {
+        play_buzz_sound();
     }
     return false;
 }

@@ -76,7 +76,6 @@ static fs_dir_f fs_dir_types[] = {
     fs_dir_is_dir,
     fs_dir_is_base_zip,
     fs_dir_is_custom_zip,
-    NULL,
 };
 
 //
@@ -128,7 +127,7 @@ static bool fs_enumerate_walk(void *user, const char *path) {
         if (!newpaths) return false;
         data->paths = newpaths;
     }
-    data->paths[data->numpaths++] = sys_strdup(path);
+    data->paths[data->numpaths++] = str_dup(path);
     return true;
 }
 
@@ -175,13 +174,13 @@ bool fs_init(UNUSED const char **rodirs, UNUSED const char *gamedir, UNUSED cons
 
         // Mount fs_gamedir and packs dirs from exe path
         fs_mount_dirs("!", FS_DIR_READ, fs_gamedir, "");
-        fs_mount_dirs("!", FS_DIR_PACKS, fs_gamedir, "packs");
-        fs_mount_dirs("!", FS_DIR_PACKS, "dynos", "packs");
+        fs_mount_dirs("!", FS_DIR_PACKS, fs_gamedir, FS_PACKSDIR);
+        fs_mount_dirs("!", FS_DIR_PACKS, FS_DYNOSDIR, FS_PACKSDIR);
 
         // Mount res and packs dirs from save path
         fs_mount_dirs(fs_savepath, FS_DIR_READ, FS_BASEDIR, "");
-        fs_mount_dirs(fs_savepath, FS_DIR_PACKS, FS_BASEDIR, "packs");
-        fs_mount_dirs(fs_savepath, FS_DIR_PACKS, "dynos", "packs");
+        fs_mount_dirs(fs_savepath, FS_DIR_PACKS, FS_BASEDIR, FS_PACKSDIR);
+        fs_mount_dirs(fs_savepath, FS_DIR_PACKS, FS_DYNOSDIR, FS_PACKSDIR);
 
         // Mount save path
         fs_mount(fs_savepath, FS_DIR_WRITE);
@@ -191,7 +190,7 @@ bool fs_init(UNUSED const char **rodirs, UNUSED const char *gamedir, UNUSED cons
         // - base.*.zip and omm.zip are next
         // - directories are last
         fs_dir_t *paths = NULL;
-        for_each_until_null(fs_dir_f, fs_dir_is, fs_dir_types) {
+        array_for_each_(fs_dir_f, fs_dir_is, fs_dir_types) {
             for_each_dir_in_search_paths {
                 if ((*fs_dir_is)(dir)) {
                     fs_dir_t *path = mem_dup(dir, sizeof(fs_dir_t));
@@ -248,7 +247,7 @@ bool fs_mount(const char *realpath, u8 flags) {
                 const char *filename = sys_file_name(realpath);
                 for (u32 i = 0; i != array_length(FS_GAME_CODES); ++i) {
                     if (!strstr(FS_GAME_CODES[i], OMM_GAME_CODE) && strstr(filename, FS_GAME_CODES[i])) {
-                        omm_printf("(!) Skipping: \"%s\"\n",, filename);
+                        omm_printf_warning("Skipping: \"%s\"\n",, filename);
                         packer->unmount(pack);
                         return false;
                     }
@@ -260,7 +259,7 @@ bool fs_mount(const char *realpath, u8 flags) {
             if (OMM_LIKELY(dir)) {
                 dir->flags = flags;
                 dir->pack = pack;
-                dir->realpath = sys_strdup(realpath);
+                dir->realpath = str_dup(realpath);
                 dir->packer = packer;
                 dir->prev = NULL;
                 dir->next = fs_searchpaths;
@@ -574,7 +573,7 @@ bool fs_sys_copy_file(const char *from, const char *to) {
     if (f_from) {
         FILE *f_to = fopen(to, "wb");
         if (f_to) {
-            u8 buf[0x1000];
+            u8 buf[BUFSIZ];
             u64 bytes;
             for (success = true; (bytes = fread(buf, 1, sizeof(buf), f_from)) > 0;) {
                 if (fwrite(buf, 1, bytes, f_to) < bytes) {

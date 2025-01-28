@@ -172,8 +172,8 @@ static void omm_text_replace(u8 *str64, const char *from, const char *to) {
     s32 lenStr = omm_text_length(str64);
     for (s32 i = 0; i != lenStr; ++i) {
         if (omm_text_starts_with(str64 + i, from64, lenFrom)) {
-            s32 numTextsToSkip = array_length(sTextToSkip);
-            for_each_(TextToSkip, textToSkip, numTextsToSkip, sTextToSkip) {
+            u32 numTextsToSkip = array_length(sTextToSkip);
+            for_each_(TextToSkip, textToSkip, sTextToSkip, numTextsToSkip) {
                 if (!textToSkip->str64) {
                     textToSkip->str64 = omm_text_convert(textToSkip->str, true);
                     textToSkip->length = omm_text_length(textToSkip->str64);
@@ -183,7 +183,7 @@ static void omm_text_replace(u8 *str64, const char *from, const char *to) {
                     break;
                 }
             }
-            if (index_textToSkip == numTextsToSkip) {
+            if (i_textToSkip == numTextsToSkip) {
                 mem_cpy(str64 + i, to64, lenFrom);
                 i += lenFrom - 1;
             }
@@ -225,13 +225,14 @@ static void (*omm_text_replace_func[])(u8 *) = {
 u8 *omm_text_get_string_for_selected_player(u8 *str64) {
     static OmmArray sPlayersStrings = omm_array_zero;
     s32 lenWithFFterm = omm_text_length(str64) + 1;
+    s32 playerIndex = omm_player_get_selected_index_model_and_sounds();
 
     // Try to find the string in the list
     omm_array_for_each(sPlayersStrings, p) {
         const u8 **pstr = (const u8 **) p->as_ptr;
         for (s32 i = 0; i != OMM_NUM_PLAYABLE_CHARACTERS; ++i) {
             if (omm_text_compare(str64, pstr[i]) == 0) {
-                mem_cpy(str64, pstr[omm_player_get_selected_index()], lenWithFFterm);
+                mem_cpy(str64, pstr[playerIndex], lenWithFFterm);
                 return str64;
             }
         }
@@ -244,6 +245,6 @@ u8 *omm_text_get_string_for_selected_player(u8 *str64) {
         omm_text_replace_func[i](pstr[i]);
     }
     omm_array_add(sPlayersStrings, ptr, pstr);
-    mem_cpy(str64, pstr[omm_player_get_selected_index()], lenWithFFterm);
+    mem_cpy(str64, pstr[playerIndex], lenWithFFterm);
     return str64;
 }

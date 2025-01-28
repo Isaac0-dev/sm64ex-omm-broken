@@ -39,8 +39,8 @@ void omm_perry_update_graphics(struct MarioState *m, Mat4 transform, Vec3f trans
         Vec3f armPos, handPos; // Peach's right forearm and hand world positions
         Vec3f armVec, handVec; // Peach's right forearm and hand translations
         Vec3s armRot, handRot; // Peach's right forearm and hand rotations
-        vec3f_copy(armPos, geo_get_marios_forearm_pos(false));
-        vec3f_copy(handPos, geo_get_marios_hand_pos(false));
+        geo_get_marios_forearm_pos(armPos, false);
+        geo_get_marios_hand_pos(handPos, false);
         vec3f_dif(armVec, handPos, armPos);
         vec3f_copy(handVec, translation);
         vec3s_set(armRot, atan2s(sqrtf(sqr_f(armVec[0]) + sqr_f(armVec[2])), armVec[1]) - 0x4000, atan2s(armVec[2], armVec[0]) + 0x8000, 0);
@@ -105,7 +105,7 @@ void omm_perry_update_graphics(struct MarioState *m, Mat4 transform, Vec3f trans
         // Set attributes
         if (perryFlags & OBJ_INT_PERRY_SWORD) {
             f32 handRotMult = 1.f;
-            if (OMM_PLAYER_IS_PEACH) {
+            if (OMM_PLAYER_MODEL_IS_PEACH) {
                 handVec[0] += 16;
                 handVec[1] += 32 * coss(handRot[0]);
                 handVec[2] += 32 * sins(handRot[0]);

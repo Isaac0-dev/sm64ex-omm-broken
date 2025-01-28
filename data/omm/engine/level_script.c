@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "data/omm/omm_constants.h"
 #include "buffers/framebuffers.h"
 #include "buffers/zbuffer.h"
 #include "level_commands.h"
@@ -348,6 +349,13 @@ static void level_cmd_create_warp_node(void) {
         warpNode->node.destArea = level_cmd_get(u8, 4);
         warpNode->node.destNode = level_cmd_get(u8, 5);
         warpNode->object = NULL;
+#if OMM_GAME_IS_SMMS
+        // Moonshine: Fix SSL broken warp nodes
+        if (warpNode->node.destLevel == LEVEL_CASTLE && warpNode->node.destArea == 0x01) {
+            if (warpNode->node.id == WARP_NODE_STAR_EXIT && warpNode->node.destNode == 0x39) warpNode->node.destNode = 0x22;
+            if (warpNode->node.id == WARP_NODE_DEATH && warpNode->node.destNode == 0x40) warpNode->node.destNode = 0x24;
+        }
+#endif
         warpNode->next = gAreas[sCurrAreaIndex].warpNodes;
         gAreas[sCurrAreaIndex].warpNodes = warpNode;
     }

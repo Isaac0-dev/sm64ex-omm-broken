@@ -502,6 +502,7 @@ static void time_trials_ghost_unload_all() {
 //
 
 OMM_ROUTINE_LEVEL_ENTRY(time_trials_level_entry) {
+    if (omm_is_main_menu()) return;
     sTimeTrials->isLevelEntry = true;
 
     // Entering or exiting a Bowser fight doesn't reset the timer

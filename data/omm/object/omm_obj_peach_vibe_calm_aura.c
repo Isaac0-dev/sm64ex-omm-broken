@@ -8,24 +8,24 @@
 //
 
 static const Vtx omm_peach_vibe_calm_aura_vertices[] = {
-    OMM_VTX_RECT(32, 0, 0, 5),
-    OMM_VTX_RECT(32, 1, 0, 5),
-    OMM_VTX_RECT(32, 2, 0, 5),
-    OMM_VTX_RECT(32, 3, 0, 5),
-    OMM_VTX_RECT(32, 4, 0, 5),
-    OMM_VTX_RECT(32, 0, 1, 5),
-    OMM_VTX_RECT(32, 1, 1, 5),
-    OMM_VTX_RECT(32, 2, 1, 5),
-    OMM_VTX_RECT(32, 3, 1, 5),
-    OMM_VTX_RECT(32, 4, 1, 5),
-    OMM_VTX_RECT(32, 0, 2, 5),
-    OMM_VTX_RECT(32, 1, 2, 5),
-    OMM_VTX_RECT(32, 2, 2, 5),
-    OMM_VTX_RECT(32, 3, 2, 5),
-    OMM_VTX_RECT(32, 4, 2, 5),
-    OMM_VTX_RECT(32, 0, 3, 5),
-    OMM_VTX_RECT(32, 1, 3, 5),
-    OMM_VTX_RECT(32, 2, 3, 5),
+    OMM_VTX_RECT(32, 0, 0, 5, 5),
+    OMM_VTX_RECT(32, 0, 1, 5, 5),
+    OMM_VTX_RECT(32, 0, 2, 5, 5),
+    OMM_VTX_RECT(32, 0, 3, 5, 5),
+    OMM_VTX_RECT(32, 0, 4, 5, 5),
+    OMM_VTX_RECT(32, 1, 0, 5, 5),
+    OMM_VTX_RECT(32, 1, 1, 5, 5),
+    OMM_VTX_RECT(32, 1, 2, 5, 5),
+    OMM_VTX_RECT(32, 1, 3, 5, 5),
+    OMM_VTX_RECT(32, 1, 4, 5, 5),
+    OMM_VTX_RECT(32, 2, 0, 5, 5),
+    OMM_VTX_RECT(32, 2, 1, 5, 5),
+    OMM_VTX_RECT(32, 2, 2, 5, 5),
+    OMM_VTX_RECT(32, 2, 3, 5, 5),
+    OMM_VTX_RECT(32, 2, 4, 5, 5),
+    OMM_VTX_RECT(32, 3, 0, 5, 5),
+    OMM_VTX_RECT(32, 3, 1, 5, 5),
+    OMM_VTX_RECT(32, 3, 2, 5, 5),
 };
 
 static const Gfx omm_peach_vibe_calm_aura_triangles[] = {
@@ -114,7 +114,7 @@ const GeoLayout omm_geo_peach_vibe_calm_aura[] = {
 static void bhv_omm_peach_vibe_calm_aura_update() {
     struct Object *o = gCurrentObject;
     if (omm_peach_vibe_is_calm()) {
-        f32 *marioRootPos = geo_get_marios_root_pos();
+        Vec3f marioRootPos; geo_get_marios_root_pos(marioRootPos);
         o->oPosX = marioRootPos[0];
         o->oPosY = marioRootPos[1];
         o->oPosZ = marioRootPos[2];

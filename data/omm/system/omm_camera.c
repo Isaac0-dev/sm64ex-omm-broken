@@ -2,6 +2,8 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 #include "behavior_commands.h"
+#undef newcam_init_settings
+#undef puppycam_default_config
 
 #define OMM_CAM_NUM_DIRS            OMM_CAM_DIRECTIONS[gOmmCameraMode]
 #define OMM_CAM_DELTA_ANGLE         (0x10000 / OMM_CAM_NUM_DIRS)
@@ -136,7 +138,7 @@ static const OmmCameraNoColBox OMM_CAM_NO_COL_BOXES[] = {
 #endif
 
 void omm_camera_init() {
-    if (!gOmmGlobals->cameraNoInit && omm_camera_is_available(gMarioState)) {
+    if (!gOmmGlobals->cameraNoInit && !omm_is_main_menu() && omm_camera_is_available(gMarioState)) {
 
         // Default
         sOmmCamPitch = 0x0C00;
@@ -171,6 +173,10 @@ void omm_camera_init() {
 
 OMM_ROUTINE_LEVEL_ENTRY(omm_camera_init_from_level_entry) {
     omm_camera_init();
+
+    // Disable the zoom-out camera thing
+    extern u8 sZoomOutAreaMasks[];
+    mem_zero(sZoomOutAreaMasks, sizeof(u8) * ((LEVEL_COUNT + 1) / 2));
 }
 
 //
@@ -431,10 +437,28 @@ static void omm_camera_process_collisions(bool isFlyingOrSwimming) {
 // Update
 //
 
+static void omm_camera_set_angles_from_mario_angles(struct MarioState *m) {
+    bool swimming = (m->action & ACT_FLAG_SWIMMING) != 0;
+
+    // Pitch
+    if (swimming) {
+        sOmmCamPitch = (-m->faceAngle[0] * 0.75f * (m->pos[1] < m->waterLevel - 100.f)) + 0xC00;
+    }
+
+    // Yaw
+    if (swimming || OMM_CAMERA_INF_DIRECTIONS) {
+        sOmmCamYaw = sOmmCamYawTarget = m->faceAngle[1] + 0x8000;
+    }
+}
+
 static void omm_camera_exit_first_person(struct Camera *c, struct MarioState *m, bool ignoreFpState, bool resetCamera) {
     if (sOmmCamFpMode || ignoreFpState) {
+        if (sOmmCamFpMode) {
+            omm_camera_set_angles_from_mario_angles(m);
+        }
         sOmmCamFpMode = FALSE;
         update_mario_sound_and_camera(m);
+        music_unlower_volume(SEQ_PLAYER_LEVEL, 60);
         if (resetCamera) {
             reset_camera(c);
             init_camera(c);
@@ -444,6 +468,10 @@ static void omm_camera_exit_first_person(struct Camera *c, struct MarioState *m,
         m->input &= ~INPUT_FIRST_PERSON;
         if (omm_mario_is_capture(m)) {
             gOmmMario->capture.firstPerson = false;
+        } else if (m->action & ACT_FLAG_METAL_WATER) {
+            omm_mario_set_action(m, ACT_OMM_METAL_WATER_IDLE, 0, 0xFFFF);
+        } else if (m->action & ACT_FLAG_SWIMMING) {
+            omm_mario_set_action(m, ACT_WATER_IDLE, 0, 0xFFFF);
         } else {
             omm_mario_set_action(m, ACT_IDLE, 0, 0xFFFF);
         }
@@ -501,9 +529,14 @@ static void omm_camera_process_inputs(struct Camera *c, struct MarioState *m) {
 
     // First person mode (hold R for 6 frames)
     if (sOmmCamFpMode) {
+        if (!allowFp) {
+            omm_camera_set_angles_from_mario_angles(m);
+            music_unlower_volume(SEQ_PLAYER_LEVEL, 60);
+        }
         sOmmCamFpMode &= allowFp;
         sOmmCamPitchFp *= allowFp;
     } else if (allowFp && sOmmCamFpTimer >= OMM_CAM_FP_MIN_FRAMES) {
+        music_lower_volume(SEQ_PLAYER_LEVEL, 60, 40);
         sOmmCamFpMode = TRUE;
         sOmmCamFpEnabled = TRUE;
         sOmmCamPitchFp = 0;
@@ -528,18 +561,19 @@ static void omm_camera_update_first_person_mode(struct MarioState *m) {
     sMarioCamState->headRotation[1] = 0;
 
     // Pos
-    Vec3f marioPos = { sMarioCamState->pos[0], sMarioCamState->pos[1] + 125, sMarioCamState->pos[2] };
+    f32 height = 0.75f * max_f(omm_mario_is_capture(m) ? omm_capture_get_top(gOmmCapture) : m->marioObj->hitboxHeight, 160);
+    Vec3f marioPos = { sMarioCamState->pos[0], sMarioCamState->pos[1] + height, sMarioCamState->pos[2] };
     vec3f_set_dist_and_angle(marioPos, sOmmCamPos, 50, sOmmCamPitchFp, m->faceAngle[1] + 0x8000);
 
     // Focus
     struct Object *playAsCappy = omm_cappy_get_object_play_as();
     if (playAsCappy) {
         sOmmCamFocus[0] = playAsCappy->oPosX;
-        sOmmCamFocus[1] = playAsCappy->oPosY + 125.f;
+        sOmmCamFocus[1] = playAsCappy->oPosY + height;
         sOmmCamFocus[2] = playAsCappy->oPosZ;
     } else {
         sOmmCamFocus[0] = sMarioCamState->pos[0];
-        sOmmCamFocus[1] = sMarioCamState->pos[1] + 125;
+        sOmmCamFocus[1] = sMarioCamState->pos[1] + height;
         sOmmCamFocus[2] = sMarioCamState->pos[2];
     }
 
@@ -547,6 +581,11 @@ static void omm_camera_update_first_person_mode(struct MarioState *m) {
     if (omm_mario_is_capture(m)) {
         gOmmMario->capture.firstPerson = true;
         gOmmCapture->oFaceAngleYaw = m->faceAngle[1];
+    } else if (m->action & ACT_FLAG_METAL_WATER) {
+        omm_mario_set_action(m, ACT_OMM_METAL_WATER_FIRST_PERSON, 0, 0);
+    } else if (m->action & ACT_FLAG_SWIMMING) {
+        omm_mario_set_action(m, ACT_OMM_WATER_FIRST_PERSON, 0, 0);
+        m->faceAngle[0] = -sOmmCamPitchFp;
     } else {
         omm_mario_set_action(m, ACT_FIRST_PERSON, 0, 0);
     }
@@ -573,7 +612,7 @@ static void omm_camera_calc_y_offsets(f32 *camPosOffsetY, f32 *camFocOffsetY) {
 }
 
 bool omm_camera_is_bowser_fight() {
-    for_each_(const BehaviorScript *, bhv, 2, array_of(const BehaviorScript *) { bhvBowser, bhvOmmBowser }) {
+    for_each_in_(const BehaviorScript *, bhv, { bhvBowser, bhvOmmBowser }) {
         for_each_object_with_behavior(obj, *bhv) {
             if (!obj_is_dormant(obj)) {
 #if OMM_GAME_IS_R96X
@@ -704,6 +743,16 @@ static void omm_camera_update_transform(struct MarioState *m) {
         camPitchTarget = 0x1800;
         camDistTarget *= 2.5f;
     }
+
+#if OMM_GAME_IS_R96X
+    // Milk
+    // Increase the distance to show big Mario
+    if (omm_mario_is_milk(m)) {
+        f32 t = invlerp_0_1_f(m->marioObj->oScaleY, 1.f, 4.f);
+        camFocHeight += lerp_f(t, 0, 250);
+        camDistTarget *= lerp_f(t, 1.f, 2.f);
+    }
+#endif
 
     // Captures
     // The camera focus and distance are computed to show the capture
@@ -868,6 +917,29 @@ bool omm_camera_update(struct Camera *c, struct MarioState *m) {
     return true;
 }
 
+void omm_camera_update_settings() {
+    configCameraAnalog = 0;
+#if BETTER_CAM_IS_PUPPY_CAM
+    configCameraOpacity = 0;
+    configDebugCamera = 0;
+    configMouse = configCameraMouse;
+    puppycam_default_config();
+    gPuppyCam.options.sensitivityX = configCameraXSens * 1.7f;
+    gPuppyCam.options.sensitivityY = configCameraYSens * 1.7f;
+    gPuppyCam.options.analogue = 0;
+    gPuppyCam.options.opacityType = 0;
+    gPuppyCam.options.debugCam = 0;
+#else
+    configCameraDegrade = 100;
+    newcam_init_settings();
+    extern s16 newcam_sensitivityX; newcam_sensitivityX = configCameraXSens * 2.2f;
+    extern s16 newcam_sensitivityY; newcam_sensitivityY = configCameraYSens * 2.2f;
+    extern s16 newcam_analogue; newcam_analogue = 0;
+    extern s16 newcam_panlevel; newcam_panlevel = 0;
+    extern s16 newcam_degrade; newcam_degrade = 100;
+#endif
+}
+
 OMM_ROUTINE_UPDATE(omm_camera_update_invert_axis) {
     bool prevConfigCameraInvertX = configCameraInvertX;
     bool prevConfigCameraInvertY = configCameraInvertY;
@@ -906,12 +978,8 @@ OMM_ROUTINE_UPDATE(omm_camera_update_invert_axis) {
     }
 
     // Update better cam settings if needed
-    if (!optmenu_open && (prevConfigCameraInvertX != configCameraInvertX || prevConfigCameraInvertY != configCameraInvertY)) {
-#if BETTER_CAM_IS_PUPPY_CAM
-        puppycam_default_config();
-#else
-        newcam_init_settings();
-#endif
+    if (prevConfigCameraInvertX != configCameraInvertX || prevConfigCameraInvertY != configCameraInvertY) {
+        omm_camera_update_settings();
     }
 }
 
@@ -927,9 +995,10 @@ typedef struct {
     f32 dist;
     struct Camera camera;
     struct LakituState lakituState;
+    bool help;
 } OmmCameraSnapshot;
 
-static OmmCameraSnapshot sOmmCamSnapshot[1];
+static OmmCameraSnapshot sOmmCamSnapshot[1] = {{ .help = true }};
 
 static void omm_camera_snapshot_process_inputs() {
 
@@ -959,11 +1028,15 @@ static void omm_camera_snapshot_process_inputs() {
     }
 
     // Roll
-    if (gPlayer1Controller->buttonDown & L_JPAD) {
-        sOmmCamSnapshot->roll += 0x200;
-    }
-    if (gPlayer1Controller->buttonDown & R_JPAD) {
-        sOmmCamSnapshot->roll -= 0x200;
+    if (gPlayer1Controller->buttonDown & U_JPAD) {
+        sOmmCamSnapshot->roll = 0;
+    } else {
+        if (gPlayer1Controller->buttonDown & L_JPAD) {
+            sOmmCamSnapshot->roll += 0x200;
+        }
+        if (gPlayer1Controller->buttonDown & R_JPAD) {
+            sOmmCamSnapshot->roll -= 0x200;
+        }
     }
 
     // XZ
@@ -981,6 +1054,11 @@ static void omm_camera_snapshot_process_inputs() {
         sOmmCamSnapshot->pos[1] -= 40.f;
     }
     sOmmCamSnapshot->pos[1] = clamp_f(sOmmCamSnapshot->pos[1], -LEVEL_BOUNDARY_MAX, +LEVEL_BOUNDARY_MAX);
+
+    // Toggle help
+    if (gPlayer1Controller->buttonPressed & D_JPAD) {
+        sOmmCamSnapshot->help = !sOmmCamSnapshot->help;
+    }
 }
 
 bool omm_camera_snapshot_mode_init() {
@@ -1060,6 +1138,19 @@ void omm_camera_snapshot_mode_update() {
     gLakituState.posHSpeed = 0;
     gLakituState.posVSpeed = 0;
     gLakituState.keyDanceRoll = 0;
+
+    // Render help
+    if (sOmmCamSnapshot->help) {
+        s16 x = GFX_DIMENSIONS_FROM_LEFT_EDGE(4);
+        s16 y = SCREEN_HEIGHT - 12;
+        omm_render_string(x, y -  0, 0xE0, 0xE0, 0xE0, 0xFF, omm_text_convert(OMM_TEXT_CAMERA_SNAPSHOT_HELP_0, false), true);
+        omm_render_string(x, y - 12, 0xE0, 0xE0, 0xE0, 0xFF, omm_text_convert(OMM_TEXT_CAMERA_SNAPSHOT_HELP_1, false), true);
+        omm_render_string(x, y - 24, 0xE0, 0xE0, 0xE0, 0xFF, omm_text_convert(OMM_TEXT_CAMERA_SNAPSHOT_HELP_2, false), true);
+        omm_render_string(x, y - 36, 0xE0, 0xE0, 0xE0, 0xFF, omm_text_convert(OMM_TEXT_CAMERA_SNAPSHOT_HELP_3, false), true);
+        omm_render_string(x, y - 48, 0xE0, 0xE0, 0xE0, 0xFF, omm_text_convert(OMM_TEXT_CAMERA_SNAPSHOT_HELP_4, false), true);
+        omm_render_string(x, y - 60, 0xE0, 0xE0, 0xE0, 0xFF, omm_text_convert(OMM_TEXT_CAMERA_SNAPSHOT_HELP_5, false), true);
+        omm_render_string(x, y - 72, 0xE0, 0xE0, 0xE0, 0xFF, omm_text_convert(OMM_TEXT_CAMERA_SNAPSHOT_HELP_6, false), true);
+    }
 }
 
 //

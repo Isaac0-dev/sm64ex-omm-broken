@@ -41,6 +41,7 @@ static Mtx *sMtxStack1[32];
 static s32 sMatStackIndex;
 static s32 sCurrObjectSlot;
 static bool sIsPreprocess;
+static bool sRenderShadow;
 #define PREPROCESS if (OMM_UNLIKELY(sIsPreprocess))
 #define NOT_PREPROCESS if (OMM_LIKELY(!sIsPreprocess))
 #if OMM_CODE_DEBUG
@@ -243,22 +244,19 @@ static struct {
         struct {
             Vec3f pos;
             s32 flag;
-            OmmMap heights;
+            OmmMap_(struct GraphNode *, f32) heights;
             f32 height;
         } root[1];
         struct {
-            Vec3f pos;
-            Vec3s rot;
-            Vec3f up;
-            Vec3f forward;
-            Vec3f right;
-            OmmMap heights;
+            Mat4 mtx;
+            Vec3s rot; // local rotation
+            OmmMap_(struct GraphNode *, f32) heights;
             f32 height;
         } head[1];
         struct {
             Vec3f pos;
             s32 flag;
-            OmmMap heights;
+            OmmMap_(struct GraphNode *, f32) heights;
             f32 height;
         } arms[1];
         struct {
@@ -279,32 +277,31 @@ static struct {
 // Mario
 //
 
-f32 *geo_get_marios_forearm_pos(bool isLeft) {
-    return (f32 *) sPreprocessing->mario->forearm->pos[isLeft];
+void geo_get_marios_forearm_pos(Vec3f dest, bool isLeft) {
+    vec3f_copy(dest, sPreprocessing->mario->forearm->pos[isLeft]);
 }
 
-f32 *geo_get_marios_hand_pos(bool isLeft) {
-    return (f32 *) sPreprocessing->mario->hand->pos[isLeft];
+void geo_get_marios_hand_pos(Vec3f dest, bool isLeft) {
+    vec3f_copy(dest, sPreprocessing->mario->hand->pos[isLeft]);
 }
 
-f32 *geo_get_marios_head_pos() {
-    return (f32 *) sPreprocessing->mario->head->pos;
+void geo_get_marios_head_mtx(Mat4 dest) {
+    mtxf_copy(dest, sPreprocessing->mario->head->mtx);
 }
 
-f32 *geo_get_marios_head_up() {
-    return (f32 *) sPreprocessing->mario->head->up;
+void geo_get_marios_root_pos(Vec3f dest) {
+    if (gMarioObject && (gMarioObject->oFlags & OBJ_FLAG_SHADOW_COPY_OBJ_POS)) {
+        vec3f_copy(dest, gMarioState->pos);
+        dest[1] += sPreprocessing->mario->root->height;
+    } else {
+        vec3f_copy(dest, sPreprocessing->mario->root->pos);
+    }
 }
 
-f32 *geo_get_marios_head_forward() {
-    return (f32 *) sPreprocessing->mario->head->forward;
-}
-
-f32 *geo_get_marios_head_right() {
-    return (f32 *) sPreprocessing->mario->head->right;
-}
-
-f32 *geo_get_marios_root_pos() {
-    return (f32 *) sPreprocessing->mario->root->pos;
+void geo_get_marios_heights(f32 *rootHeight, f32 *headHeight, f32 *armsHeight) {
+    if (rootHeight) *rootHeight = sPreprocessing->mario->root->height;
+    if (headHeight) *headHeight = sPreprocessing->mario->head->height;
+    if (armsHeight) *armsHeight = sPreprocessing->mario->arms->height;
 }
 
 static void geo_fix_marios_anim_translation_y(struct Object *o, f32 nodety, f32 *ty) {
@@ -327,7 +324,7 @@ static void geo_fix_marios_anim_translation_y(struct Object *o, f32 nodety, f32 
 
             // Hanging action offset
             if (omm_mario_is_hanging(gMarioState)) {
-                *ty += 4.f * (120.f - (sPreprocessing->mario->head->height * 0.8f + sPreprocessing->mario->arms->height * 0.9f) + 15.f * OMM_PLAYER_IS_PEACH);
+                *ty += 4.f * (120.f - (sPreprocessing->mario->head->height * 0.8f + sPreprocessing->mario->arms->height * 0.9f) + 15.f * OMM_PLAYER_MODEL_IS_PEACH);
             }
 
             // Shell ride animation offset
@@ -353,12 +350,12 @@ static void geo_fix_marios_anim_translation_y(struct Object *o, f32 nodety, f32 
 //
 
 static bool sNextDLIsMariosRightHand = false;
-static OmmHMap sMariosRightHandDLs = omm_hmap_zero;
+static OmmHMap_(Gfx *) sMariosRightHandDLs = omm_hmap_zero;
 static void geo_process_rotation(struct GraphNodeRotation *node);
 
 static void geo_register_marios_right_hand_display_list(Gfx *displayList) {
     if (sNextDLIsMariosRightHand && displayList) {
-        if (!OMM_PLAYER_IS_PEACH && omm_hmap_find(sMariosRightHandDLs, (uintptr_t) displayList) == -1) {
+        if (!OMM_PLAYER_MODEL_IS_PEACH && omm_hmap_find(sMariosRightHandDLs, (uintptr_t) displayList) == -1) {
             omm_hmap_insert(sMariosRightHandDLs, (uintptr_t) displayList, displayList);
         }
         sNextDLIsMariosRightHand = false;
@@ -367,7 +364,7 @@ static void geo_register_marios_right_hand_display_list(Gfx *displayList) {
 
 static bool geo_apply_rotation_on_marios_right_hand(Gfx *displayList, s16 layer) {
     static bool isProcessing = false;
-    if (!isProcessing && !OMM_PLAYER_IS_PEACH && omm_hmap_find(sMariosRightHandDLs, (uintptr_t) displayList) != -1) {
+    if (!isProcessing && !OMM_PLAYER_MODEL_IS_PEACH && omm_hmap_find(sMariosRightHandDLs, (uintptr_t) displayList) != -1) {
         static struct GraphNodeRotation rot[1];
         struct Object *perry = omm_perry_get_object();
         if (perry && (perry->oPerryFlags & OBJ_INT_PERRY_SWORD)) {
@@ -430,8 +427,11 @@ typedef struct {
     u8 type;
     u8 enabled;
     s16 frame, _frame;
-    u16 *attr;
-    s16 *data;
+    const u16 *indices;
+    const s16 *values;
+    u32 indicesLen;
+    u32 valuesLen;
+    u32 offset;
 } GeoAnimState;
 static GeoAnimState sCurAnimState[1];
 
@@ -473,38 +473,51 @@ NOT_PREPROCESS {
     else if (anim->flags & ANIM_FLAG_XZ_TRANS) sCurAnimState->type = ANIM_TYPE_LATERAL_TRANSLATION;
     else if (anim->flags & ANIM_FLAG_NO_TRANS) sCurAnimState->type = ANIM_TYPE_NO_TRANSLATION;
     else                                       sCurAnimState->type = ANIM_TYPE_TRANSLATION;
-    sCurAnimState->enabled = !(anim->flags & ANIM_FLAG_ENABLED);
-    sCurAnimState->frame   = animInfo->animFrame;
-    sCurAnimState->attr    = (u16 *) anim->index;
-    sCurAnimState->data    = (s16 *) anim->values;
+    sCurAnimState->enabled    = !(anim->flags & ANIM_FLAG_ENABLED);
+    sCurAnimState->frame      = animInfo->animFrame;
+    sCurAnimState->indices    = anim->index;
+    sCurAnimState->values     = anim->values;
+    sCurAnimState->indicesLen = ANIM_INDEX_LENGTH(anim);
+    sCurAnimState->valuesLen  = ANIM_VALUES_LENGTH(anim);
+    sCurAnimState->offset     = 0;
 }
 
-static void geo_get_animation_data_as_vec3s(Vec3s dest, u16 **attr, s16 *data, s16 frame, bool x, bool y, bool z, bool updateAttr) {
-    s32 index0 = retrieve_animation_index(frame, attr);
-    s32 index1 = retrieve_animation_index(frame, attr);
-    s32 index2 = retrieve_animation_index(frame, attr);
-    dest[0] = (s16) (x ? data[index0] : 0);
-    dest[1] = (s16) (y ? data[index1] : 0);
-    dest[2] = (s16) (z ? data[index2] : 0);
-    if (!updateAttr) *attr -= 6;
+static void geo_get_animation_data_as_vec3s(Vec3s dest, s16 frame, s16 x, s16 y, s16 z, bool updateOffset) {
+    const u16 *indices = sCurAnimState->indices;
+    const s16 *values = sCurAnimState->values;
+    u32 indicesLen = sCurAnimState->indicesLen;
+    u32 valuesLen = sCurAnimState->valuesLen;
+    u32 offset = sCurAnimState->offset;
+    s16 value0 = geo_obj_retrieve_animation_value(indices, indicesLen, values, valuesLen, frame, &offset);
+    s16 value1 = geo_obj_retrieve_animation_value(indices, indicesLen, values, valuesLen, frame, &offset);
+    s16 value2 = geo_obj_retrieve_animation_value(indices, indicesLen, values, valuesLen, frame, &offset);
+    dest[0] = value0 * x;
+    dest[1] = value1 * y;
+    dest[2] = value2 * z;
+    if (updateOffset) sCurAnimState->offset = offset;
 }
 
-static void geo_get_animation_data_as_vec3f(Vec3f dest, u16 **attr, s16 *data, s16 frame, bool x, bool y, bool z, bool updateAttr) {
-    s32 index0 = retrieve_animation_index(frame, attr);
-    s32 index1 = retrieve_animation_index(frame, attr);
-    s32 index2 = retrieve_animation_index(frame, attr);
-    dest[0] = (f32) (x ? data[index0] : 0);
-    dest[1] = (f32) (y ? data[index1] : 0);
-    dest[2] = (f32) (z ? data[index2] : 0);
-    if (!updateAttr) *attr -= 6;
+static void geo_get_animation_data_as_vec3f(Vec3f dest, s16 frame, f32 x, f32 y, f32 z, bool updateOffset) {
+    const u16 *indices = sCurAnimState->indices;
+    const s16 *values = sCurAnimState->values;
+    u32 indicesLen = sCurAnimState->indicesLen;
+    u32 valuesLen = sCurAnimState->valuesLen;
+    u32 offset = sCurAnimState->offset;
+    f32 value0 = (f32) geo_obj_retrieve_animation_value(indices, indicesLen, values, valuesLen, frame, &offset);
+    f32 value1 = (f32) geo_obj_retrieve_animation_value(indices, indicesLen, values, valuesLen, frame, &offset);
+    f32 value2 = (f32) geo_obj_retrieve_animation_value(indices, indicesLen, values, valuesLen, frame, &offset);
+    dest[0] = value0 * x;
+    dest[1] = value1 * y;
+    dest[2] = value2 * z;
+    if (updateOffset) sCurAnimState->offset = offset;
 }
 
-static void geo_get_animation_translation(Vec3f dest, u8 type, u16 **attr, s16 *data, s16 frame, bool updateAttr) {
-    switch (type) {
-        case ANIM_TYPE_TRANSLATION:          geo_get_animation_data_as_vec3f(dest, attr, data, frame, 1, 1, 1, updateAttr); break;
-        case ANIM_TYPE_VERTICAL_TRANSLATION: geo_get_animation_data_as_vec3f(dest, attr, data, frame, 0, 1, 0, updateAttr); break;
-        case ANIM_TYPE_LATERAL_TRANSLATION:  geo_get_animation_data_as_vec3f(dest, attr, data, frame, 1, 0, 1, updateAttr); break;
-        case ANIM_TYPE_NO_TRANSLATION:       geo_get_animation_data_as_vec3f(dest, attr, data, frame, 0, 0, 0, updateAttr); break;
+static void geo_get_animation_translation(Vec3f dest, s16 frame, bool updateOffset) {
+    switch (sCurAnimState->type) {
+        case ANIM_TYPE_TRANSLATION:          geo_get_animation_data_as_vec3f(dest, frame, 1, 1, 1, updateOffset); break;
+        case ANIM_TYPE_VERTICAL_TRANSLATION: geo_get_animation_data_as_vec3f(dest, frame, 0, 1, 0, updateOffset); break;
+        case ANIM_TYPE_LATERAL_TRANSLATION:  geo_get_animation_data_as_vec3f(dest, frame, 1, 0, 1, updateOffset); break;
+        case ANIM_TYPE_NO_TRANSLATION:       geo_get_animation_data_as_vec3f(dest, frame, 0, 0, 0, updateOffset); break;
         default:                             vec3f_zero(dest); break;
     }
 }
@@ -523,6 +536,19 @@ PREPROCESS {
     geo_register_marios_right_hand_display_list(displayList);
 }
 NOT_PREPROCESS {
+    if (!sRenderShadow && gCurrGraphNodeObject != NULL) {
+
+        // Invisible mode
+        if (gCurrGraphNodeObject->oFlags & OBJ_FLAG_INVISIBLE_MODE) {
+            return;
+        }
+
+        // Fully transparent Mario/capture
+        if ((gCurrGraphNodeObject == gMarioObject || gCurrGraphNodeObject == gOmmCapture) &&
+            (gBodyStates->modelState & 0x1FF) == 0x100) {
+            return;
+        }
+    }
     if (displayList && gCurGraphNodeMasterList && !geo_apply_rotation_on_marios_right_hand(displayList, layer)) {
         if (OMM_UNLIKELY(!gCurGraphNodeMasterList->listHeads[layer])) {
             gCurGraphNodeMasterList->listHeads[layer] = sDisplayListNodePools[layer];
@@ -614,16 +640,128 @@ static void geo_process_master_list(struct GraphNodeMasterList *node) {
 }
 
 //
-// Utils
+// Function node
 //
 
+//
+// Some of Mario geo functions make assumptions that could make the game crash
+// if these functions were executed with malformed geo layouts (for ex. model packs)
+//
+
+#define CHECK_NODE_TYPE(node, T) { if (!(node) || (node)->type != T) { return false; } }
+#define AS_GENERATED(node) ((struct GraphNodeGenerated *) node)
+#define AS_SWITCH_CASE(node) ((struct GraphNodeSwitchCase *) node)
+
+static bool geo_check_node_func(struct GraphNode *node, GraphNodeFunc func) {
+    if (OMM_LIKELY(
+        node->type != GRAPH_NODE_TYPE_GENERATED_LIST &&
+        node->type != GRAPH_NODE_TYPE_SWITCH_CASE
+    )) {
+        return true;
+    }
+
+    // Node must be GEO_ASM
+    // parameter must be 0
+    if (func == (GraphNodeFunc) geo_mirror_mario_set_alpha) {
+        CHECK_NODE_TYPE(node, GRAPH_NODE_TYPE_GENERATED_LIST);
+        AS_GENERATED(node)->parameter = 0;
+        return true;
+    }
+
+    // Node must be GEO_SWITCH_CASE
+    // numCases must be 0
+    if (func == (GraphNodeFunc) geo_switch_mario_stand_run) {
+        CHECK_NODE_TYPE(node, GRAPH_NODE_TYPE_SWITCH_CASE);
+        AS_SWITCH_CASE(node)->numCases = 0;
+        return true;
+    }
+
+    // Node must be GEO_SWITCH_CASE
+    // numCases must be 0
+    if (func == (GraphNodeFunc) geo_switch_mario_eyes) {
+        CHECK_NODE_TYPE(node, GRAPH_NODE_TYPE_SWITCH_CASE);
+        AS_SWITCH_CASE(node)->numCases = 0;
+        return true;
+    }
+
+    // Node must be GEO_ASM
+    // next node must be GEO_ROTATION
+    // parameter must be 0
+    if (func == (GraphNodeFunc) geo_mario_tilt_torso) {
+        CHECK_NODE_TYPE(node, GRAPH_NODE_TYPE_GENERATED_LIST);
+        CHECK_NODE_TYPE(node->next, GRAPH_NODE_TYPE_ROTATION);
+        AS_GENERATED(node)->parameter = 0;
+        return true;
+    }
+
+    // Node must be GEO_ASM
+    // next node must be GEO_ROTATION
+    // parameter must be 0
+    if (func == (GraphNodeFunc) geo_mario_head_rotation) {
+        CHECK_NODE_TYPE(node, GRAPH_NODE_TYPE_GENERATED_LIST);
+        CHECK_NODE_TYPE(node->next, GRAPH_NODE_TYPE_ROTATION);
+        AS_GENERATED(node)->parameter = 0;
+        return true;
+    }
+
+    // Node must be GEO_SWITCH_CASE
+    if (func == (GraphNodeFunc) geo_switch_mario_hand) {
+        CHECK_NODE_TYPE(node, GRAPH_NODE_TYPE_SWITCH_CASE);
+        return true;
+    }
+
+    // Node must be GEO_ASM
+    // next node must be GEO_SCALE
+    // parameter must be between 0 and 2
+    if (func == (GraphNodeFunc) geo_mario_hand_foot_scaler) {
+        CHECK_NODE_TYPE(node, GRAPH_NODE_TYPE_GENERATED_LIST);
+        CHECK_NODE_TYPE(node->next, GRAPH_NODE_TYPE_SCALE);
+        AS_GENERATED(node)->parameter %= 3;
+        return true;
+    }
+
+    // Node must be GEO_SWITCH_CASE
+    // numCases must be 0
+    if (func == (GraphNodeFunc) geo_switch_mario_cap_effect) {
+        CHECK_NODE_TYPE(node, GRAPH_NODE_TYPE_SWITCH_CASE);
+        AS_SWITCH_CASE(node)->numCases = 0;
+        return true;
+    }
+
+    // Node must be GEO_SWITCH_CASE
+    // numCases must be 0
+    if (func == (GraphNodeFunc) geo_switch_mario_cap_on_off) {
+        CHECK_NODE_TYPE(node, GRAPH_NODE_TYPE_SWITCH_CASE);
+        AS_SWITCH_CASE(node)->numCases = 0;
+        return true;
+    }
+
+    // Node must be GEO_ASM
+    // next node must be GEO_ROTATION
+    // parameter must be 0 or 1
+    if (func == (GraphNodeFunc) geo_mario_rotate_wing_cap_wings) {
+        CHECK_NODE_TYPE(node, GRAPH_NODE_TYPE_GENERATED_LIST);
+        CHECK_NODE_TYPE(node->next, GRAPH_NODE_TYPE_ROTATION);
+        AS_GENERATED(node)->parameter &= 1;
+        return true;
+    }
+
+    return true;
+}
+
 OMM_INLINE Gfx *geo_exec_node_func(struct FnGraphNode *node, s32 callContext, void *context) {
-    if (node->func) {
-        gOmmGlobals->findFloorForCutsceneStar = (node->func == geo_switch_area);
-        return node->func(callContext, gNode, context);
+    if (OMM_LIKELY(node->func)) {
+        gOmmGlobals->findFloorForCutsceneStar = (node->func == (GraphNodeFunc) geo_switch_area);
+        if (OMM_LIKELY(geo_check_node_func(gNode, node->func))) {
+            return node->func(callContext, gNode, context);
+        }
     }
     return NULL;
 }
+
+//
+// Utils
+//
 
 OMM_INLINE bool __geo_inc_mat_stack() {
     sMatStackIndex++;
@@ -797,7 +935,7 @@ static void geo_disable_object_transparency(struct Object *obj) {
 //
 
 static Gfx OBJ_SANITIZE_GFX[] = {
-    gsSPClearGeometryMode(G_TEXTURE_GEN),
+    gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_INVERT),
     gsSPSetGeometryMode(G_LIGHTING),
     gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
     gsSPTexture(0xFFFF, 0xFFFF, 0, 0, G_OFF),
@@ -1001,24 +1139,9 @@ PREPROCESS {
         vec3f_copy(sPreprocessing->mario->forearm->pos[isLeftHand], gCurrMat1[3]);
     }
 
-    // Mario head pos and vectors
+    // Mario head matrix
     if (gFnNode->func == (GraphNodeFunc) geo_switch_mario_eyes) {
-        vec3f_copy(sPreprocessing->mario->head->pos, gCurrMat1[3]);
-        Mat4 rot;
-        mtxf_copy(rot, gCurrMat1);
-        vec3f_zero(rot[3]);
-        Mat4 up = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 1, 0, 0, 1 } };
-        mtxf_mul(up, up, rot);
-        vec3f_copy(sPreprocessing->mario->head->up, up[3]);
-        vec3f_normalize(sPreprocessing->mario->head->up);
-        Mat4 forward = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 1, 0, 1 } };
-        mtxf_mul(forward, forward, rot);
-        vec3f_copy(sPreprocessing->mario->head->forward, forward[3]);
-        vec3f_normalize(sPreprocessing->mario->head->forward);
-        Mat4 right = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, -1, 1 } };
-        mtxf_mul(right, right, rot);
-        vec3f_copy(sPreprocessing->mario->head->right, right[3]);
-        vec3f_normalize(sPreprocessing->mario->head->right);
+        mtxf_copy(sPreprocessing->mario->head->mtx, gCurrMat1);
     }
 }
 
@@ -1035,6 +1158,27 @@ NOT_PREPROCESS {
 
 static void geo_process_camera(struct GraphNodeCamera *node) {
     geo_exec_node_func(gFnNode, GEO_CONTEXT_RENDER, gCurrMat1);
+
+#if OMM_GAME_IS_R96X
+NOT_PREPROCESS {
+    // Beginning of WDW display lists
+    if (gCurrLevelNum == LEVEL_WDW && gFnNode->func == (GraphNodeFunc) geo_camera_main) {
+        extern const Gfx wdw_area_1_start_gfx[];
+        extern const Gfx wdw_area_2_start_gfx[];
+        if (gCurGraphNodeRoot->areaIndex == 1) {
+            geo_append_display_list(wdw_area_1_start_gfx, LAYER_OPAQUE);
+            geo_append_display_list(wdw_area_1_start_gfx, LAYER_ALPHA);
+            geo_append_display_list(wdw_area_1_start_gfx, LAYER_TRANSPARENT);
+            geo_append_display_list(wdw_area_1_start_gfx, LAYER_TRANSPARENT_DECAL);
+        } else if (gCurGraphNodeRoot->areaIndex == 2) {
+            geo_append_display_list(wdw_area_2_start_gfx, LAYER_OPAQUE);
+            geo_append_display_list(wdw_area_2_start_gfx, LAYER_ALPHA);
+            geo_append_display_list(wdw_area_2_start_gfx, LAYER_TRANSPARENT);
+            geo_append_display_list(wdw_area_2_start_gfx, LAYER_TRANSPARENT_DECAL);
+        }
+    }
+}
+#endif
 
     // Roll matrix
     Mtx *mtxRoll = alloc_display_list(sizeof(Mtx));
@@ -1241,6 +1385,22 @@ static void geo_process_generated_list(struct GraphNodeGenerated *node) {
         gCurGraphNodeCamera->config.camera = &dummy;
     }
 
+#if OMM_GAME_IS_R96X
+NOT_PREPROCESS {
+    // End of WDW display lists
+    if (gCurrLevelNum == LEVEL_WDW && gFnNode->func == (GraphNodeFunc) geo_movtex_pause_control) {
+#if OMM_CODE_DEBUG
+        sDisableRendering = false;
+#endif
+        extern const Gfx wdw_end_gfx[];
+        geo_append_display_list(wdw_end_gfx, LAYER_OPAQUE);
+        geo_append_display_list(wdw_end_gfx, LAYER_ALPHA);
+        geo_append_display_list(wdw_end_gfx, LAYER_TRANSPARENT);
+        geo_append_display_list(wdw_end_gfx, LAYER_TRANSPARENT_DECAL);
+    }
+}
+#endif
+
 #if OMM_GAME_IS_SM64
 NOT_PREPROCESS {
     // Check if Mario is in the mirror room, do not spawn Mirror Mario
@@ -1287,7 +1447,7 @@ static void geo_process_background(struct GraphNodeBackground *node) {
         // Draw background
         vec3f_copy(gLakituState.pos, sBackgroundCamPos0);
         vec3f_copy(gLakituState.focus, sBackgroundCamFocus0);
-        gfx = gFnNode->func(GEO_CONTEXT_RENDER, gNode, NULL);
+        gfx = geo_exec_node_func(gFnNode, GEO_CONTEXT_RENDER, NULL);
         vec3f_copy(gLakituState.pos, sBackgroundCamPos1);
         vec3f_copy(gLakituState.focus, sBackgroundCamFocus1);
 
@@ -1323,15 +1483,15 @@ NOT_PREPROCESS {
 static void geo_process_animated_part(struct GraphNodeAnimatedPart *node) {
 
     // Animation translations (previous, current)
-    Vec3f t3f0; geo_get_animation_translation(t3f0, sCurAnimState->type, &sCurAnimState->attr, sCurAnimState->data, sCurAnimState->_frame, false);
-    Vec3f t3f1; geo_get_animation_translation(t3f1, sCurAnimState->type, &sCurAnimState->attr, sCurAnimState->data, sCurAnimState->frame, true);
+    Vec3f t3f0; geo_get_animation_translation(t3f0, sCurAnimState->_frame, false);
+    Vec3f t3f1; geo_get_animation_translation(t3f1, sCurAnimState->frame, true);
 
     // Animation rotations (previous, current)
     Vec3s rot0, rot1;
     if (sCurAnimState->type != ANIM_TYPE_NONE) {
         sCurAnimState->type = ANIM_TYPE_ROTATION;
-        geo_get_animation_data_as_vec3s(rot0, &sCurAnimState->attr, sCurAnimState->data, sCurAnimState->_frame, 1, 1, 1, false);
-        geo_get_animation_data_as_vec3s(rot1, &sCurAnimState->attr, sCurAnimState->data, sCurAnimState->frame, 1, 1, 1, true);
+        geo_get_animation_data_as_vec3s(rot0, sCurAnimState->_frame, 1, 1, 1, false);
+        geo_get_animation_data_as_vec3s(rot1, sCurAnimState->frame, 1, 1, 1, true);
     } else {
         vec3s_copy(rot0, gVec3sZero);
         vec3s_copy(rot1, gVec3sZero);
@@ -1403,17 +1563,19 @@ PREPROCESS {
 
 static void geo_process_shadow(struct GraphNodeShadow *node) {
 NOT_PREPROCESS {
-    if (gCurGraphNodeCamera && gCurGraphNodeObject && !(gCurrGraphNodeObject->oFlags & OBJ_FLAG_NO_SHADOW) && !omm_is_main_menu()) {
+    struct Object *o = gCurrGraphNodeObject;
+    if (gCurGraphNodeCamera && o && !(o->oFlags & OBJ_FLAG_NO_SHADOW) && !omm_is_main_menu()) {
         Vec3f shadowPos;
-        f32 shadowScale;
+        f32 shadowScale = (f32) node->shadowScale;
+        u8 shadowSolidity = node->shadowSolidity;
+        u8 shadowType = node->shadowType;
 
         // Get shadow pos and scale from held object if there's one
         if (gCurGraphNodeHeldObject) {
             get_pos_from_transform_mtx(shadowPos, gCurrMat1, *gCurGraphNodeCamera->matrixPtr);
-            shadowScale = node->shadowScale;
         } else {
-            if (gCurrGraphNodeObject->oFlags & OBJ_FLAG_SHADOW_COPY_OBJ_POS) {
-                vec3f_copy(shadowPos, &gCurrGraphNodeObject->oPosX);
+            if (o->oFlags & OBJ_FLAG_SHADOW_COPY_OBJ_POS) {
+                vec3f_copy(shadowPos, &o->oPosX);
 #if OMM_GAME_IS_SM64
                 if (gOmmGlobals->isMirrorObj) {
                     shadowPos[0] = 2 * gOmmGlobals->mirrorX - shadowPos[0];
@@ -1422,7 +1584,21 @@ NOT_PREPROCESS {
             } else {
                 vec3f_copy(shadowPos, gCurGraphNodeObject->pos);
             }
-            shadowScale = node->shadowScale * gCurGraphNodeObject->scale[0];
+            shadowScale *= gCurGraphNodeObject->scale[0];
+        }
+
+        // Invisible mode: create a transparent round shadow for Mario or the capture
+        if (o->oFlags & OBJ_FLAG_INVISIBLE_MODE) {
+            if (o == gMarioObject || o == gOmmCapture) {
+                shadowScale = 80;
+                shadowType = SHADOW_CIRCLE_PLAYER;
+                shadowSolidity = 0x40;
+                sRenderShadow = true;
+            } else {
+                sRenderShadow = false;
+            }
+        } else {
+            sRenderShadow = true;
         }
 
         // Translate and scale the shadow with the current animation frame
@@ -1437,7 +1613,7 @@ NOT_PREPROCESS {
 
             // Retrieve the current frame translation
             Vec3f animTranslation;
-            geo_get_animation_data_as_vec3f(animTranslation, &sCurAnimState->attr, sCurAnimState->data, sCurAnimState->frame, 1, 0, 1, 0);
+            geo_get_animation_data_as_vec3f(animTranslation, sCurAnimState->frame, 1, 0, 1, false);
             vec3f_mul(animTranslation, objScale);
 
             // The shadow offset rotates along with the object
@@ -1461,7 +1637,7 @@ NOT_PREPROCESS {
         // Current frame
         s32 scale = shadowScale;
         Vec3f t3f; vec3f_copy(t3f, shadowPos);
-        Gfx *shadow1 = create_shadow_below_xyz(t3f[0], t3f[1], t3f[2], scale, node->shadowSolidity, node->shadowType);
+        Gfx *shadow1 = create_shadow_below_xyz(t3f[0], t3f[1], t3f[2], scale, shadowSolidity, shadowType);
         Mat4 mat; mtxf_translate(mat, t3f);
         mtxf_mul(gNextMat1, mat, *(gCurGraphNodeCamera->lookAt1));
 
@@ -1471,7 +1647,7 @@ NOT_PREPROCESS {
             scale = _shadowScale->v;
             vec3f_copy(t3f, _shadowPos->v);
             mtxf_translate(mat, t3f);
-            shadow0 = create_shadow_below_xyz(t3f[0], t3f[1], t3f[2], scale, node->shadowSolidity, node->shadowType);
+            shadow0 = create_shadow_below_xyz(t3f[0], t3f[1], t3f[2], scale, shadowSolidity, shadowType);
             if (shadow0 && shadow1) {
                 omm_array_grow(sShadowTbl, ptr, mem_new(InterpShadow, 1), sShadowTblSize + 1);
                 InterpShadow *ishadow = (InterpShadow *) omm_array_get(sShadowTbl, ptr, sShadowTblSize);
@@ -1488,6 +1664,7 @@ NOT_PREPROCESS {
         // Append shadow display list
         geo_update_mat_stack(
             geo_append_display_list(shadow0, shadow_get_layer());
+            sRenderShadow = false;
         )
 NOT_PREPROCESS {
         update_timestamp_vec3f(*_shadowPos, shadowPos);
@@ -1554,9 +1731,8 @@ NOT_PREPROCESS {
 
         // Init animation state if the object has animations
         if (node->mAnimInfo.curAnim) {
-            omm_models_swap_animations(obj);
+            omm_models_update_current_animation(obj);
             geo_set_animation_globals(node, (node->node.flags & GRAPH_RENDER_HAS_ANIMATION) != 0);
-            omm_models_swap_animations(obj);
         }
 NOT_PREPROCESS {
         update_timestamp_vec3f(node->_objPos, &obj->oPosX);
@@ -1702,7 +1878,7 @@ NOT_PREPROCESS {
         if (gOmmGlobals->isMirrorRoom && gOmmGlobals->isMirrorObj) {
             static struct GraphNodeHeldObject sHeldObjNode[1];
             sHeldObjNode->fnNode = node->fnNode;
-            sHeldObjNode->playerIndex = node->playerIndex;
+            sHeldObjNode->playerIndex = 0;
             sHeldObjNode->objNode = get_mirror_object(heldObj);
             vec3s_copy(sHeldObjNode->translation, node->translation);
             heldObj = sHeldObjNode->objNode;
@@ -1764,9 +1940,8 @@ NOT_PREPROCESS {
 
             // Init animation state if the held object has animations
             if (heldObj->oCurrAnim) {
-                omm_models_swap_animations(heldObj);
+                omm_models_update_current_animation(heldObj);
                 geo_set_animation_globals(&heldObj->header.gfx, (heldObj->oNodeFlags & GRAPH_RENDER_HAS_ANIMATION) != 0);
-                omm_models_swap_animations(heldObj);
             } else {
                 sCurAnimState->type = ANIM_TYPE_NONE;
             }
@@ -2000,8 +2175,8 @@ PREPROCESS {
 
         // Compute head rotation
         case GEO_PREPROCESS_PEACH_HEAD_ROT: {
-            if (sCurAnimState->attr && sCurAnimState->type == ANIM_TYPE_ROTATION) {
-                geo_get_animation_data_as_vec3s(sPreprocessing->mario->head->rot, &sCurAnimState->attr, sCurAnimState->data, sCurAnimState->frame, 1, 1, 1, 0);
+            if (sCurAnimState->indices && sCurAnimState->values && sCurAnimState->type == ANIM_TYPE_ROTATION) {
+                geo_get_animation_data_as_vec3s(sPreprocessing->mario->head->rot, sCurAnimState->frame, 1, 1, 1, false);
             } else {
                 vec3s_zero(sPreprocessing->mario->head->rot);
             }
@@ -2223,9 +2398,8 @@ static void __geo_preprocess_object_graph_node(struct Object *obj) {
     // Make a copy of the animation state, it will be restored at the end of preprocessing
     struct_AnimInfo animInfoBackUp = obj->oAnimInfo;
     if (obj->oCurrAnim) {
-        omm_models_swap_animations(obj);
+        omm_models_update_current_animation(obj);
         geo_set_animation_globals(&obj->header.gfx, (obj->oNodeFlags & GRAPH_RENDER_HAS_ANIMATION) != 0);
-        omm_models_swap_animations(obj);
     }
     
     // Preprocess
@@ -2244,18 +2418,63 @@ static void __geo_preprocess_object_graph_node(struct Object *obj) {
     obj->oAnimInfo = animInfoBackUp;
 }
 
-bool geo_compute_marios_heights(struct Object *o, f32 *rootHeight, f32 *headHeight, f32 *armsHeight) {
+void geo_compute_marios_heights(struct Object *o) {
     if (o && o->oGraphNode) {
-        s16 frame = o->oAnimFrame;
-        obj_anim_set_frame(o, 0);
+        bool isMarioObj = (o == gMarioObject);
+
+        // Find graph node in cache
+        if (isMarioObj) {
+            s32 i = omm_map_find_key(sPreprocessing->mario->root->heights, ptr, o->oGraphNode);
+            if (i != -1) {
+                sPreprocessing->mario->root->height = omm_map_get_val(sPreprocessing->mario->root->heights, f32, i);
+                sPreprocessing->mario->head->height = omm_map_get_val(sPreprocessing->mario->head->heights, f32, i);
+                sPreprocessing->mario->arms->height = omm_map_get_val(sPreprocessing->mario->arms->heights, f32, i);
+                return;
+            }
+        }
+
+        // Preprocess with A-pose animation
+        // Back-up object fields
+        Vec3f gfxPos = { o->oGfxPos[0], o->oGfxPos[1], o->oGfxPos[2] };
+        Vec3s gfxAngle = { o->oGfxAngle[0], o->oGfxAngle[1], o->oGfxAngle[2] };
+        Vec3f gfxScale = { o->oGfxScale[0], o->oGfxScale[1], o->oGfxScale[2] };
+        Mat4 *objThrowMatrix = o->oThrowMatrix;
+        struct_AnimInfo objAnimInfo = o->oAnimInfo;
+
+        // Cleaning some fields
+        obj_pos_as_vec3f(o, o->oGfxPos);
+        vec3s_zero(o->oGfxAngle);
+        vec3f_one(o->oGfxScale);
+        o->oThrowMatrix = NULL;
+        gMarioCurrAnimAddr = NULL;
+        if (isMarioObj) {
+            obj_anim_play_with_sound(o, MARIO_ANIM_A_POSE, 1.f, NO_SOUND, true);
+        } else {
+            obj_anim_set_frame(o, 0);
+        }
         __geo_preprocess_object_graph_node(o);
-        obj_anim_set_frame(o, frame);
-        if (rootHeight) *rootHeight = sPreprocessing->mario->root->pos[1] - o->oPosY;
-        if (headHeight) *headHeight = sPreprocessing->mario->head->pos[1] - o->oPosY;
-        if (armsHeight) *armsHeight = vec3f_dist(sPreprocessing->mario->hand->pos[1], sPreprocessing->mario->arms->pos);
-        return true;
+
+        // Compute and insert heights for the object's graph node
+        f32 rootHeight = sPreprocessing->mario->root->pos[1] - o->oGfxPos[1];
+        f32 headHeight = sPreprocessing->mario->head->mtx[3][1] - o->oGfxPos[1];
+        f32 armsHeight = vec3f_dist(sPreprocessing->mario->hand->pos[1], sPreprocessing->mario->arms->pos);
+        if (isMarioObj) {
+            omm_map_add(sPreprocessing->mario->root->heights, ptr, o->oGraphNode, f32, rootHeight);
+            omm_map_add(sPreprocessing->mario->head->heights, ptr, o->oGraphNode, f32, headHeight);
+            omm_map_add(sPreprocessing->mario->arms->heights, ptr, o->oGraphNode, f32, armsHeight);
+        }
+        sPreprocessing->mario->root->height = rootHeight;
+        sPreprocessing->mario->head->height = headHeight;
+        sPreprocessing->mario->arms->height = armsHeight;
+
+        // Restore object fields
+        vec3f_copy(o->oGfxPos, gfxPos);
+        vec3s_copy(o->oGfxAngle, gfxAngle);
+        vec3f_copy(o->oGfxScale, gfxScale);
+        o->oThrowMatrix = objThrowMatrix;
+        o->oAnimInfo = objAnimInfo;
+        gMarioCurrAnimAddr = NULL;
     }
-    return false;
 }
 
 bool geo_compute_capture_cappy_obj_transform(struct Object *o, s32 animParts, Mat4 transform) {
@@ -2272,42 +2491,9 @@ bool geo_compute_capture_cappy_obj_transform(struct Object *o, s32 animParts, Ma
 
 void geo_preprocess_object_graph_node(struct Object *o) {
     if (o && o->oGraphNode) {
-
-        // Update Mario's heights
         if (o == gMarioObject) {
-            s32 i = omm_map_find_key(sPreprocessing->mario->root->heights, ptr, o->oGraphNode);
-            if (i != -1) {
-                sPreprocessing->mario->root->height = omm_map_get_val(sPreprocessing->mario->root->heights, f32, i);
-                sPreprocessing->mario->head->height = omm_map_get_val(sPreprocessing->mario->head->heights, f32, i);
-                sPreprocessing->mario->arms->height = omm_map_get_val(sPreprocessing->mario->arms->heights, f32, i);
-            } else {
-
-                // Preprocess with A-pose animation
-                // Back-up the current animation and restore it after processing
-                // Setting gMarioCurrAnimAddr to NULL forces the game to reload the DMA table
-                struct_AnimInfo animInfo;
-                mem_cpy(&animInfo, &o->oAnimInfo, sizeof(struct_AnimInfo));
-                gMarioCurrAnimAddr = NULL;
-                obj_anim_play(o, MARIO_ANIM_A_POSE, 1.f);
-
-                // Compute and insert heights for the object's graph node
-                f32 rootHeight, headHeight, armsHeight;
-                if (geo_compute_marios_heights(o, &rootHeight, &headHeight, &armsHeight)) {
-                    omm_map_add(sPreprocessing->mario->root->heights, ptr, o->oGraphNode, f32, rootHeight);
-                    omm_map_add(sPreprocessing->mario->head->heights, ptr, o->oGraphNode, f32, headHeight);
-                    omm_map_add(sPreprocessing->mario->arms->heights, ptr, o->oGraphNode, f32, armsHeight);
-                    sPreprocessing->mario->root->height = rootHeight;
-                    sPreprocessing->mario->head->height = headHeight;
-                    sPreprocessing->mario->arms->height = armsHeight;
-                }
-
-                // Restore previous animation
-                gMarioCurrAnimAddr = NULL;
-                mem_cpy(&o->oAnimInfo, &animInfo, sizeof(struct_AnimInfo));
-            }
+            geo_compute_marios_heights(o);
         }
-
-        // Preprocess
         __geo_preprocess_object_graph_node(o);
     }
 }

@@ -2,6 +2,7 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 #if OMM_GAME_IS_SM64
+#include "data/omm/omm_constants.h"
 #include "levels/ttm/header.h"
 #include "level_commands.h"
 #define OMM_TTM_SLIDE_OFFSET_Y (14000)
@@ -3126,8 +3127,8 @@ const LevelScript omm_level_ttm_area_2[] = {
     AREA(2, omm_level_ttm_area_2_geo),
         WARP_NODE(0x0A, LEVEL_TTM, 0x02, 0x0A, WARP_NO_CHECKPOINT),
         WARP_NODE(0x0B, LEVEL_TTM, 0x01, 0x14, WARP_NO_CHECKPOINT),
-        WARP_NODE(0xF0, LEVEL_CASTLE, 0x02, 0x34, WARP_NO_CHECKPOINT),
-        WARP_NODE(0xF1, LEVEL_CASTLE, 0x02, 0x66, WARP_NO_CHECKPOINT),
+        WARP_NODE(WARP_NODE_STAR_EXIT, LEVEL_CASTLE, 0x02, 0x34, WARP_NO_CHECKPOINT),
+        WARP_NODE(WARP_NODE_DEATH, LEVEL_CASTLE, 0x02, 0x66, WARP_NO_CHECKPOINT),
         JUMP_LINK(omm_level_ttm_area_2_objects),
         TERRAIN(omm_level_ttm_area_2_collision),
         SET_BACKGROUND_MUSIC(0x0001, SEQ_LEVEL_SLIDE),

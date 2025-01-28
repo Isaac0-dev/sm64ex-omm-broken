@@ -8,7 +8,8 @@
 //
 
 #define array_of(type)                      (type *) (type[])
-#define array_length(a)                     (sizeof(a) / sizeof(a[0]))
+#define array_length(arr)                   (sizeof(arr) / sizeof(arr[0]))
+#define array_for_each_(type, item, arr)    u32 i_##item = 0; for (type *item = arr; i_##item != array_length(arr); ++i_##item, item++)
 
 //
 // Memory
@@ -33,6 +34,7 @@ typedef char str_t[0x100];
 typedef u8 ustr_t[0x100];
 
 u32  __str_hash(const char *str);
+char *__str_dup(const char *str);
 void __str_cpy(char *dst, s32 dst_siz, const char *src);
 void __str_rep(char *dst, s32 dst_siz, const char *src, char c0, char c1);
 void __str_lwr(char *dst, s32 dst_siz, const char *src);
@@ -40,6 +42,7 @@ void __str_upr(char *dst, s32 dst_siz, const char *src);
 void __str_cat(char *dst, s32 dst_siz, const char **src);
 
 #define str_hash(str)                           __str_hash(str)
+#define str_dup(str)                            __str_dup(str)
 #define str_cpy(dst, dst_siz, src)              __str_cpy(dst, dst_siz, src)
 #define str_rep(dst, dst_siz, src, c0, c1)      __str_rep(dst, dst_siz, src, c0, c1)
 #define str_lwr(dst, dst_siz, src)              __str_lwr(dst, dst_siz, src)

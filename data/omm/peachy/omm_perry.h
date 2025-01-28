@@ -26,7 +26,7 @@ extern const OmmPerryModifiers gOmmPerryModifiers[5];
 #define __OMM_PERRY_BLAST_RADIUS                (300)
 #define __OMM_PERRY_BLAST_INT_FLAGS             (OBJ_INT_ATTACK_WEAK | OBJ_INT_ATTACK_STRONG | OBJ_INT_ATTACK_BREAKABLE | OBJ_INT_COLLECT_COINS | OBJ_INT_COLLECT_TRIGGERS | OBJ_INT_PERRY_ATTACK)
 
-#define OMM_PERRY_SWORD_ACTION                  (OMM_PLAYER_IS_PEACH || OMM_CHEAT_SHADOW_MARIO)
+#define OMM_PERRY_SWORD_ACTION                  ((OMM_PLAYER_IS_PEACH || OMM_CHEAT_SHADOW_MARIO) && !omm_mario_is_milk(gMarioState))
 #define OMM_PERRY_SWORD_HITBOX                  (__OMM_PERRY_SWORD_HITBOX * gOmmPerryModifiers[o->oPerryType].swordHitbox)
 #define OMM_PERRY_SWORD_INT_FLAGS               (__OMM_PERRY_SWORD_INT_FLAGS | gOmmPerryModifiers[o->oPerryType].swordFlags)
 #define OMM_PERRY_SHOCKWAVE_RADIUS              ((o->oPerryShockwaveBlast ? 1.10f : 1.00f) * (__OMM_PERRY_SHOCKWAVE_RADIUS * gOmmPerryModifiers[o->oPerryType].shockwaveRadius))

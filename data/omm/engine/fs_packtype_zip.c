@@ -211,7 +211,7 @@ static void *fs_packtype_zip_mount(const char *realpath) {
                 if (zip_parse_eocd(f, &cdir_ofs, &data_ofs, &count) &&
                     fs_dirtree_init(&pack->tree, sizeof(zip_entry_t)) &&
                     zip_load_entries(f, &pack->tree, cdir_ofs, data_ofs, count)) {
-                    pack->realpath = sys_strdup(realpath);
+                    pack->realpath = str_dup(realpath);
                     pack->zipf = f;
                     return pack;
                 }

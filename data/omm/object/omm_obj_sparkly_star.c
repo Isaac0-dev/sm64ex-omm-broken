@@ -140,10 +140,10 @@ static void bhv_omm_sparkly_star_update() {
 
         // In Mario's hands
         case 4: {
-            f32 *marioArmLeft = geo_get_marios_forearm_pos(1);
-            f32 *marioArmRight = geo_get_marios_forearm_pos(0);
-            f32 *marioHandLeft = geo_get_marios_hand_pos(1);
-            f32 *marioHandRight = geo_get_marios_hand_pos(0);
+            Vec3f marioArmLeft; geo_get_marios_forearm_pos(marioArmLeft, 1);
+            Vec3f marioArmRight; geo_get_marios_forearm_pos(marioArmRight, 0);
+            Vec3f marioHandLeft; geo_get_marios_hand_pos(marioHandLeft, 1);
+            Vec3f marioHandRight; geo_get_marios_hand_pos(marioHandRight, 0);
             Vec3f starPos = {
                 ((2.f * marioHandLeft[0] - marioArmLeft[0]) + (2.f * marioHandRight[0] - marioArmRight[0])) / 2.f,
                 ((2.f * marioHandLeft[1] - marioArmLeft[1]) + (2.f * marioHandRight[1] - marioArmRight[1])) / 2.f,
@@ -199,6 +199,15 @@ const BehaviorScript bhvOmmSparklyStar[] = {
     BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
     BHV_BEGIN_LOOP(),
         BHV_CALL_NATIVE(bhv_omm_sparkly_star_update),
+    BHV_END_LOOP(),
+};
+
+extern void bhv_omm_sparkly_grand_star_spawn_sparkles();
+const BehaviorScript bhvOmmSparklyGrandStarEnding[] = {
+    OBJ_TYPE_DEFAULT,
+    BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_BEGIN_LOOP(),
+        BHV_CALL_NATIVE(bhv_omm_sparkly_grand_star_spawn_sparkles),
     BHV_END_LOOP(),
 };
 

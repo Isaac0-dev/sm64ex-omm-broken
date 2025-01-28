@@ -134,7 +134,7 @@ static void omm_opt_warp_to_level(UNUSED struct Option *opt, s32 arg) {
         s32 levelNum = omm_opt_get_level_num(sOmmWarp->currLevel);
         s32 actNum = omm_opt_get_act_num(sOmmWarp->currAct);
         if (omm_is_main_menu() || !omm_warp_to_level(levelNum, sOmmWarp->currMode + 1, actNum)) {
-            play_sound(SOUND_MENU_CAMERA_BUZZ | 0xFF00, gGlobalSoundArgs);
+            play_buzz_sound();
         }
     }
 }
@@ -143,7 +143,7 @@ static void omm_opt_warp_to_castle(UNUSED struct Option *opt, s32 arg) {
     if (!arg) {
         s32 levelNum = omm_opt_get_level_num(sOmmWarp->currLevel);
         if (omm_is_main_menu() || !omm_exit_level(levelNum, sOmmWarp->currMode + 1, true)) {
-            play_sound(SOUND_MENU_CAMERA_BUZZ | 0xFF00, gGlobalSoundArgs);
+            play_buzz_sound();
         }
     }
 }
@@ -159,7 +159,7 @@ void omm_opt_sm74_change_mode(UNUSED struct Option *opt, s32 arg) {
             gDialogBoxState = 0;
             gMenuMode = -1;
         } else {
-            play_sound(SOUND_MENU_CAMERA_BUZZ | 0xFF00, gGlobalSoundArgs);
+            play_buzz_sound();
         }
     }
 }

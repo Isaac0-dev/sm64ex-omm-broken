@@ -6,9 +6,6 @@
 #include "data/omm/system/omm_thread.h"
 #include "gfx_patches.inl"
 #include <unistd.h>
-#if OMM_GFX_API_DX
-#include <windows.h>
-#endif
 
 // Disable optimization (for testing purposes)
 #if 0
@@ -39,7 +36,8 @@
 #define INV_64                              (1.f / 64.f)
 #define INV_256                             (1.f / 256.f)
 
-#define GAME_UPDATE_DURATION                (1.0 / gGameUpdatesPerSecond)
+#define GAME_UPDATES_PER_SECOND             (30)
+#define GAME_UPDATE_DURATION                (1.0 / (f64) gGameUpdatesPerSecond)
 #if OMM_GFX_API_DX
 #define UNLIMITED_FPS                       (1000)
 #else
@@ -168,7 +166,7 @@ typedef struct {
     // Matrices
     Mat4 *mtx;
     Mat4 mtxP;
-    Mat4 mtxMP;
+    ALIGNED16 Mat4 mtxMP;
 
     // Lights
     Light_t light, lightAmb;
@@ -194,11 +192,18 @@ typedef struct {
     bool fog, alpha, shouldUpdateCC;
     u32 combineMode, otherModeL, otherModeH;
     Vec4f envColor, primColor, fogColor, fillColor, transpColor;
+#if LEVEL_PALETTES
+    Vec4f palColor;
+#endif
     GfxColorCombiner *colorCombiner;
     GfxShaderProgram shaderProgram[1];
     GfxViewport viewport;
     void *zBufAddress;
     void *colorImageAddress;
+
+#if OMM_GAME_IS_R96X
+    s32 wdwSwapVtx;
+#endif
 } GfxProcessor;
 
 //
@@ -214,21 +219,22 @@ static GfxWindowManagerAPI     *sGfxWapi;
 static GfxRenderingAPI         *sGfxRapi;
 static GfxTextureState          sGfxState[1];
 static GfxTexturePrecache       sGfxPrecache[1];
-static OmmHMap                  sGfxCache = omm_hmap_zero;
+static OmmHMap_(GfxTexture *)   sGfxCache = omm_hmap_zero;
 static GfxCmdFunc               sGfxCmdTable[GFX_CMD_SIZE];
 struct GfxDimensions            gfx_current_dimensions;
 static f32                      sGfxAdjustForAspectRatio;
-static f32                     *sGfxPaletteModifiers = NULL;
 
 #if !OMM_CODE_DEV
 static const
 #endif
-f64 gGameUpdatesPerSecond = 30;
-static s32 sTargetFps = 0;
-static f64 sDeltaTime = 0;
-static f64 sStartTime = 0;
-static f64 sCurrTime  = 0;
-static f32 sLerpDelta = 0;
+u32 gGameUpdatesPerSecond = GAME_UPDATES_PER_SECOND;
+static struct {
+    u32 target;
+    f32 lerp;
+    u32 frames;
+    f64 tFrame;
+    f64 tLast;
+} sFps[1];
 
 OMM_INLINE f64 gfx_get_current_time() {
     return (f64) SDL_GetPerformanceCounter() / (f64) SDL_GetPerformanceFrequency();
@@ -377,9 +383,8 @@ static bool gfx_texture_has_palette(const char *texname) {
 #include "data/omm/omm_defines_palettes.inl"
 #undef OMM_PALETTE_
 #undef OMM_PALETTE_LEVEL_
-        NULL
     };
-    for_each_until_null(const char *, pattern, sOmmTexturePatternsWithPalette) {
+    array_for_each_(const char *, pattern, sOmmTexturePatternsWithPalette) {
         if (strstr(texname, *pattern)) {
             return true;
         }
@@ -392,7 +397,7 @@ static bool gfx_texture_has_palette(const char *texname) {
 #define GFX_LEVEL_PALETTE_FLOODED   (1 << 0)
 #define GFX_LEVEL_PALETTE_FROZEN    (1 << 1)
 #define GFX_LEVEL_PALETTE_DARK      (1 << 2)
-#define GFX_LEVEL_PALETTE_MODIFIER  (1 << 3)
+#define GFX_LEVEL_PALETTE_COLOR     (1 << 3)
 
 static bool gfx_texture_is_level_palette(const char *texname) {
     static const char *sOmmTexturePatternsWithLevelPalette[] = {
@@ -401,9 +406,8 @@ static bool gfx_texture_is_level_palette(const char *texname) {
 #include "data/omm/omm_defines_palettes.inl"
 #undef OMM_PALETTE_
 #undef OMM_PALETTE_LEVEL_
-        NULL
     };
-    for_each_until_null(const char *, pattern, sOmmTexturePatternsWithLevelPalette) {
+    array_for_each_(const char *, pattern, sOmmTexturePatternsWithLevelPalette) {
         if (strstr(texname, *pattern)) {
             return true;
         }
@@ -414,22 +418,22 @@ static bool gfx_texture_is_level_palette(const char *texname) {
 #define set_r(r_) data[i + 0] = r = clamp_s(r_, 0x00, 0xFF)
 #define set_g(g_) data[i + 1] = g = clamp_s(g_, 0x00, 0xFF)
 #define set_b(b_) data[i + 2] = b = clamp_s(b_, 0x00, 0xFF)
-static void gfx_texture_load_level_palette(GfxTexture *tex, s32 tile) {
+static void gfx_texture_load_level_palette(GfxTexture *tex, const char *texname) {
     u32 pal = (
         (GFX_LEVEL_PALETTE_FLOODED  * (omm_world_is_flooded() == true)) |
         (GFX_LEVEL_PALETTE_FROZEN   * (omm_world_is_frozen()  == true)) |
         (GFX_LEVEL_PALETTE_DARK     * (omm_world_is_dark()    == true)) |
-        (GFX_LEVEL_PALETTE_MODIFIER * (sGfxPaletteModifiers   != NULL))
+        (GFX_LEVEL_PALETTE_COLOR    * (sGfxProc->palColor[3]  != 0))
     );
-    if (pal & GFX_LEVEL_PALETTE_MODIFIER) {
-        u8 rmod = (u8) (sGfxPaletteModifiers[0] * 127.9f);
-        u8 gmod = (u8) (sGfxPaletteModifiers[1] * 127.9f);
-        u8 bmod = (u8) (sGfxPaletteModifiers[2] * 127.9f);
+    if (pal & GFX_LEVEL_PALETTE_COLOR) {
+        u8 rmod = (u8) (sGfxProc->palColor[0] * 127.9f);
+        u8 gmod = (u8) (sGfxProc->palColor[1] * 127.9f);
+        u8 bmod = (u8) (sGfxProc->palColor[2] * 127.9f);
         pal |= (((u32) rmod) << 24);
         pal |= (((u32) gmod) << 16);
         pal |= (((u32) bmod) <<  8);
     }
-    if (tex->data && tex->pal != pal && gfx_texture_is_level_palette(sGfxProc->texLoaded[tile])) {
+    if (tex->data && tex->pal != pal && gfx_texture_is_level_palette(texname)) {
         if (pal) {
             u32 size = tex->w * tex->h * 4;
             u8 *data = mem_dup(tex->data, size);
@@ -454,10 +458,10 @@ static void gfx_texture_load_level_palette(GfxTexture *tex, s32 tile) {
                     set_g(0);
                     set_b(0);
                 }
-                if (pal & GFX_LEVEL_PALETTE_MODIFIER) {
-                    set_r(r * sGfxPaletteModifiers[0]);
-                    set_g(g * sGfxPaletteModifiers[1]);
-                    set_b(b * sGfxPaletteModifiers[2]);
+                if (pal & GFX_LEVEL_PALETTE_COLOR) {
+                    set_r(r * sGfxProc->palColor[0]);
+                    set_g(g * sGfxProc->palColor[1]);
+                    set_b(b * sGfxProc->palColor[2]);
                 }
             }
             sGfxRapi->upload_texture(data, tex->w, tex->h);
@@ -467,6 +471,13 @@ static void gfx_texture_load_level_palette(GfxTexture *tex, s32 tile) {
         }
         tex->pal = pal;
     }
+}
+
+void gfx_texture_set_level_palette_color(f32 r, f32 g, f32 b) {
+    sGfxProc->palColor[0] = clamp_0_1_f(r);
+    sGfxProc->palColor[1] = clamp_0_1_f(g);
+    sGfxProc->palColor[2] = clamp_0_1_f(b);
+    sGfxProc->palColor[3] = 1;
 }
 
 #endif
@@ -594,13 +605,17 @@ static GfxTexture *gfx_texture_load_png(const char *texname, const char *filenam
     s32 texw, texh;
     u8 *data = fs_load_png(filename, &texw, &texh);
     if (data) {
-        return gfx_texture_load(texname, data, texw, texh, whiten);
+        return gfx_texture_load(texname, data, texw, texh, whiten != NULL);
     }
 
     // Find the texture in ROM
-    data = rom_asset_load_texture(texname, &texw, &texh);
+    sys_path_t assetname;
+    str_cpy(assetname, sizeof(assetname), texname);
+    whiten = strstr(assetname, OMM_TEXTURE_WHITEN);
+    if (whiten) *whiten = 0;
+    data = rom_asset_load_texture(assetname, &texw, &texh);
     if (data) {
-        return gfx_texture_load(texname, data, texw, texh, whiten);
+        return gfx_texture_load(texname, data, texw, texh, whiten != NULL);
     }
 
     // Missing texture
@@ -611,17 +626,20 @@ static GfxTexture *gfx_texture_load_png(const char *texname, const char *filenam
 }
 
 OMM_INLINE void gfx_texture_import(s32 tile) {
-    GfxTexture *tex = gfx_texture_find(sGfxProc->texLoaded[tile]);
-    if (OMM_UNLIKELY(!tex)) {
-        sys_path_t filename;
-        str_cat(filename, sizeof(filename), FS_TEXTUREDIR "/", sGfxProc->texLoaded[tile], ".png");
-        tex = gfx_texture_load_png(sGfxProc->texLoaded[tile], filename);
-    }
-    sGfxProc->textures[tile] = tex;
-    sGfxRapi->select_texture(tile, tex->id);
+    const char *texname = sGfxProc->texLoaded[tile];
+    if (texname) {
+        GfxTexture *tex = gfx_texture_find(texname);
+        if (OMM_UNLIKELY(!tex)) {
+            sys_path_t filename;
+            str_cat(filename, sizeof(filename), FS_TEXTUREDIR "/", texname, ".png");
+            tex = gfx_texture_load_png(texname, filename);
+        }
+        sGfxProc->textures[tile] = tex;
+        sGfxRapi->select_texture(tile, tex->id);
 #if LEVEL_PALETTES
-    gfx_texture_load_level_palette(tex, tile);
+        gfx_texture_load_level_palette(tex, texname);
 #endif
+    }
 }
 
 OMM_INLINE void gfx_texture_import_loading_screen(s32 tile) {
@@ -917,8 +935,8 @@ OMM_INLINE void gfx_update_shader() {
 static GfxColorCombiner *gfx_lookup_or_create_color_combiner(u32 id) {
 
     // Find in cache
-    static OmmHMap sGfxColorCombiners = omm_hmap_zero;
-    s32 i = omm_hmap_find(sGfxColorCombiners, id);
+    static OmmHMap_(GfxColorCombiner *) sGfxColorCombiners = omm_hmap_zero;
+    s32 i = omm_hmap_find(sGfxColorCombiners, id + 1);
     if (i != -1) {
         return omm_hmap_get(sGfxColorCombiners, GfxColorCombiner *, i);
     }
@@ -960,7 +978,7 @@ static GfxColorCombiner *gfx_lookup_or_create_color_combiner(u32 id) {
     }
     cc->id = id;
     cc->prg = gfx_lookup_or_create_shader_program(shaderId);
-    omm_hmap_insert(sGfxColorCombiners, id, cc);
+    omm_hmap_insert(sGfxColorCombiners, id + 1, cc);
     return cc;
 }
 
@@ -1174,8 +1192,13 @@ OMM_OPTIMIZE static void gfx_sp_vertex_compute_tex_coords_and_colors(GfxVertex *
         if (sGfxProc->geometryMode & G_TEXTURE_GEN) {
             s32 dotx = 128 + vec3f_dot(v->n, sGfxProc->lookAtXCoeffs);
             s32 doty = 128 + vec3f_dot(v->n, sGfxProc->lookAtYCoeffs);
-            tu = (dotx * sGfxProc->tcS) >> 9;
-            tv = (doty * sGfxProc->tcT) >> 9;
+            if (sGfxProc->geometryMode & G_TEXTURE_GEN_INVERT) {
+                tu = (dotx * sGfxProc->tcS) >> 9;
+                tv = (doty * sGfxProc->tcT) >> 9;
+            } else {
+                tu = (doty * sGfxProc->tcS) >> 9;
+                tv = (dotx * sGfxProc->tcT) >> 9;
+            }
         } else {
             tu = (v->vtx->v.tc[0] * sGfxProc->tcS) >> 16;
             tv = (v->vtx->v.tc[1] * sGfxProc->tcT) >> 16;
@@ -1231,13 +1254,19 @@ OMM_OPTIMIZE static void gfx_sp_vertex_compute_tex_coords_and_colors(GfxVertex *
 
 OMM_OPTIMIZE static void gfx_sp_vertex_load(GfxVertex *vBuffer, u32 vCount, bool shouldUpdateTC) {
     const Vtx *vtx = GFX_W1P;
+#if OMM_GAME_IS_R96X
+    if (sGfxProc->wdwSwapVtx) {
+        extern const Vtx *wdw_swap_vtx(const Vtx *vtx, u32 count, s32 areaIndex);
+        vtx = wdw_swap_vtx(vtx, vCount, sGfxProc->wdwSwapVtx);
+    }
+#endif
     GfxVertex *v = vBuffer;
 
     // Load current matrix into XMM registers
-    __m128 m0 = _mm_loadu_ps(sGfxProc->mtxMP[0]);
-    __m128 m1 = _mm_loadu_ps(sGfxProc->mtxMP[1]);
-    __m128 m2 = _mm_loadu_ps(sGfxProc->mtxMP[2]);
-    __m128 m3 = _mm_loadu_ps(sGfxProc->mtxMP[3]);
+    __m128 m0 = _mm_load_ps(sGfxProc->mtxMP[0]);
+    __m128 m1 = _mm_load_ps(sGfxProc->mtxMP[1]);
+    __m128 m2 = _mm_load_ps(sGfxProc->mtxMP[2]);
+    __m128 m3 = _mm_load_ps(sGfxProc->mtxMP[3]);
 
     // Transform vertices
     for (s32 i = vCount; i; --i, vtx++, v++) {
@@ -1248,10 +1277,9 @@ OMM_OPTIMIZE static void gfx_sp_vertex_load(GfxVertex *vBuffer, u32 vCount, bool
         __m128 v0 = _mm_set1_ps(vtx->v.ob[0]);
         __m128 v1 = _mm_set1_ps(vtx->v.ob[1]);
         __m128 v2 = _mm_set1_ps(vtx->v.ob[2]);
-        __m128 v3 = _mm_set1_ps(1.f);
         __m128 d3 = _mm_add_ps(
             _mm_add_ps(_mm_mul_ps(m0, v0), _mm_mul_ps(m1, v1)),
-            _mm_add_ps(_mm_mul_ps(m2, v2), _mm_mul_ps(m3, v3))
+            _mm_add_ps(_mm_mul_ps(m2, v2), m3)
         );
         _mm_storeu_ps(v->p, d3);
         v->p[0] = gfx_adjust_x_for_aspect_ratio(v->p[0]);
@@ -1512,6 +1540,7 @@ static void gfx_sp_set_other_mode_h() {
     gfx_sp_set_other_mode(63 - off - siz, siz + 1, (u64) GFX_W1 << 32);
 }
 
+// Color palettes from sm64coopdx
 static void gfx_sp_copymem() {
     const Lights1 *light = (const Lights1 *) omm_mario_colors_part_to_light((GFX_C0(16, 8) - 12) / 6);
     if (light) {
@@ -1674,6 +1703,14 @@ static void gfx_dp_set_fill_color() {
 }
 
 static void gfx_dp_set_z_image() {
+#if OMM_GAME_IS_R96X
+    extern const Gfx wdw_area_1_start_gfx[];
+    extern const Gfx wdw_area_2_start_gfx[];
+    extern const Gfx wdw_end_gfx[];
+    if (GFX_W1P == wdw_area_1_start_gfx) { sGfxProc->wdwSwapVtx = 1; return; }
+    if (GFX_W1P == wdw_area_2_start_gfx) { sGfxProc->wdwSwapVtx = 2; return; }
+    if (GFX_W1P == wdw_end_gfx) { sGfxProc->wdwSwapVtx = 0; return; }
+#endif
     sGfxProc->zBufAddress = GFX_W1P;
 }
 
@@ -1703,7 +1740,11 @@ static void gfx_dp_set_tile() {
 
     // Set tile number
     if (index == G_TX_LOADTILE) {
-        sGfxProc->texTile = GFX_C0(0, 9) >> 8;
+        sGfxProc->texTile = clamp_s(GFX_C0(0, 9) >> 8, 0, 1);
+        return;
+    }
+    if (index == G_TX_LOADTILE_TILE_1) {
+        sGfxProc->texTile = 1;
         return;
     }
 
@@ -1719,12 +1760,17 @@ static void gfx_dp_set_tile() {
     }
 
     // Bowser/Peach painting
-    if (index == 1) {
+    if (index == G_TX_BOWSER_PEACH_PAINTING) {
+        return;
+    }
+
+    // Something unknown that should be ignored
+    if (index == G_TX_UNKNOWN_5) {
         return;
     }
 
     // Not supported
-    sys_fatal("gfx_dp_set_tile: Multi-texturing is not supported. Index: %u", index);
+    sys_fatal("gfx_dp_set_tile: This feature is not supported. Index: %u", index);
 }
 
 static void gfx_dp_set_tile_size() {
@@ -1996,18 +2042,15 @@ OMM_OPTIMIZE static void gfx_run_dl(Gfx *cmd) {
 // Frame interpolation
 //
 
-static s32 gfx_get_refresh_rate() {
-    static s32 sWindowRefreshRate = 0;
+static u32 gfx_get_refresh_rate() {
+    static u32 sWindowRefreshRate = 0;
     if (!sWindowRefreshRate) {
 #if OMM_GFX_API_DX
-        DEVMODE mode;
-        if (EnumDisplaySettingsA(NULL, ENUM_CURRENT_SETTINGS, &mode)) {
-            sWindowRefreshRate = (s32) mode.dmDisplayFrequency;
-        }
+        sWindowRefreshRate = UNLIMITED_FPS; // Let the VSync give the pace
 #elif OMM_GFX_API_GL
         SDL_DisplayMode mode;
         if (SDL_GetCurrentDisplayMode(0, &mode) == 0) {
-            sWindowRefreshRate = (s32) mode.refresh_rate;
+            sWindowRefreshRate = (u32) mode.refresh_rate;
         }
 #else
         sWindowRefreshRate = 60;
@@ -2016,32 +2059,41 @@ static s32 gfx_get_refresh_rate() {
     return sWindowRefreshRate;
 }
 
-static s32 gfx_get_target_frame_rate() {
+static u32 gfx_get_target_frame_rate() {
     switch (gOmmFrameRate) {
-        case OMM_FPS_30:   return 30;
+        case OMM_FPS_30:   return GAME_UPDATES_PER_SECOND;
         case OMM_FPS_60:   return 60;
         case OMM_FPS_AUTO: return gfx_get_refresh_rate();
         case OMM_FPS_INF:  return UNLIMITED_FPS;
     }
-    return 30;
-}
-
-static s32 gfx_get_num_frames_to_draw() {
-    s32 i = (s32) ((sStartTime - ((s64) sStartTime)) * gGameUpdatesPerSecond);
-    return (s32) ((sTargetFps * (i + 1)) / gGameUpdatesPerSecond) - (s32) ((sTargetFps * i) / gGameUpdatesPerSecond);
+    return GAME_UPDATES_PER_SECOND;
 }
 
 bool gFrameInterpolation = false;
 static void gfx_init_frame_interpolation() {
     if (gOmmFrameRate == OMM_FPS_30 || omm_is_main_menu() || ((gMenuMode == 0 || gMenuMode == 1) && !gOmmGlobals->cameraSnapshotMode)) {
-        sTargetFps = 30;
-        sDeltaTime = GAME_UPDATE_DURATION;
+        sFps->target = GAME_UPDATES_PER_SECOND;
         gFrameInterpolation = false;
     } else {
-        sTargetFps = gfx_get_target_frame_rate();
-        sDeltaTime = GAME_UPDATE_DURATION / gfx_get_num_frames_to_draw();
+        sFps->target = gfx_get_target_frame_rate();
         gFrameInterpolation = true;
     }
+}
+
+static u32 gfx_get_num_frames_to_draw() {
+    if (sFps->target % gGameUpdatesPerSecond == 0) {
+        return sFps->target / gGameUpdatesPerSecond;
+    }
+    u64 framesCurr = (u64) (sFps->tFrame * (f64) sFps->target);
+    u64 framesNext = (u64) ((sFps->tFrame + GAME_UPDATE_DURATION) * (f64) sFps->target);
+    return (u32) MAX(1, framesNext - framesCurr);
+}
+
+static void gfx_update_fps(f64 tCurr) {
+    f32 fps = (f32) ((f64) sFps->frames / MAX(0.001, tCurr - sFps->tLast));
+    omm_profiler_update_fps(fps, gGameUpdatesPerSecond);
+    sFps->tLast = tCurr;
+    sFps->frames = 0;
 }
 
 extern void gfx_interpolate_frame_mtx(f32 t);
@@ -2068,26 +2120,37 @@ extern void gfx_clear_frame_hud();
 extern void gfx_clear_frame_effects();
 extern void gfx_clear_frame_paintings();
 static void gfx_render_interpolated_frames() {
-    f64 tStartTime = sCurrTime = gfx_get_current_time();
+    bool isUnlimited = sFps->target == UNLIMITED_FPS;
+    bool is30Fps = sFps->target == GAME_UPDATES_PER_SECOND;
+
+    f64 tCurr = gfx_get_current_time();
+    f64 tTarget = sFps->tFrame + GAME_UPDATE_DURATION;
+    f64 tStart = tCurr;
+    f64 tExpected = 0;
+
+    u32 framesToDraw = gfx_get_num_frames_to_draw();
+
+    // Interpolate and render frames
+    // Make sure to draw at least one frame to prevent the game from freezing completely
+    // (including inputs and window events) if the game update duration is greater than 33ms
     do {
+
         // Handle events
         sGfxWapi->handle_events();
         sGfxWapi->get_dimensions(&gfx_current_dimensions.width, &gfx_current_dimensions.height);
         gfx_current_dimensions.aspect_ratio = (f32) gfx_current_dimensions.width / (f32) gfx_current_dimensions.height;
         sGfxAdjustForAspectRatio = (4.f / 3.f) / gfx_current_dimensions.aspect_ratio;
-        struct Object *gfxPaletteModifier = obj_get_first_with_behavior(bhvOmmGfxPaletteModifier);
-        sGfxPaletteModifiers = (gfxPaletteModifier ? &gfxPaletteModifier->oGfxPaletteModifierR : NULL);
 
         // Start frame
-        omm_profiler_start(OMM_PRF_FRM);
-        sGfxProc->mtx = sGfxMtx + 8;
-        sGfxProc->lightChanged = true;
-        sGfxProc->lookAtChanged = true;
         if (sGfxWapi->start_frame()) {
+            omm_profiler_start(OMM_PRF_FRM);
+            sGfxProc->mtx = sGfxMtx + 8;
+            sGfxProc->lightChanged = true;
+            sGfxProc->lookAtChanged = true;
 
             // Patch interpolations
-            sLerpDelta = (f32) ((sCurrTime - tStartTime) * gGameUpdatesPerSecond);
-            gfx_patch_interpolated_frame(sLerpDelta);
+            sFps->lerp = (is30Fps ? 1.f : clamp_0_1_f((tCurr - sFps->tFrame) / GAME_UPDATE_DURATION));
+            gfx_patch_interpolated_frame(sFps->lerp);
 
             // Fill drawing buffer
             sGfxRapi->start_frame();
@@ -2102,31 +2165,33 @@ static void gfx_render_interpolated_frames() {
             sGfxWapi->swap_buffers_begin();
             omm_profiler_stop(OMM_PRF_RDR);
 
-            // Swap buffers and sleep
+            // Swap buffers
             omm_profiler_stop(OMM_PRF_FRM);
-            omm_profiler_frame_drawn();
             sGfxRapi->finish_render();
             sGfxWapi->swap_buffers_end();
+            sFps->frames++;
 
-            // start                                     begin     curr                 end
-            //   [....................|....................|========|--------------------]
-            //                                              \_diff_/ \______remain______/
-            //                                               \__________avail__________/
-            //    \________________________GAME_UPDATE_DURATION_______________________/
-            f64 t_start  = sStartTime;
-            f64 t_begin  = sCurrTime;
-            f64 t_curr   = gfx_get_current_time();
-            f64 t_end    = t_start + GAME_UPDATE_DURATION;
-            f64 t_avail  = t_end - t_begin;
-            f64 t_diff   = t_curr - t_begin;
-            f64 t_remain = t_avail - t_diff;
-            f64 t_sleep  = (t_diff > t_remain ? t_remain : MIN(sDeltaTime, t_avail) - t_diff);
-            if (t_sleep > 0) usleep(1000000.0 * t_sleep);
+            // Wait for the next frame
+            if (!isUnlimited) {
+                f64 tNow = gfx_get_current_time();
+                f64 tElapsed = tNow - tStart;
+                tExpected += (tTarget - tCurr) / (f64) framesToDraw;
+                f64 tSleep = (tExpected - tElapsed);
+                if (tSleep > 0.0) {
+                    usleep((useconds_t) (tSleep * 1000000.0));
+                }
+                framesToDraw--;
+            }
         }
+    } while ((tCurr = gfx_get_current_time()) < tTarget && framesToDraw > 0);
 
-        // Update current
-        sCurrTime = gfx_get_current_time();
-    } while (sCurrTime - sStartTime < 0.96 * GAME_UPDATE_DURATION);
+    // Update FPS every second
+    if ((tCurr = gfx_get_current_time()) >= sFps->tLast + 1.0) {
+        gfx_update_fps(tCurr);
+    }
+
+    // Advance frame time
+    sFps->tFrame = round(tCurr * (f64) gGameUpdatesPerSecond) / (f64) gGameUpdatesPerSecond;
 
     // Clear interpolated stuff
     gfx_clear_frame_mtx();
@@ -2135,6 +2200,9 @@ static void gfx_render_interpolated_frames() {
     gfx_clear_frame_hud();
     gfx_clear_frame_effects();
     gfx_clear_frame_paintings();
+#if LEVEL_PALETTES
+    sGfxProc->palColor[3] = 0;
+#endif
 }
 
 static void gfx_set_config() {
@@ -2146,20 +2214,17 @@ static void gfx_set_config() {
     configForce4by3 = false;
     configDrawDistance = 509;
 #endif
-#if OMM_GAME_IS_RF14
-    configMouse = configCameraMouse;
-#endif
 }
 
 #if OMM_GFX_API_DX
 static void gfx_dxgi_handle_events() {
     extern f64 FRAME_INTERVAL_US_DENOMINATOR;
     extern u64 *frame_timestamp;
-    static s32 sCurrTargetFps = 0;
-    if (sCurrTargetFps != sTargetFps) {
-        FRAME_INTERVAL_US_DENOMINATOR = (3.0 * sTargetFps) / 30;
+    static u32 sCurrTargetFps = 0;
+    if (sCurrTargetFps != sFps->target) {
+        FRAME_INTERVAL_US_DENOMINATOR = (3.0 * sFps->target) / (f64) GAME_UPDATES_PER_SECOND;
         *frame_timestamp = 0;
-        sCurrTargetFps = sTargetFps;
+        sCurrTargetFps = sFps->target;
     }
 }
 #endif
@@ -2183,7 +2248,8 @@ void gfx_init(struct GfxWindowManagerAPI *wapi, struct GfxRenderingAPI *rapi, co
 #elif defined(RAPI_GL_LEGACY)
     "OpenGL 1.1"
 #endif
-    ")";
+    ")"
+    " - Odyssey Mario's Moveset v" OMM_VERSION;
     sGfxWapi = wapi;
     sGfxRapi = rapi;
     sGfxWapi->init(window_title);
@@ -2196,7 +2262,7 @@ void gfx_init(struct GfxWindowManagerAPI *wapi, struct GfxRenderingAPI *rapi, co
     vec4f_copy(sGfxProc->fogColor, gVec4fOne);
     vec4f_copy(sGfxProc->fillColor, gVec4fOne);
     vec4f_copy(sGfxProc->transpColor, gVec4fOne);
-    const u32 precompShaders[] = {
+    for_each_in_(u32, precompShader, {
         0x01200200, 0x00000045, 0x00000200, 0x01200a00,
         0x00000a00, 0x01a00045, 0x00000551, 0x01045045,
         0x05a00a00, 0x01200045, 0x05045045, 0x01045a00,
@@ -2204,9 +2270,8 @@ void gfx_init(struct GfxWindowManagerAPI *wapi, struct GfxRenderingAPI *rapi, co
         0x03200045, 0x03200a00, 0x01a00a6f, 0x01141045,
         0x07a00a00, 0x05200200, 0x03200200, 0x09200200,
         0x0920038d, 0x09200045
-    };
-    for (s32 i = 0; i != (s32) array_length(precompShaders); ++i) {
-        gfx_lookup_or_create_shader_program(precompShaders[i]);
+    }) {
+        gfx_lookup_or_create_shader_program(*precompShader);
     }
     gfx_texture_precache_init();
 }
@@ -2215,7 +2280,6 @@ void gfx_precache_textures() {
 }
 
 void gfx_start_frame() {
-    sStartTime = gfx_get_current_time();
     gfx_init_frame_interpolation();
     gfx_set_config();
 }

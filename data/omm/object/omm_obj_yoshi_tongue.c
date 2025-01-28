@@ -148,7 +148,7 @@ static bool omm_obj_is_yoshi_tongueable(struct Object *o, struct Object *obj, co
     }
 
     // If it's a surface object, check surface intersection
-    if (obj_get_list_index(obj) == OBJ_LIST_SURFACE) {
+    if (obj_get_list_index(obj) == OBJ_LIST_SURFACE && obj->collisionData != NULL) {
         for (struct Surface *surf = obj->oSurfaces; surf; surf = get_next_surface(surf)) {
             if (surface_intersects_cylinder(surf, &o->oPosX, o->hitboxRadius, o->hitboxHeight, o->hitboxDownOffset)) {
                 return true;
@@ -248,6 +248,9 @@ static void bhv_omm_yoshi_tongue_update() {
                                     obj->oDistanceToMario = 0;
                                     obj->oFlags &= ~OBJ_FLAG_COMPUTE_DIST_TO_MARIO;
                                 }
+                            } else if (omm_obj_is_water_diamond(obj)) {
+                                obj->oAction = WATER_LEVEL_DIAMOND_ACT_CHANGE_WATER_LEVEL;
+                                gWDWWaterLevelChanging = 1;
                             } else {
                                 obj->oInteractStatus = (ATTACK_GROUND_POUND_OR_TWIRL | INT_STATUS_INTERACTED | INT_STATUS_WAS_ATTACKED);
                             }

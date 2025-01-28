@@ -5,6 +5,7 @@
 
 #define FUNC_CODE ((u32) 0x434E5546) // FUNC
 #define PNTR_CODE ((u32) 0x52544E50) // PNTR
+#define LUAV_CODE ((u32) 0x5641554C) // LUAV
 #define TEXR_CODE ((u32) 0x52584554) // TEXR
 
 #define F32VTX_S0 ((u16) 0x3346) // F3
@@ -28,9 +29,9 @@ static OmmFileBuffer *omm_models_open(const char *filename, u64 *loaded_bytes) {
 
         // Compressed
         u64 magic = 0;
-        if (fs_read(file, &magic, sizeof(u64)) && magic == DYNOS_BIN_COMPRESS_MAGIC) {
+        if (fs_read(file, &magic, sizeof(u64)) == sizeof(u64) && magic == DYNOS_BIN_COMPRESS_MAGIC) {
             u64 u_length = 0;
-            if (fs_read(file, &u_length, sizeof(u64))) {
+            if (fs_read(file, &u_length, sizeof(u64)) == sizeof(u64)) {
                 u64 c_length = (u64) fs_size(file);
                 if (c_length >= DYNOS_BIN_HEADER_LENGTH) {
                     u8 *c_buffer = mem_new(u8, c_length - DYNOS_BIN_HEADER_LENGTH);
@@ -142,6 +143,14 @@ static void *omm_models_read_pointer(OmmFileBuffer *fb, OmmGfxData *gfx_data, u3
         return omm_models_get_pointer(gfx_data, ptr_name, ptr_data);
     }
 
+    // LUAV
+    if (type == LUAV_CODE) {
+        str_t func_name;
+        fb_read_str(fb, func_name);
+        // return omm_models_get_func_pointer_from_lua_name(func_name); // NOT IMPLEMENTED
+        return omm_models_get_func_pointer(-1); // geo_nop
+    }
+
     // Not a pointer
     return NULL;
 }
@@ -233,6 +242,18 @@ OMM_OPTIMIZE static void omm_models_optimize_triangle_data(OmmDataNode_Gfx *node
     gSPEndDisplayList(node->data + 2);
     node->size = 3;
     prev = node;
+}
+
+static bool omm_models_check_emblem_color(OmmDataNode_Gfx *node) {
+    static const Gfx sSPCopyLightsPlayerPartEMBLEM[] = { gsSPCopyLightsPlayerPart(7) };
+    Gfx *gfx = node->data;
+    for (u32 i = 0; i != (u32) node->size; ++i, gfx++) {
+        if (gfx->words.w0 == sSPCopyLightsPlayerPartEMBLEM[0].words.w0 ||
+            gfx->words.w0 == sSPCopyLightsPlayerPartEMBLEM[1].words.w0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 //
@@ -386,6 +407,15 @@ static void omm_models_load_display_list_data(OmmFileBuffer *fb, OmmGfxData *gfx
         } else {
             display_list_node->data[i].words.w0 = (uintptr_t) words_w0;
             display_list_node->data[i].words.w1 = (uintptr_t) words_w1;
+
+            // (Un)fix TEXTURE_GEN on custom models
+            if (_SHIFTR(words_w0, 24, 8) == G_GEOMETRYMODE) {
+                u32 set = _SHIFTR(words_w1, 0, 24);
+                u32 clr = _SHIFTR(~words_w0, 0, 24);
+                if (set & G_TEXTURE_GEN) { set |= G_TEXTURE_GEN_INVERT; }
+                if (clr & G_TEXTURE_GEN) { clr |= G_TEXTURE_GEN_INVERT; }
+                gSPGeometryMode(&display_list_node->data[i], clr, set);
+            }
         }
     }
 
@@ -395,8 +425,40 @@ static void omm_models_load_display_list_data(OmmFileBuffer *fb, OmmGfxData *gfx
         omm_models_optimize_triangle_data(display_list_node);
     }
 
+    // Check if the model uses the EMBLEM color (sm64coopdx)
+    if (!gfx_data->use_emblem && omm_models_check_emblem_color(display_list_node)) {
+        gfx_data->use_emblem = true;
+    }
+
     // Append
     omm_array_add(gfx_data->display_lists, ptr, display_list_node);
+}
+
+#define FIX_NODE(func, command, ...) { \
+    if (ptr == func) { \
+        __VA_ARGS__; \
+        GeoLayout fix[] = { command }; \
+        u32 fix_size = array_length(fix); \
+        mem_cpy(geo_layout_node->data + offset + 1 - fix_size, fix, fix_size); \
+        return; \
+    } \
+}
+
+#define FIX_NODE_WITH_PARAM(func, command, mod) { \
+    FIX_NODE(func, __EXPAND(command), __EXPAND(u16 param = ((geo_layout_node->data[offset - 1] >> 16) & 0xFFFF) % mod)) \
+}
+
+static void omm_models_fix_geo_mario_node(OmmDataNode_GeoLayout *geo_layout_node, s32 offset, void *ptr) {
+    FIX_NODE(geo_mirror_mario_set_alpha, GEO_ASM(0, geo_mirror_mario_set_alpha));
+    FIX_NODE(geo_switch_mario_stand_run, GEO_SWITCH_CASE(0, geo_switch_mario_stand_run));
+    FIX_NODE(geo_switch_mario_eyes, GEO_SWITCH_CASE(0, geo_switch_mario_eyes));
+    FIX_NODE(geo_mario_tilt_torso, GEO_ASM(0, geo_mario_tilt_torso));
+    FIX_NODE(geo_mario_head_rotation, GEO_ASM(0, geo_mario_head_rotation));
+    FIX_NODE_WITH_PARAM(geo_switch_mario_hand, GEO_SWITCH_CASE(param, geo_switch_mario_hand), 0x10000);
+    FIX_NODE_WITH_PARAM(geo_mario_hand_foot_scaler, GEO_ASM(param, geo_mario_hand_foot_scaler), 3);
+    FIX_NODE(geo_switch_mario_cap_effect, GEO_SWITCH_CASE(0, geo_switch_mario_cap_effect));
+    FIX_NODE(geo_switch_mario_cap_on_off, GEO_SWITCH_CASE(0, geo_switch_mario_cap_on_off));
+    FIX_NODE_WITH_PARAM(geo_mario_rotate_wing_cap_wings, GEO_ASM(param, geo_mario_rotate_wing_cap_wings), 2);
 }
 
 static void omm_models_load_geo_layout_data(OmmFileBuffer *fb, OmmGfxData *gfx_data) {
@@ -413,6 +475,7 @@ static void omm_models_load_geo_layout_data(OmmFileBuffer *fb, OmmGfxData *gfx_d
         void *ptr = omm_models_read_pointer(fb, gfx_data, value);
         if (ptr) {
             geo_layout_node->data[i] = (uintptr_t) ptr;
+            omm_models_fix_geo_mario_node(geo_layout_node, i, ptr);
         } else {
             geo_layout_node->data[i] = (uintptr_t) value;
         }
@@ -423,36 +486,37 @@ static void omm_models_load_geo_layout_data(OmmFileBuffer *fb, OmmGfxData *gfx_d
 }
 
 static void omm_models_load_animation_data(OmmFileBuffer *fb, OmmGfxData *gfx_data) {
-    OmmDataNode_OmmAnimData *anim_node = mem_new(OmmDataNode_OmmAnimData, 1);
+    OmmDataNode_Animation *anim_node = mem_new(OmmDataNode_Animation, 1);
     s32 values_length, index_length;
 
     // Name
     fb_read_str(fb, anim_node->name);
 
     // Data
-    anim_node->data              = mem_new(OmmAnimData, 1);
+    anim_node->data              = mem_new(Animation, 1);
     anim_node->data->flags       = fb_read(fb, s16);
     UNUSED s16 anim_y_trans_div  = fb_read(fb, s16);
-    anim_node->data->start_frame = fb_read(fb, s16);
-    anim_node->data->loop_start  = fb_read(fb, s16);
-    anim_node->data->loop_end    = fb_read(fb, s16);
-    anim_node->data->bone_count  = fb_read(fb, s16);
-    anim_node->data->length      = fb_read(fb, u32);
+    anim_node->data->mStartFrame = fb_read(fb, s16);
+    anim_node->data->mLoopStart  = fb_read(fb, s16);
+    anim_node->data->mLoopEnd    = fb_read(fb, s16);
+    UNUSED s16 bone_count        = fb_read(fb, s16);
+    UNUSED u32 length            = fb_read(fb, u32);
     anim_node->data->values      = (const s16 *) fb_read_buffer(fb, sizeof(s16), &values_length);
     anim_node->data->index       = (const u16 *) fb_read_buffer(fb, sizeof(u16), &index_length);
+    anim_node->data->length      = ANIM_LENGTH(index_length, values_length);
 
     // Append
     omm_array_add(gfx_data->animations, ptr, anim_node);
 }
 
 static void omm_models_load_animation_table(OmmFileBuffer *fb, OmmGfxData *gfx_data) {
-    OmmAnimData *anim_ptr = NULL;
+    Animation *anim_ptr = NULL;
 
     // Data
     str_t anim_name;
     fb_read_str(fb, anim_name);
     if (strcmp(anim_name, "NULL") != 0) {
-        omm_data_nodes_for_each(gfx_data->animations, anim_node, OmmAnimData) {
+        omm_data_nodes_for_each(gfx_data->animations, anim_node, Animation) {
             if (strcmp(anim_node->name, anim_name) == 0) {
                 anim_ptr = (void *) anim_node->data;
                 break;
@@ -526,7 +590,7 @@ OmmGfxData *omm_models_load_from_binary(const char *pack_folder, const char **ac
                     case OMM_MODELS_DATA_TYPE_ANIMATION_TABLE: omm_models_load_animation_table  (fb, gfx_data); break;
                     case OMM_MODELS_DATA_TYPE_PRIORITY:        omm_models_load_priority         (fb, gfx_data); break;
                     default: {
-                        omm_log("In file \"%s\", at offset 0x%08X: Unknown data type (0x%02X)",, filename, (u32) fb_tell(fb), data_type);
+                        omm_log_warning("In file \"%s\", at offset 0x%08X: Unknown data type (0x%02X)",, filename, (u32) fb_tell(fb), data_type);
                         done = true;
                     } break;
                 }
@@ -571,11 +635,15 @@ void omm_models_load_all(u64 *loaded_bytes) {
                 pack->caching = OMM_MODELS_CACHING_ENABLED;
             } else if (pack->caching == OMM_MODELS_CACHING_ENABLED) {
                 omm_log("Caching model pack: %s\n",, pack->name);
-                for (s32 actor_index = 0; actor_index != omm_models_get_actor_count(); ++actor_index) {
-                    OmmGfxData *gfx_data = omm_models_load_from_binary(pack->path, omm_models_get_actor_names(actor_index), loaded_bytes);
-                    if (gfx_data) {
-                        OmmDataNode_GeoLayout *geo_layout_node = (OmmDataNode_GeoLayout *) omm_array_get(gfx_data->geo_layouts, ptr, omm_array_count(gfx_data->geo_layouts) - 1);
-                        geo_layout_to_graph_node(NULL, geo_layout_node->data);
+                if (pack->cs_index) {
+                    omm_models_cs_load_all(pack->cs_index, loaded_bytes);
+                } else {
+                    for (s32 actor_index = 0; actor_index != omm_models_get_actor_count(); ++actor_index) {
+                        OmmGfxData *gfx_data = omm_models_load_from_binary(pack->path, omm_models_get_actor_names(actor_index), loaded_bytes);
+                        if (gfx_data) {
+                            OmmDataNode_GeoLayout *geo_layout_node = (OmmDataNode_GeoLayout *) omm_array_get(gfx_data->geo_layouts, ptr, omm_array_count(gfx_data->geo_layouts) - 1);
+                            geo_layout_to_graph_node(NULL, geo_layout_node->data);
+                        }
                     }
                 }
                 pack->caching = OMM_MODELS_CACHING_CACHED;
@@ -601,15 +669,19 @@ u64 omm_models_precache_get_size() {
             OmmPackData *pack = p_pack->as_ptr;
             if (pack && pack->exists && pack->enabled) {
                 pack->caching = OMM_MODELS_CACHING_ENABLED;
-                for (s32 actor_index = 0; actor_index != omm_models_get_actor_count(); ++actor_index) {
-                    const char *pack_folder = pack->path;
-                    const char **actor_names = omm_models_get_actor_names(actor_index);
-                    for (const char **actor_name = actor_names; *actor_name; ++actor_name) {
-                        sys_path_t filename;
-                        str_cat(filename, sizeof(filename), pack_folder, "/", *actor_name, ".bin");
-                        s64 fsize = fs_fsize(filename);
-                        if (fsize != -1) {
-                            size += fsize;
+                if (pack->cs_index) {
+                    size += omm_models_cs_get_size(pack->cs_index);
+                } else {
+                    for (s32 actor_index = 0; actor_index != omm_models_get_actor_count(); ++actor_index) {
+                        const char *pack_folder = pack->path;
+                        const char **actor_names = omm_models_get_actor_names(actor_index);
+                        for (const char **actor_name = actor_names; *actor_name; ++actor_name) {
+                            sys_path_t filename;
+                            str_cat(filename, sizeof(filename), pack_folder, "/", *actor_name, ".bin");
+                            s64 fsize = fs_fsize(filename);
+                            if (fsize != -1) {
+                                size += fsize;
+                            }
                         }
                     }
                 }

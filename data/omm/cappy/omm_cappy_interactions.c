@@ -15,6 +15,7 @@ static bool omm_cappy_is_obj_targetable(struct Object *o, struct MarioState *m) 
            omm_obj_is_bully(o) ||
            omm_obj_is_grabbable(o) ||
            omm_obj_is_unagis_tail(o) ||
+           omm_obj_is_water_diamond(o) ||
            omm_obj_is_mushroom_1up(o) ||
            omm_obj_is_exclamation_box(o) ||
           (omm_obj_is_star_or_key(o) && OMM_CHEAT_CAPPY_CAN_COLLECT_STARS) ||
@@ -136,7 +137,7 @@ void omm_cappy_process_interactions(struct Object *cappy, struct MarioState *m) 
                 .oPosX = m->pos[0],
                 .oPosY = m->pos[1],
                 .oPosZ = m->pos[2],
-                .hitboxRadius = 50.f,
+                .hitboxRadius = m->marioObj->hitboxRadius * 1.35f,
                 .hitboxHeight = m->marioObj->hitboxHeight,
                 .hitboxDownOffset = 0.f
             };
@@ -155,7 +156,7 @@ void omm_cappy_process_interactions(struct Object *cappy, struct MarioState *m) 
                 omm_cappy_return_to_mario(cappy);
                 spawn_object(m->marioObj, MODEL_NONE, bhvHorStarParticleSpawner);
                 SFX(SOUND_GENERAL_BOING1);
-                gOmmStats->cappyBounces++;
+                omm_stats_increase(cappyBounces, 1);
                 return;
             }
         }
@@ -172,5 +173,5 @@ void omm_cappy_process_interactions(struct Object *cappy, struct MarioState *m) 
     }
 
     // Object interactions
-    omm_obj_process_interactions(cappy, OBJ_INT_PRESET_CAPPY);
+    omm_obj_process_interactions(cappy, omm_mario_is_milk(m) ? OBJ_INT_PRESET_CAPPY_STRONG : OBJ_INT_PRESET_CAPPY);
 }

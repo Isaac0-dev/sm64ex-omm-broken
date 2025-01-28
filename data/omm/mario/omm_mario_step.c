@@ -3,15 +3,17 @@
 #undef OMM_ALL_HEADERS
 
 #if OMM_GAME_IS_R96X
-#define speed_modifier(...)     cheats_speed_modifier(__VA_ARGS__)
-#define jump_modifier(...)      cheats_jump_modifier(__VA_ARGS__)
-#define swim_modifier(...)      cheats_swim_modifier(__VA_ARGS__)
-#define walk_on_quicksand(...)  cheats_walk_on_hazards(__VA_ARGS__)
+#define speed_modifier(m)       cheats_speed_modifier(m) * (omm_mario_is_milk(m) ? 2 : 1)
+#define jump_modifier(m)        cheats_jump_modifier(m) * (omm_mario_is_milk(m) ? 2 : 1)
+#define swim_modifier(m)        cheats_swim_modifier(m) * (omm_mario_is_milk(m) ? 2 : 1)
+#define walk_on_quicksand(m)    cheats_walk_on_hazards(m)
+#define find_ceil_mario(...)    (omm_mario_is_milk(m) ? CELL_HEIGHT_LIMIT + 160.f : find_ceil(__VA_ARGS__))
 #else
-#define speed_modifier(...)     (OMM_CHEAT_SUPER_SPEED ? 3 : 1)
-#define jump_modifier(...)      (OMM_CHEAT_SUPER_SPEED ? 3 : 1)
-#define swim_modifier(...)      (OMM_CHEAT_SUPER_SPEED ? 3 : 1)
-#define walk_on_quicksand(...)  (OMM_CHEAT_WALK_ON_QUICKSAND)
+#define speed_modifier(m)       (OMM_CHEAT_SUPER_SPEED ? 3 : 1)
+#define jump_modifier(m)        (OMM_CHEAT_SUPER_SPEED ? 3 : 1)
+#define swim_modifier(m)        (OMM_CHEAT_SUPER_SPEED ? 3 : 1)
+#define walk_on_quicksand(m)    (OMM_CHEAT_WALK_ON_QUICKSAND)
+#define find_ceil_mario(...)    find_ceil(__VA_ARGS__)
 #endif
 
 // Enhanced Mario step system
@@ -73,21 +75,21 @@ OMM_INLINE void clamp_mario_pos(struct MarioState *m) {
 static void omm_data_stats_update_distances(struct MarioState *m, Vec3f prev, Vec3f curr, s32 stepType) {
     u32 dist = (u32) vec3f_dist(prev, curr);
     if (stepType == OBJECT_STEP) {
-        gOmmStats->distanceTotal[1]      += dist;
-        gOmmStats->distanceOnGround[1]   += dist * obj_is_on_ground(gOmmCapture);
-        gOmmStats->distanceAirborne[1]   += dist * !obj_is_on_ground(gOmmCapture);
-        gOmmStats->distanceUnderwater[1] += dist * obj_is_underwater(gOmmCapture, find_water_level(curr[0], curr[2]));
-        gOmmStats->distanceWingCap[1]    += dist * ((m->flags & MARIO_WING_CAP) != 0);
-        gOmmStats->distanceMetalCap[1]   += dist * ((m->flags & MARIO_METAL_CAP) != 0);
-        gOmmStats->distanceVanishCap[1]  += dist * ((m->flags & MARIO_VANISH_CAP) != 0);
+        omm_stats_increase(distanceTotal[1],      dist);
+        omm_stats_increase(distanceOnGround[1],   dist * obj_is_on_ground(gOmmCapture));
+        omm_stats_increase(distanceAirborne[1],   dist * !obj_is_on_ground(gOmmCapture));
+        omm_stats_increase(distanceUnderwater[1], dist * obj_is_underwater(gOmmCapture, find_water_level(curr[0], curr[2])));
+        omm_stats_increase(distanceWingCap[1],    dist * ((m->flags & MARIO_WING_CAP) != 0));
+        omm_stats_increase(distanceMetalCap[1],   dist * ((m->flags & MARIO_METAL_CAP) != 0));
+        omm_stats_increase(distanceVanishCap[1],  dist * ((m->flags & MARIO_VANISH_CAP) != 0));
     } else {
-        gOmmStats->distanceTotal[0]      += dist;
-        gOmmStats->distanceOnGround[0]   += dist * (stepType == GROUND_STEP);
-        gOmmStats->distanceAirborne[0]   += dist * (stepType == AIR_STEP || stepType == HANG_STEP);
-        gOmmStats->distanceUnderwater[0] += dist * (stepType == WATER_STEP);
-        gOmmStats->distanceWingCap[0]    += dist * ((m->flags & MARIO_WING_CAP) != 0);
-        gOmmStats->distanceMetalCap[0]   += dist * ((m->flags & MARIO_METAL_CAP) != 0);
-        gOmmStats->distanceVanishCap[0]  += dist * ((m->flags & MARIO_VANISH_CAP) != 0);
+        omm_stats_increase(distanceTotal[0],      dist);
+        omm_stats_increase(distanceOnGround[0],   dist * (stepType == GROUND_STEP));
+        omm_stats_increase(distanceAirborne[0],   dist * (stepType == AIR_STEP || stepType == HANG_STEP));
+        omm_stats_increase(distanceUnderwater[0], dist * (stepType == WATER_STEP));
+        omm_stats_increase(distanceWingCap[0],    dist * ((m->flags & MARIO_WING_CAP) != 0));
+        omm_stats_increase(distanceMetalCap[0],   dist * ((m->flags & MARIO_METAL_CAP) != 0));
+        omm_stats_increase(distanceVanishCap[0],  dist * ((m->flags & MARIO_VANISH_CAP) != 0));
     }
 }
 
@@ -223,7 +225,7 @@ static s32 omm_mario_perform_ground_sub_step(struct MarioState *m, Vec3f nextPos
 
     // Ceiling
     struct Surface *ceil = NULL;
-    f32 ceilLower = find_ceil(nextPos[0], floorHeight + 80.f, nextPos[2], &ceil) - 160.f;
+    f32 ceilLower = find_ceil_mario(nextPos[0], floorHeight + 80.f, nextPos[2], &ceil) - 160.f;
     f32 ceilUpper = (OMM_STEP_FIX_EXPOSED_CEILINGS ? (ceilLower + 240.f) : CELL_HEIGHT_LIMIT);
 
     // Out of bounds
@@ -410,7 +412,7 @@ u32 mario_update_quicksand(struct MarioState *m, f32 sinkingSpeed) {
                     }
                     if (!OMM_CHEAT_GOD_MODE && !m->invincTimer) {
                         if ((m->health - OMM_HEALTH_ODYSSEY_PER_SEGMENT) <= OMM_HEALTH_ODYSSEY_DEAD) {
-                            gOmmStats->hitsTaken += (m->health > OMM_HEALTH_ODYSSEY_DEAD);
+                            omm_stats_increase(hitsTaken, m->health > OMM_HEALTH_ODYSSEY_DEAD);
                             m->health = OMM_HEALTH_ODYSSEY_DEAD;
                             update_mario_sound_and_camera(m);
                             return drop_and_set_mario_action(m, ACT_QUICKSAND_DEATH, 0);
@@ -546,7 +548,7 @@ static s32 omm_mario_perform_air_sub_step(struct MarioState *m, Vec3f intendedPo
 
     // Ceiling
     struct Surface *ceil;
-    f32 ceilLower = find_ceil(nextPos[0], floorHeight + 80.f, nextPos[2], &ceil) - 160.f;
+    f32 ceilLower = find_ceil_mario(nextPos[0], floorHeight + 80.f, nextPos[2], &ceil) - 160.f;
     f32 ceilUpper = (OMM_STEP_FIX_EXPOSED_CEILINGS ? (ceilLower + 240.f) : CELL_HEIGHT_LIMIT);
 
     // Out of bounds
@@ -897,7 +899,7 @@ static s32 omm_mario_perform_hang_sub_step(struct MarioState *m, Vec3f nextPos) 
 
     // Ceiling
     struct Surface *ceil = NULL;
-    f32 ceilLower = find_ceil(nextPos[0], floorHeight + 80.f, nextPos[2], &ceil) - 160.f;
+    f32 ceilLower = find_ceil_mario(nextPos[0], floorHeight + 80.f, nextPos[2], &ceil) - 160.f;
     f32 ceilUpper = (OMM_STEP_FIX_EXPOSED_CEILINGS ? (ceilLower + 240.f) : CELL_HEIGHT_LIMIT);
 
     // Out of bounds
@@ -1012,7 +1014,7 @@ static s32 omm_mario_perform_water_sub_step(struct MarioState *m, Vec3f nextPos)
 
     // Ceiling
     struct Surface *ceil = NULL;
-    f32 ceilLower = find_ceil(nextPos[0], floorHeight + 80.f, nextPos[2], &ceil) - 160.f;
+    f32 ceilLower = find_ceil_mario(nextPos[0], floorHeight + 80.f, nextPos[2], &ceil) - 160.f;
     f32 ceilUpper = (OMM_STEP_FIX_EXPOSED_CEILINGS ? (ceilLower + 240.f) : CELL_HEIGHT_LIMIT);
 
     // Out of bounds

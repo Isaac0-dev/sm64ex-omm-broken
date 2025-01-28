@@ -51,11 +51,19 @@ s32 omm_act_peach_float(struct MarioState *m) {
         action_condition(gOmmPeach->floated, ACT_OMM_PEACH_GLIDE, 0, RETURN_CANCEL);
         gOmmPeach->floatTimer = 0;
         gOmmPeach->floated = true;
-        m->actionState = 1;
+        m->marioObj->oAnimID = -1;
+        if (omm_peach_vibe_is_gloom()) {
+            gOmmMario->state.airCombo = 0;
+            m->actionState = 2;
+            SFX(SOUND_ACTION_SPIN);
+            PFX(PARTICLE_HORIZONTAL_STAR);
+        } else {
+            m->actionState = 1;
+        }
     }
 
     // Cancels
-    action_condition(!OMM_PLAYER_IS_PEACH, ACT_FREEFALL, 0, RETURN_CANCEL);
+    action_condition(!OMM_PLAYER_IS_PEACH || omm_mario_is_milk(m), ACT_FREEFALL, 0, RETURN_CANCEL);
     action_cappy(1, ACT_OMM_CAPPY_THROW_AIRBORNE, 0, RETURN_CANCEL);
     action_z_pressed(OMM_MOVESET_ODYSSEY, ACT_GROUND_POUND, 0, RETURN_CANCEL);
     action_b_pressed(OMM_MOVESET_ODYSSEY, ACT_JUMP_KICK, 0, RETURN_CANCEL);
@@ -85,8 +93,20 @@ s32 omm_act_peach_float(struct MarioState *m) {
     action_condition(step == AIR_STEP_HIT_LAVA_WALL && lava_boost_on_wall(m), ACT_LAVA_BOOST, 1, RETURN_BREAK);
 
     // Gfx
-    if (obj_anim_is_at_end(m->marioObj)) m->marioObj->oAnimID = -1;
-    ANM(MARIO_ANIM_BEND_KNESS_RIDING_SHELL, 1.f);
+    if (m->actionState > 1) {
+        if (OMM_EXTRAS_SMO_ANIMATIONS) {
+            ANM(MARIO_ANIM_OMM_CAPPY_RAINBOW_SPIN, 2.5f);
+        } else {
+            ANM(MARIO_ANIM_FINAL_BOWSER_RAISE_HAND_SPIN, 2.5f);
+            obj_anim_clamp_frame(m->marioObj, 74, 94);
+        }
+        if (m->actionState++ >= 9) {
+            m->actionState = 1;
+        }
+    } else {
+        if (obj_anim_is_at_end(m->marioObj)) m->marioObj->oAnimID = -1;
+        ANM(MARIO_ANIM_BEND_KNESS_RIDING_SHELL, 1.f);
+    }
     PFX(PARTICLE_SPARKLES);
     gOmmPeach->floatTimer++;
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
@@ -100,7 +120,7 @@ s32 omm_act_peach_glide(struct MarioState *m) {
     }
 
     // Cancels
-    action_condition(!OMM_PLAYER_IS_PEACH, ACT_FREEFALL, 0, RETURN_CANCEL);
+    action_condition(!OMM_PLAYER_IS_PEACH || omm_mario_is_milk(m), ACT_FREEFALL, 0, RETURN_CANCEL);
     action_cappy(1, ACT_OMM_CAPPY_THROW_AIRBORNE, 0, RETURN_CANCEL);
     action_z_pressed(OMM_MOVESET_ODYSSEY, ACT_GROUND_POUND, 0, RETURN_CANCEL);
     action_b_pressed(OMM_MOVESET_ODYSSEY, ACT_JUMP_KICK, 0, RETURN_CANCEL);

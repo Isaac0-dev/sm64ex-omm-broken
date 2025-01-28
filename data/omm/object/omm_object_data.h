@@ -36,16 +36,17 @@
 //      OBJ_FLAG_COMPUTE_ANGLE_TO_MARIO                     (1 << 13) // 0x00002000
 //      OBJ_FLAG_PERSISTENT_RESPAWN                         (1 << 14) // 0x00004000
 //      OBJ_FLAG_8000                                       (1 << 15) // 0x00008000
-#define OBJ_FLAG_GFX_INITED                                 (1 << 20) // 0x00100000
-#define OBJ_FLAG_DONT_RENDER_ON_INIT                        (1 << 21) // 0x00200000
-#define OBJ_FLAG_UPDATE_AREA_INDEX                          (1 << 22) // 0x00400000
-#define OBJ_FLAG_SHADOW_COPY_OBJ_POS                        (1 << 23) // 0x00800000
-#define OBJ_FLAG_NO_SHADOW                                  (1 << 24) // 0x01000000
-#define OBJ_FLAG_MONEYBAG_COIN_INTERACTED                   (1 << 25) // 0x02000000
-#define OBJ_FLAG_YOSHI_DESTROY                              (1 << 26) // 0x04000000
-#define OBJ_FLAG_SPARKLY_NOT_ENEMY                          (1 << 27) // 0x08000000
-#define OBJ_FLAG_DESTROYED                                  (1 << 28) // 0x10000000
-#define OBJ_FLAG_CAPTURE_AFTER_WARP                         (1 << 29) // 0x20000000
+#define OBJ_FLAG_GFX_INITED                                 (1 << 16) // 0x00010000
+#define OBJ_FLAG_DONT_RENDER_ON_INIT                        (1 << 17) // 0x00020000
+#define OBJ_FLAG_UPDATE_AREA_INDEX                          (1 << 18) // 0x00040000
+#define OBJ_FLAG_SHADOW_COPY_OBJ_POS                        (1 << 19) // 0x00080000
+#define OBJ_FLAG_NO_SHADOW                                  (1 << 20) // 0x00100000
+#define OBJ_FLAG_MONEYBAG_COIN_INTERACTED                   (1 << 21) // 0x00200000
+#define OBJ_FLAG_YOSHI_DESTROY                              (1 << 22) // 0x00400000
+#define OBJ_FLAG_SPARKLY_NOT_ENEMY                          (1 << 23) // 0x00800000
+#define OBJ_FLAG_DESTROYED                                  (1 << 24) // 0x01000000
+#define OBJ_FLAG_CAPTURE_AFTER_WARP                         (1 << 25) // 0x02000000
+#define OBJ_FLAG_INVISIBLE_MODE                             (1 << 26) // 0x04000000
 //      OBJ_FLAG_30                                         (1 << 30) // 0x40000000
 
 //      INT_STATUS_MARIO_STUNNED                            (1 <<  0) // 0x00000001
@@ -317,6 +318,7 @@
 
 #define OBJ_INT_PRESET_ATTACK_SURFACE                       (OBJ_INT_ATTACK_WEAK | OBJ_INT_ATTACK_STRONG | OBJ_INT_ATTACK_DESTRUCTIBLE)
 #define OBJ_INT_PRESET_CAPPY                                (OBJ_INT_ATTACK_WEAK | OBJ_INT_ATTACK_BREAKABLE | OBJ_INT_COLLECT_COINS | OBJ_INT_COLLECT_TRIGGERS | OBJ_INT_GRAB_OBJECTS | (OBJ_INT_COLLECT_STARS * OMM_CHEAT_CAPPY_CAN_COLLECT_STARS))
+#define OBJ_INT_PRESET_CAPPY_STRONG                         (OBJ_INT_ATTACK_WEAK | OBJ_INT_ATTACK_STRONG | OBJ_INT_ATTACK_DESTRUCTIBLE | OBJ_INT_ATTACK_BREAKABLE | OBJ_INT_COLLECT_COINS | OBJ_INT_COLLECT_TRIGGERS | (OBJ_INT_COLLECT_STARS * OMM_CHEAT_CAPPY_CAN_COLLECT_STARS))
 #define OBJ_INT_PRESET_EXPLOSION                            (OBJ_INT_ATTACK_WEAK | OBJ_INT_ATTACK_STRONG | OBJ_INT_ATTACK_BREAKABLE | OBJ_INT_ATTACK_DESTRUCTIBLE)
 #define OBJ_INT_PRESET_WHOMP_SHOCKWAVE                      (OBJ_INT_ATTACK_WEAK | OBJ_INT_ATTACK_STRONG | OBJ_INT_ATTACK_BREAKABLE | OBJ_INT_ATTACK_DESTRUCTIBLE | OBJ_INT_COLLECT_COINS | OBJ_INT_COLLECT_TRIGGERS)
 #define OBJ_INT_PRESET_SPINDRIFT_SHOCKWAVE                  (OBJ_INT_ATTACK_WEAK | OBJ_INT_ATTACK_BREAKABLE | OBJ_INT_COLLECT_COINS | OBJ_INT_COLLECT_TRIGGERS | OBJ_INT_COLLECT_STARS)
@@ -351,7 +353,7 @@
 #define OBJ_INT_PRESET_PEACH_VIBE_JOY_GUST                  (OBJ_INT_ATTACK_WEAK | OBJ_INT_COLLECT_COINS | OBJ_INT_COLLECT_TRIGGERS | OBJ_INT_ATTRACT_COINS_STRONG | OBJ_INT_ATTRACT_COINS_RANGE(600) | OBJ_INT_PERRY_ATTACK)
 #define OBJ_INT_PRESET_PEACH_VIBE_GLOOM_AURA                (OBJ_INT_ATTACK_FLAMES | OBJ_INT_PERRY_ATTACK)
 #define OBJ_INT_PRESET_PEACH_VIBE_RAGE_AURA                 (OBJ_INT_ATTACK_WEAK | (OBJ_INT_ATTACK_ONE_HIT * omm_mario_is_ground_pounding(gMarioState)) | OBJ_INT_PERRY_ATTACK)
-#define OBJ_INT_PRESET_PEACH_VIBE_RAGE_GROUND_POUND_LAND    (OBJ_INT_ATTACK_WEAK | OBJ_INT_ATTACK_STRONG | OBJ_INT_ATTACK_DESTRUCTIBLE | OBJ_INT_ATTACK_BREAKABLE |  OBJ_INT_ATTACK_ONE_HIT | OBJ_INT_PERRY_ATTACK)
+#define OBJ_INT_PRESET_PEACH_VIBE_RAGE_GROUND_POUND_LAND    (OBJ_INT_ATTACK_WEAK | OBJ_INT_ATTACK_STRONG | OBJ_INT_ATTACK_DESTRUCTIBLE | OBJ_INT_ATTACK_BREAKABLE | OBJ_INT_ATTACK_ONE_HIT | OBJ_INT_PERRY_ATTACK)
 #define OBJ_INT_PRESET_PEACH_VIBE_RAGE_SHOCKWAVE            (OBJ_INT_ATTACK_WEAK | OBJ_INT_ATTACK_STRONG | OBJ_INT_ATTACK_BREAKABLE | OBJ_INT_PERRY_ATTACK)
 
 #define OBJ_GOOMBA_STACK_MAX                                (10)
@@ -384,11 +386,52 @@
 // Gfx/Geo macros
 //
 
-#define OMM_VTX_RECT(size, fleft, ftop, fmax)               { { { -size, -size, 0 }, 0, { (512 * 32 * (fleft + 0)) / fmax, (512 * 32 * (ftop + 1)) / fmax }, { 0xFF, 0xFF, 0xFF, 0xFF } } }, { { { +size, -size, 0 }, 0, { (512 * 32 * (fleft + 1)) / fmax, (512 * 32 * (ftop + 1)) / fmax }, { 0xFF, 0xFF, 0xFF, 0xFF } } }, { { { +size, +size, 0 }, 0, { (512 * 32 * (fleft + 1)) / fmax, (512 * 32 * (ftop + 0)) / fmax }, { 0xFF, 0xFF, 0xFF, 0xFF } } }, { { { -size, +size, 0 }, 0, { (512 * 32 * (fleft + 0)) / fmax, (512 * 32 * (ftop + 0)) / fmax }, { 0xFF, 0xFF, 0xFF, 0xFF } } }
-#define OMM_GFX_QUAD(vertices, frame)                       gsSPVertex(vertices + 4 * frame, 4, 0), gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0), gsSPEndDisplayList()
-#define OMM_GFX_DL(name, texture, triangles, frame)         static const Gfx name##_##frame##_gfx[] = { gsSPClearGeometryMode(G_LIGHTING), gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0), gsDPLoadTextureBlock(texture, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0), gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON), gsSPDisplayList(triangles +  3 * frame), gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF), gsSPSetGeometryMode(G_LIGHTING), gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE), gsSPEndDisplayList(), }
-#define OMM_GEO_BRANCH(geo)                                 GEO_NODE_START(), GEO_OPEN_NODE(), GEO_BRANCH(1, geo), GEO_CLOSE_NODE(), GEO_END()
-#define OMM_GEO_BILLBOARD_AND_BRANCH(geo)                   GEO_NODE_START(), GEO_OPEN_NODE(), GEO_BILLBOARD(), GEO_OPEN_NODE(), GEO_BRANCH(1, geo), GEO_CLOSE_NODE(), GEO_CLOSE_NODE(), GEO_END()
+#define OMM_VTX_RECT_XY(xmin, xmax, ymin, ymax, row, col, nrows, ncols) \
+    { { { xmin, ymin, 0 }, 0, { (512 * 32 * (col + 0)) / ncols, (512 * 32 * (row + 1)) / nrows }, { 0xFF, 0xFF, 0xFF, 0xFF } } }, \
+    { { { xmax, ymin, 0 }, 0, { (512 * 32 * (col + 1)) / ncols, (512 * 32 * (row + 1)) / nrows }, { 0xFF, 0xFF, 0xFF, 0xFF } } }, \
+    { { { xmax, ymax, 0 }, 0, { (512 * 32 * (col + 1)) / ncols, (512 * 32 * (row + 0)) / nrows }, { 0xFF, 0xFF, 0xFF, 0xFF } } }, \
+    { { { xmin, ymax, 0 }, 0, { (512 * 32 * (col + 0)) / ncols, (512 * 32 * (row + 0)) / nrows }, { 0xFF, 0xFF, 0xFF, 0xFF } } }
+
+#define OMM_VTX_RECT(size, row, col, nrows, ncols) \
+    OMM_VTX_RECT_XY(-size, +size, -size, +size, row, col, nrows, ncols)
+
+#define OMM_GFX_QUAD(vertices, frame) \
+    gsSPVertex(vertices + 4 * frame, 4, 0), \
+    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0), \
+    gsSPEndDisplayList()
+
+#define OMM_GFX_DL_COMB(name, texture, triangles, frame, ...) \
+static const Gfx name##_##frame##_gfx[] = { \
+    gsSPClearGeometryMode(G_LIGHTING), \
+    gsDPSetCombineLERP(__VA_ARGS__), \
+    gsDPLoadTextureBlock(texture, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0), \
+    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON), \
+    gsSPDisplayList(triangles + 3 * frame), \
+    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF), \
+    gsSPSetGeometryMode(G_LIGHTING), \
+    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE), \
+    gsSPEndDisplayList(), \
+}
+
+#define OMM_GFX_DL(name, texture, triangles, frame) \
+    OMM_GFX_DL_COMB(name, texture, triangles, frame, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0)
+
+#define OMM_GEO_BRANCH(geo) \
+    GEO_NODE_START(), \
+    GEO_OPEN_NODE(), \
+        GEO_BRANCH(1, geo), \
+    GEO_CLOSE_NODE(), \
+    GEO_END()
+
+#define OMM_GEO_BILLBOARD_AND_BRANCH(geo) \
+    GEO_NODE_START(), \
+    GEO_OPEN_NODE(), \
+        GEO_BILLBOARD(), \
+        GEO_OPEN_NODE(), \
+            GEO_BRANCH(1, geo), \
+        GEO_CLOSE_NODE(), \
+    GEO_CLOSE_NODE(), \
+    GEO_END()
 
 //
 // Geo layouts

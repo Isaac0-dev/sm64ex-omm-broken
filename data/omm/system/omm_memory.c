@@ -31,6 +31,18 @@ u32 __str_hash(const char *str) {
     return hash;
 }
 
+char *__str_dup(const char *str) {
+    if (str) {
+        u32 len = (u32) strlen(str);
+        char *dup = mem_new(char, len + 1);
+        if (dup) {
+            mem_cpy(dup, str, len);
+            return dup;
+        }
+    }
+    return NULL;
+}
+
 void __str_cpy(char *dst, s32 dst_siz, const char *src) {
     if (src && dst && dst_siz) {
         mem_cpy(dst, src, min_s(strlen(src) + 1, dst_siz - 1));
@@ -69,9 +81,9 @@ void __str_cat(char *dst, s32 dst_siz, const char **src) {
     if (src && dst && dst_siz) {
         for (; *src && dst_siz; ++src) {
             __str_cpy(dst, dst_siz, *src);
-            s32 src_siz = (s32) strlen(*src);
-            dst += src_siz;
-            dst_siz = max_s(0, dst_siz - src_siz);
+            s32 src_len = (s32) strlen(*src);
+            dst += src_len;
+            dst_siz = max_s(0, dst_siz - src_len);
         }
     }
 }

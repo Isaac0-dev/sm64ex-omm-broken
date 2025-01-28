@@ -152,6 +152,7 @@ void omm_cappy_flaming_bobomb_update_gfx(struct Object *o) {
     vec3f_copy(&o->oFlamingBobombAura->oScaleX, &o->oScaleX);
     vec3f_mul(&o->oFlamingBobombAura->oScaleX, 6.f);
     o->oFlamingBobombAura->oGraphYOffset = o->oScaleY * 60.f;
+    obj_copy_visibility_and_transparency(o->oFlamingBobombAura, o);
     if (damaged && (gGlobalTimer & 3) >= 2) {
         o->oFlamingBobombAura->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
     } else {

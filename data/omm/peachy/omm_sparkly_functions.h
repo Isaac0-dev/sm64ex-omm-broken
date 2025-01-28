@@ -38,6 +38,7 @@ void omm_sparkly_clear_mode(s32 sparklyMode);
 void omm_sparkly_clear_all();
 bool omm_sparkly_read(const char *name, const char *value, bool *invalid);
 void omm_sparkly_write();
+bool omm_sparkly_are_regular_cheats_enabled(struct MarioState *m, bool skipIfCheatsDisabled);
 bool omm_sparkly_check_cheats(struct MarioState *m);
 void omm_sparkly_turn_off_cheats();
 
@@ -83,6 +84,7 @@ bool omm_sparkly_level__all_star_rings(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level_jrb__flooded_frozen(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level_ddd__switch_and_boxes(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level_sl__snowmen_at_top(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level_wdw__secret(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level_wdw__star_box_red_coins(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level_bitdw__goomba_and_coins(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level_bitfs__six_secrets(struct MarioState *m, const s32 *params);

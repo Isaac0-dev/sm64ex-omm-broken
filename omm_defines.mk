@@ -125,10 +125,25 @@ ifneq ($(OMM_DEV),-1)
   CUSTOM_C_DEFINES += -DOMM_DEV=$(OMM_DEV)
 endif
 
-# ---------
-# Bug fixes
-# ---------
+# -------
+# Patches
+# -------
 
-NO_SKYBOX_TILES != sed -i 's/.*SKYCONV.*/\t@touch $$@/' Makefile.split
+# Remove the use of SKYCONV; Skyboxes are no longer tiled
+NO_SKYBOX_TILES != \
+  test -f Makefile.split && sed -i 's/.*SKYCONV.*/\t@touch $$@/' Makefile.split ;
 
-NO_MKZIP != : > tools/mkzip.py
+# Fill the unused `length` member of `struct Animation` with the length of `index` and `values`
+FIX_MARIO_ANIMS_LENGTH != \
+  test -f tools/mario_anims_converter.py && sed -i 's;                offset_to_end + " - " + offset_to_struct;"((sizeof(gMarioAnims." + indices + ") / sizeof(u16)) << 20) | ((sizeof(gMarioAnims." + values + ") / sizeof(s16)) << 0)";' tools/mario_anims_converter.py ; \
+  test -f tools/luigi_anims_converter.py && sed -i 's;                offset_to_end + " - " + offset_to_struct;"((sizeof(gLuigiAnims." + indices + ") / sizeof(u16)) << 20) | ((sizeof(gLuigiAnims." + values + ") / sizeof(s16)) << 0)";' tools/luigi_anims_converter.py ; \
+  test -f tools/wario_anims_converter.py && sed -i 's;                offset_to_end + " - " + offset_to_struct;"((sizeof(gWarioAnims." + indices + ") / sizeof(u16)) << 20) | ((sizeof(gWarioAnims." + values + ") / sizeof(s16)) << 0)";' tools/wario_anims_converter.py ;
+
+# Custom mkzip must be used to exclude copyrighted assets from the basepack
+NO_MKZIP != \
+  : > tools/mkzip.py ;
+
+# Fix a bettercam bug
+FIX_BETTERCAM != \
+  test -f src/game/bettercamera.inc.h && sed -i 's/ivrt(newcam_invertX)/ivrt(0)/' src/game/bettercamera.inc.h; \
+  test -f src/game/bettercamera.inc.h && sed -i 's/ivrt(newcam_invertY)/ivrt(1)/' src/game/bettercamera.inc.h;

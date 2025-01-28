@@ -61,6 +61,8 @@
 #define OMM_BOWSER_ACTION_EXHAUSTED                 (8)
 #define OMM_BOWSER_ACTION_DAMAGED                   (9)
 
+#define OMM_BOWSER_SUB_ACTION_DEFEATED              (99)
+
 #define OMM_BOWSER_COMBO_ATTACK_AND_THROW_BOMBS     (0)
 #define OMM_BOWSER_COMBO_GET_MAD                    (1)
 #define OMM_BOWSER_COMBO_ATTACK_UNTIL_EXHAUSTED     (2)
@@ -1602,11 +1604,11 @@ static void bhv_omm_bowser_damaged(OmmBowser *bowser) {
 
                 // ...and destroy falling platforms on Bowser 3
                 if (gCurrLevelNum == LEVEL_BOWSER_3 && bowser->phase == 1) {
-                    struct Object *sm64Bowser = obj_get_first_with_behavior(bhvBowser);
-                    sm64Bowser->oHealth = 1;
-                    sm64Bowser->oAction = 3;
+                    struct Object *b = obj_get_first_with_behavior(bhvBowser);
+                    b->oHealth = 1;
+                    b->oAction = 3;
                     for_each_object_with_behavior(platform, bhvFallingBowserPlatform) {
-                        platform->oBitsPlatformBowserObject = sm64Bowser;
+                        platform->oBitsPlatformBowserObject = b;
                     }
                 }
 
@@ -1754,42 +1756,63 @@ static void bhv_omm_bowser_damaged(OmmBowser *bowser) {
         // Defeated
         // Awaken the old Bowser, put this one to sleep
         case 10: {
-            struct Object *sm64Bowser = obj_get_first_with_behavior(bhvBowser);
-            obj_set_dormant(sm64Bowser, false);
-            sm64Bowser->oBehParams2ndByte = bowser->bowserType;
-            sm64Bowser->oAction = 4; // bowser_act_dead
-            sm64Bowser->oPrevAction = 4; // must be the same as sm64Bowser->oAction
-            sm64Bowser->oSubAction = 2; // bowser_dead_wait_for_mario
-            sm64Bowser->oHeldState = 0; // bowser_free_update
-            sm64Bowser->oBowserEyesShut = 1; // closed eyes
-            sm64Bowser->oPosX = bowser->obj->oPosX;
-            sm64Bowser->oPosY = bowser->obj->oPosY;
-            sm64Bowser->oPosZ = bowser->obj->oPosZ;
-            sm64Bowser->oVelX = 0;
-            sm64Bowser->oVelY = 0;
-            sm64Bowser->oVelZ = 0;
-            sm64Bowser->oFaceAnglePitch = bowser->obj->oFaceAnglePitch;
-            sm64Bowser->oFaceAngleYaw = bowser->obj->oFaceAngleYaw;
-            sm64Bowser->oFaceAngleRoll = bowser->obj->oFaceAngleRoll;
-            sm64Bowser->oMoveAnglePitch = bowser->obj->oFaceAnglePitch;
-            sm64Bowser->oMoveAngleYaw = bowser->obj->oFaceAngleYaw;
-            sm64Bowser->oMoveAngleRoll = bowser->obj->oFaceAngleRoll;
-            sm64Bowser->oGfxPos[0] = bowser->obj->oPosX;
-            sm64Bowser->oGfxPos[1] = bowser->obj->oPosY;
-            sm64Bowser->oGfxPos[2] = bowser->obj->oPosZ;
-            sm64Bowser->oGfxAngle[0] = bowser->obj->oFaceAnglePitch;
-            sm64Bowser->oGfxAngle[1] = bowser->obj->oFaceAngleYaw;
-            sm64Bowser->oGfxAngle[2] = bowser->obj->oFaceAngleRoll;
-            sm64Bowser->oGfxScale[0] = bowser->obj->oScaleX;
-            sm64Bowser->oGfxScale[1] = bowser->obj->oScaleY;
-            sm64Bowser->oGfxScale[2] = bowser->obj->oScaleZ;
-            obj_anim_play_with_sound(sm64Bowser, OMM_BOWSER_ANIM_DEFEATED, 1.f, SOUND_OBJ_BOWSER_DEFEATED | 0xFF00, true);
-            obj_set_dormant(bowser->obj, true);
-            bhv_omm_bowser_update_action(bowser, 11);
+            struct Object *b = obj_get_first_with_behavior(bhvBowser);
+            obj_set_dormant(b, false);
+            b->oBehParams2ndByte = bowser->bowserType;
+            b->oAction = 4; // bowser_act_dead
+            b->oPrevAction = 4; // must be the same as b->oAction
+            b->oSubAction = 2; // bowser_dead_wait_for_mario
+            b->oHeldState = 0; // bowser_free_update
+            b->oBowserEyesShut = 1; // closed eyes
+            b->oPosX = bowser->obj->oPosX;
+            b->oPosY = bowser->obj->oPosY;
+            b->oPosZ = bowser->obj->oPosZ;
+            b->oVelX = 0;
+            b->oVelY = 0;
+            b->oVelZ = 0;
+            b->oFaceAnglePitch = bowser->obj->oFaceAnglePitch;
+            b->oFaceAngleYaw = bowser->obj->oFaceAngleYaw;
+            b->oFaceAngleRoll = bowser->obj->oFaceAngleRoll;
+            b->oMoveAnglePitch = bowser->obj->oFaceAnglePitch;
+            b->oMoveAngleYaw = bowser->obj->oFaceAngleYaw;
+            b->oMoveAngleRoll = bowser->obj->oFaceAngleRoll;
+            b->oGfxPos[0] = bowser->obj->oPosX;
+            b->oGfxPos[1] = bowser->obj->oPosY;
+            b->oGfxPos[2] = bowser->obj->oPosZ;
+            b->oGfxAngle[0] = bowser->obj->oFaceAnglePitch;
+            b->oGfxAngle[1] = bowser->obj->oFaceAngleYaw;
+            b->oGfxAngle[2] = bowser->obj->oFaceAngleRoll;
+            b->oGfxScale[0] = bowser->obj->oScaleX;
+            b->oGfxScale[1] = bowser->obj->oScaleY;
+            b->oGfxScale[2] = bowser->obj->oScaleZ;
+            obj_anim_play_with_sound(b, OMM_BOWSER_ANIM_DEFEATED, 1.f, SOUND_OBJ_BOWSER_DEFEATED | 0xFF00, true);
+            if (bowser->index > 2) {
+                obj_anim_play_with_sound(bowser->obj, OMM_BOWSER_ANIM_DEFEATED, 1.f, NO_SOUND, true);
+                obj_scale(bowser->obj, 1.01f); // Avoid Z-fighting
+                bowser->obj->oFlags |= OBJ_FLAG_NO_SHADOW;
+                bowser->obj->oOpacity = 0xFE;
+                bhv_omm_bowser_update_action(bowser, OMM_BOWSER_SUB_ACTION_DEFEATED);
+            } else {
+                obj_set_dormant(bowser->obj, true);
+                bhv_omm_bowser_update_action(bowser, 11);
+            }
         } break;
 
         // There is no come back
         case 11: {
+        } break;
+
+        // Bowser lost the power of the Sparkly Grand Star
+        case OMM_BOWSER_SUB_ACTION_DEFEATED: {
+            struct Object *b = obj_get_first_with_behavior(bhvBowser);
+            obj_anim_play(bowser->obj, b->oAnimID, (f32) b->oAnimInfo.animAccel / (f32) ANIM_ACCEL_ONE);
+            obj_anim_set_frame(bowser->obj, b->oAnimFrame);
+            bowser->obj->oFlags |= OBJ_FLAG_NO_SHADOW;
+            bowser->obj->oOpacity = relerp_0_1_f(bowser->obj->oAnimFrame, 0, bowser->obj->oCurrAnim->mLoopEnd - 4, 0xFE, 0x00);
+            if (bowser->obj->oOpacity == 0) {
+                obj_set_dormant(bowser->obj, true);
+                bhv_omm_bowser_update_action(bowser, 11);
+            }
         } break;
     }
 }
@@ -1797,6 +1820,14 @@ static void bhv_omm_bowser_damaged(OmmBowser *bowser) {
 //
 // Main loop
 //
+
+static void bhv_omm_bowser_spawn_sparkly_sparkles(struct Object *o) {
+    if (omm_sparkly_is_bowser_4_battle()) {
+        if (o->oTimer & 1) {
+            omm_obj_spawn_sparkly_star_sparkle(o, gOmmSparklyMode, 150.f, 20.f, 1.f, 100.f);
+        }
+    }
+}
 
 static bool bhv_omm_bowser_update_hint(OmmBowser *bowser, struct MarioState *m, s32 hint, bool skip, bool condition, s32 duration) {
 
@@ -1831,7 +1862,8 @@ static bool bhv_omm_bowser_update_hint(OmmBowser *bowser, struct MarioState *m, 
 
 static void bhv_omm_bowser_update_bowser(OmmBowser *bowser) {
     struct Object *b = obj_get_first_with_behavior(bhvBowser);
-    if (!obj_is_dormant(b)) {
+    if (!obj_is_dormant(b) && bowser->subAction != OMM_BOWSER_SUB_ACTION_DEFEATED) {
+        bhv_omm_bowser_spawn_sparkly_sparkles(b);
 
         // Cappy Capture must be enabled to load the OMM Bowser fight
         if (!bowser->obj->oBehParams) {
@@ -2046,13 +2078,9 @@ OMM_BOWSER_CLONE_CODE(
 );
 
     // Spawn sparkles
-    if (omm_sparkly_is_bowser_4_battle()) {
 OMM_BOWSER_CLONE_CODE(
-        if (bowser->obj->oTimer & 1) {
-            omm_obj_spawn_sparkly_star_sparkle(bowser->obj, gOmmSparklyMode, 150.f, 20.f, 1.f, 100.f);
-        }
+    bhv_omm_bowser_spawn_sparkly_sparkles(bowser->obj);
 );
-    }
 }
 
 static void bhv_omm_bowser_update() {
@@ -2119,6 +2147,10 @@ const BehaviorScript bhvOmmBowserClone[] = {
 //
 // Spawner (auto)
 //
+
+OMM_ROUTINE_LEVEL_ENTRY(omm_obj_reset_bowser) {
+    mem_zero(sOmmBowsers, sizeof(sOmmBowsers));
+}
 
 OMM_ROUTINE_UPDATE(omm_obj_spawn_bowser) {
     if (gMarioObject && (

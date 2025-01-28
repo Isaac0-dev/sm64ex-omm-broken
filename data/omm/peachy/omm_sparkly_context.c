@@ -7,7 +7,7 @@ OmmSparklyContext gOmmSparklyContext[1];
 
 void omm_sparkly_state_set(s32 state, bool sound) {
     if (sound && state != OMM_SPARKLY_STATE_OK && OMM_SPARKLY_STATE_IS_OK) {
-        play_sound(SOUND_MENU_CAMERA_BUZZ | 0xFF00, gGlobalSoundArgs);
+        play_buzz_sound();
     }
     gOmmSparklyContext->state = max_s(gOmmSparklyContext->state, state);
 }
@@ -382,7 +382,7 @@ void omm_sparkly_context_update(struct MarioState *m) {
         }
 
         // No button press
-        if (gOmmSparkly->marioUpdated) {
+        if (gOmmSparkly->marioUpdated && !gOmmSparkly->transition) {
             u16 buttons = (m->controller->buttonPressed | m->controller->buttonDown);
             u16 noButtons = OMM_SPARKLY_DATA_GET_BUTTONS(dataFlags);
             if (!omm_mario_is_reading(m) && (buttons & noButtons) != 0) {
@@ -414,7 +414,7 @@ void omm_sparkly_context_reset() {
     gPlayer1Controller->buttonDown *= (gCurrCourseNum == COURSE_NONE);
     gOmmSparklyMode = OMM_SPARKLY_STARS_MODE;
     mem_zero(gOmmSparklyContext, sizeof(gOmmSparklyContext));
-    if (!OMM_SPARKLY_ALLOW_WARPS) {
+    if (!OMM_SPARKLY_IS_MODE_COMPLETED) {
         gOmmWarp->state = POBJ_WARP_STATE_NOT_WARPING;
     }
 }

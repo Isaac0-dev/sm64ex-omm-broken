@@ -14,7 +14,7 @@ bool omm_sparkly_interact_star(struct MarioState *m, struct Object *o) {
             omm_sparkly_context_reset_data();
             omm_mario_set_action(m, ACT_OMM_SPARKLY_STAR_DANCE, (m->prevAction & ACT_FLAG_METAL_WATER) || ((m->prevAction & ACT_GROUP_MASK) == ACT_GROUP_SUBMERGED), 0);
             obj_mark_for_deletion(o);
-            gOmmStats->sparklyStarsCollected++;
+            omm_stats_increase(sparklyStarsCollected, 1);
         }
         return true;
     }
@@ -30,8 +30,11 @@ void omm_sparkly_interact_grand_star(struct MarioState *m, struct Object *o) {
         // Triggers the secret Peach ending if Bowser 4 is defeated for the first time
         if (gOmmSparkly->grandStar) {
             gOmmSparklyEnding = (!OMM_REWARD_IS_PLAYABLE_PEACH_UNLOCKED ? OMM_SPARKLY_ENDING_PEACH : OMM_SPARKLY_ENDING_REGULAR);
+            if (!omm_sparkly_is_completed(gOmmSparklyMode)) {
+                gOmmSparklyStarsCompletionReward = gOmmSparklyMode;
+            }
             omm_sparkly_collect_grand_star(gOmmSparklyMode);
-            gOmmStats->sparklyStarsCollected++;
+            omm_stats_increase(sparklyStarsCollected, 1);
             return;
         }
 

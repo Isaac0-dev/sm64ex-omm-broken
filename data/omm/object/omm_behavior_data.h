@@ -27,24 +27,25 @@
 #define BHV_TYPE_WF_STAR_WALL                       (1llu << 17) // Whomp Fortress Star inside wall
 #define BHV_TYPE_EXCLAMATION_BOX                    (1llu << 18) // Yellow exclamation box
 #define BHV_TYPE_UNAGIS_TAIL                        (1llu << 19) // Unagi's tail
-#define BHV_TYPE_INTERACTABLE                       ((1llu << 20) - 1)
+#define BHV_TYPE_WATER_DIAMOND                      (1llu << 20) // WDW Water diamond
+#define BHV_TYPE_INTERACTABLE                       (BHV_TYPE_UNIMPORTANT - 1)
 #define BHV_TYPE_COLLECTIBLE                        (BHV_TYPE_COIN | BHV_TYPE_WATER_RING | BHV_TYPE_MUSHROOM_1UP | BHV_TYPE_STAR_OR_KEY | BHV_TYPE_CAP | BHV_TYPE_SECRET)
 #define BHV_TYPE_ENEMY                              (BHV_TYPE_WEAK | BHV_TYPE_STRONG | BHV_TYPE_DESTRUCTIBLE | BHV_TYPE_BOSS | BHV_TYPE_BULLY)
 
-#define BHV_TYPE_UNIMPORTANT                        (1llu << 20) // Unimportant object to unload if out of object slots
-#define BHV_TYPE_STAR_MODEL                         (1llu << 21) // Star or key model
-#define BHV_TYPE_NO_CAM_COL                         (1llu << 22) // No camera collision
-#define BHV_TYPE_GOOMBA                             (1llu << 23) // Goomba-like behavior
-#define BHV_TYPE_BOO                                (1llu << 24) // Boo-like behavior
-#define BHV_TYPE_METAL_BALL                         (1llu << 25) // Balls of steel
-#define BHV_TYPE_DOOR                               (1llu << 26) // Door, reject these behaviors when the camera checks for pillars
-#define BHV_TYPE_TREASURE_CHEST                     (1llu << 27) // Treasure chest, cannot be moved by other objects
-#define BHV_TYPE_PLAYER                             (1llu << 28) // Player behavior
-#define BHV_TYPE_BOWSER                             (1llu << 29) // Bowser behavior
-#define BHV_TYPE_NOT_ENEMY                          (1llu << 20) // Doesn't count as an enemy
-#define BHV_TYPE_SPARKLY_ENEMY                      (1llu << 31) // Enemy behavior for Sparkly Stars missions
-#define BHV_TYPE_METAL_DESTRUCTIBLE                 (1llu << 32) // Destroyed by touching Metal Mario
-#define BHV_TYPE_DEFEATED_IF_DESTROYED              (1llu << 33) // Count as defeated only if destroyed
+#define BHV_TYPE_UNIMPORTANT                        (1llu << 21) // Unimportant object to unload if out of object slots
+#define BHV_TYPE_STAR_MODEL                         (1llu << 22) // Star or key model
+#define BHV_TYPE_NO_CAM_COL                         (1llu << 23) // No camera collision
+#define BHV_TYPE_GOOMBA                             (1llu << 24) // Goomba-like behavior
+#define BHV_TYPE_BOO                                (1llu << 25) // Boo-like behavior
+#define BHV_TYPE_METAL_BALL                         (1llu << 26) // Balls of steel
+#define BHV_TYPE_DOOR                               (1llu << 27) // Door, reject these behaviors when the camera checks for pillars
+#define BHV_TYPE_TREASURE_CHEST                     (1llu << 28) // Treasure chest, cannot be moved by other objects
+#define BHV_TYPE_PLAYER                             (1llu << 29) // Player behavior
+#define BHV_TYPE_BOWSER                             (1llu << 30) // Bowser behavior
+#define BHV_TYPE_NOT_ENEMY                          (1llu << 31) // Doesn't count as an enemy
+#define BHV_TYPE_SPARKLY_ENEMY                      (1llu << 32) // Enemy behavior for Sparkly Stars missions
+#define BHV_TYPE_METAL_DESTRUCTIBLE                 (1llu << 33) // Destroyed by touching Metal Mario
+#define BHV_TYPE_DEFEATED_IF_DESTROYED              (1llu << 34) // Count as defeated only if destroyed
 
 #define BOSS_TYPE_KING_BOBOMB                       (0)
 #define BOSS_TYPE_KING_WHOMP                        (1)
@@ -105,6 +106,7 @@
 #define DESTROY_TYPE_EYEROK_HAND                    (14)
 #define DESTROY_TYPE_UKIKI_CAGE                     (15)
 #define DESTROY_TYPE_FIRE_PIRANHA_PLANT             (16)
+#define DESTROY_TYPE_WOODEN_POST                    (17)
 #define DESTROY_COND_NONE                           (0)
 #define DESTROY_COND_REGULAR_GOOMBA                 (1)
 #define DESTROY_COND_TINY_GOOMBA                    (2)

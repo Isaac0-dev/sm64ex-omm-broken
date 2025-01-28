@@ -188,7 +188,7 @@ static SDL_AudioDeviceID omm_sound_get_device(u8 bank) {
         // Init SDL2 Audio
         if (!SDL_WasInit(SDL_INIT_AUDIO)) {
             if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
-                sys_fatal("omm_sound_get_device: Could not init SDL Audio: %s", SDL_GetError());
+                sys_fatal("omm_sound_get_device: Could not initialize SDL Audio: %s", SDL_GetError());
             }
         }
 
@@ -229,7 +229,7 @@ static void omm_sound_play_internal(OmmSoundData *sound, f32 *pos, u8 priority) 
         }
 
         // Set volume, then add sound to queue
-        s32 volume = (sound->volume * configMasterVolume * configSfxVolume * !gSfxMute) / (0x7F * 0x7F);
+        s32 volume = (sound->volume * configMasterVolume * configSfxVolume * !gSfxMute) / (MAX_VOLUME * MAX_VOLUME);
         s32 distance = (s32) (!pos ? 0 : vec3f_length(pos));
         omm_audio_mix(sound->output, sound->input[gOmmPeach->vibeType], sound->length, volume, distance);
         SDL_ClearQueuedAudio(omm_sound_get_device(sound->bank));
@@ -300,7 +300,8 @@ static void omm_sound_load_wav(s32 id, const char *name, u8 bank, s32 vibesPitch
     // Read file
     s64 size = fs_size(f);
     void *buf = mem_new(u8, size);
-    if (fs_read(f, buf, size) == -1) {
+    if (fs_read(f, buf, size) < size) {
+        fs_close(f);
         sys_fatal("omm_sound_load_wav: Unable to read file \"%s\".", filename);
     }
     fs_close(f);
@@ -310,6 +311,7 @@ static void omm_sound_load_wav(s32 id, const char *name, u8 bank, s32 vibesPitch
     if (!SDL_LoadWAV_RW(SDL_RWFromConstMem(buf, size), true, &wav, &data, (u32 *) &length)) {
         sys_fatal("omm_sound_load_wav: Unable to load file \"%s\": %s", filename, SDL_GetError());
     }
+    mem_del(buf);
 
     // Check frequency
     if (wav.freq != SOUND_FREQ) {
@@ -429,7 +431,11 @@ void omm_audio_init() {
     omm_sound_load_wav(OMM_SOUND_EVENT_CAPTURE,             "event/omm_sound_event_capture",                2, 0,  60, 0x80);
     omm_sound_load_wav(OMM_SOUND_EVENT_UNCAPTURE,           "event/omm_sound_event_uncapture",              2, 0,  60, 0x80);
     omm_sound_load_wav(OMM_SOUND_EVENT_LIFE_UP,             "event/omm_sound_event_life_up",                2, 0,  70, 0xF8);
-    omm_sound_load_wav(OMM_SOUND_EVENT_SPARKLY_STAR_GET,    "event/omm_sound_event_sparkly_star_get",       2, 0,  90, 0xFF);
+    omm_sound_load_wav(OMM_SOUND_EVENT_SPARKLY_STAR_GET,    "event/omm_sound_event_sparkly_star_get",       2, 0,  90, 0xFE);
+    omm_sound_load_wav(OMM_SOUND_EVENT_SECRET,              "event/omm_sound_event_secret",                 2, 0,  50, 0xFF);
+    omm_sound_load_wav(OMM_SOUND_EVENT_DEATH,               "event/omm_sound_event_death_1",                2, 0,  60, 0xFF);
+    omm_sound_load_wav(OMM_SOUND_EVENT_DEATH_WATER,         "event/omm_sound_event_death_2",                2, 0,  60, 0xFF);
+    omm_sound_load_wav(OMM_SOUND_EVENT_DEATH_FALL,          "event/omm_sound_event_death_3",                2, 0,  60, 0xFF);
     omm_sound_load_wav(OMM_SOUND_EVENT_DEATH_MARIO,         "event/omm_sound_event_death_mario_1",          2, 0,  60, 0xFF);
     omm_sound_load_wav(OMM_SOUND_EVENT_DEATH_MARIO_WATER,   "event/omm_sound_event_death_mario_2",          2, 0,  60, 0xFF);
     omm_sound_load_wav(OMM_SOUND_EVENT_DEATH_MARIO_FALL,    "event/omm_sound_event_death_mario_3",          2, 0,  60, 0xFF);

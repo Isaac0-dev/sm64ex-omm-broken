@@ -2,52 +2,45 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 
-#define OMM_REWARD_TEXT_DATA_(name) { \
-OMM_TEXT_REWARD_##name##_TITLE, { \
-OMM_TEXT_REWARD_##name##_LINE_0, \
-OMM_TEXT_REWARD_##name##_LINE_1, \
-OMM_TEXT_REWARD_##name##_LINE_2, \
-OMM_TEXT_REWARD_##name##_LINE_3, \
-OMM_TEXT_REWARD_##name##_LINE_4, \
-OMM_TEXT_REWARD_##name##_LINE_5, \
-OMM_TEXT_REWARD_##name##_LINE_6 }, { \
-OMM_TEXT_REWARD_##name##_LOCKED_0, \
-OMM_TEXT_REWARD_##name##_LOCKED_1, \
-OMM_TEXT_REWARD_##name##_LOCKED_2, \
-OMM_TEXT_REWARD_##name##_LOCKED_3 } }
+#define OMM_REWARD_DEFINE_(x) \
+[OMM_REWARD_##x] = { \
+    OMM_TEXT_REWARD_##x##_NAME, \
+    OMM_TEXT_REWARD_##x##_COND, \
+    OMM_TEXT_REWARD_##x##_TEXT, \
+}
 
 typedef struct {
-    const char *title;
-    const char *lines[7];
-    const char *locked[4];
-} OmmRewardTextData;
+    const char *name;
+    const char *cond;
+    const char *text;
+} OmmReward;
 
-static const OmmRewardTextData OMM_REWARDS_TEXT_DATA[] = {
-    OMM_REWARD_TEXT_DATA_(WEAR_ANY_CAP),
-    OMM_REWARD_TEXT_DATA_(WEAR_ANY_CAP_ANYWHERE),
-    OMM_REWARD_TEXT_DATA_(SUMMON_YOSHI),
-    OMM_REWARD_TEXT_DATA_(SPARKLY_STARS),
-    OMM_REWARD_TEXT_DATA_(SPARKLY_SPARKLES),
-    OMM_REWARD_TEXT_DATA_(PLAYABLE_PEACH),
-    OMM_REWARD_TEXT_DATA_(PERRY_CHARGE),
-    OMM_REWARD_TEXT_DATA_(_REDACTED_),
+static OmmReward sOmmRewards[] = {
+    OMM_REWARD_DEFINE_(INSTANT_CAPS),
+    OMM_REWARD_DEFINE_(UNLIMITED_CAPS),
+    OMM_REWARD_DEFINE_(SUMMON_YOSHI),
+    OMM_REWARD_DEFINE_(SPARKLY_STARS),
+    OMM_REWARD_DEFINE_(SPARKLY_SPARKLES),
+    OMM_REWARD_DEFINE_(PLAYABLE_PEACH),
+    OMM_REWARD_DEFINE_(PERRY_CHARGE),
+    OMM_REWARD_DEFINE_(_REDACTED_),
 };
 
 u32 omm_rewards_get_count() {
-    return array_length(OMM_REWARDS_TEXT_DATA);
+    return array_length(sOmmRewards);
 }
 
-u32 omm_rewards_get_unlocked_count() {
+u32 omm_rewards_get_unlocked_count(bool local) {
     u32 count = 0;
-    for (u32 i = 0; i != omm_rewards_get_count(); ++i) {
-        count += omm_rewards_is_unlocked(i, false);
+    for (u32 reward = 0; reward != omm_rewards_get_count(); ++reward) {
+        count += omm_rewards_is_unlocked(reward, local);
     }
     return count;
 }
 
-bool omm_rewards_is_unlocked(s32 index, bool local) {
-    switch (index) {
-        case OMM_REWARD_WEAR_ANY_CAP: {
+bool omm_rewards_is_unlocked(u32 reward, bool local) {
+    switch (reward) {
+        case OMM_REWARD_INSTANT_CAPS: {
             if (local) {
                 return (
                     gCurrCourseNum != COURSE_NONE &&
@@ -66,7 +59,7 @@ bool omm_rewards_is_unlocked(s32 index, bool local) {
             }
         } break;
 
-        case OMM_REWARD_WEAR_ANY_CAP_ANYWHERE: {
+        case OMM_REWARD_UNLIMITED_CAPS: {
             return gMarioState->numStars == omm_stars_get_total_star_count(OMM_GAME_MODE);
         } break;
 
@@ -101,11 +94,12 @@ bool omm_rewards_is_unlocked(s32 index, bool local) {
     return false;
 }
 
-const char *omm_rewards_get_title(s32 index) {
-    return OMM_REWARDS_TEXT_DATA[index].title;
-}
-
-const char *omm_rewards_get_line(s32 index, s32 line, bool locked) {
-    if (locked) return OMM_REWARDS_TEXT_DATA[index].locked[line];
-    return OMM_REWARDS_TEXT_DATA[index].lines[line];
+bool omm_rewards_get(u32 reward, const char **name, const char **cond, const char **text) {
+    if (reward < array_length(sOmmRewards)) {
+        if (name) *name = sOmmRewards[reward].name;
+        if (cond) *cond = sOmmRewards[reward].cond;
+        if (text) *text = sOmmRewards[reward].text;
+        return true;
+    }
+    return false;
 }

@@ -508,13 +508,13 @@ OMM_DIALOG_SPARKLY_STAR(OMM_SPARKLY_MODE_HARD, 25), NO_SOUND, 3, 95, 200,
 "Star shard inside the\n"
 "Castle.\n"
 
-"A Toad managed to hide\n"
-"the Star before Bowser\n"
-"could shatter it.\n"
+"Two Toads managed to\n"
+"hide the Star before\n"
+"Bowser could shatter it.\n"
 
 "So, to be able to get\n"
 "the Star, you must\n"
-"find the Toad first."
+"find the Toads first."
 },
 
 {
@@ -543,13 +543,13 @@ OMM_DIALOG_SPARKLY_STAR_COMPLETED(OMM_SPARKLY_MODE_HARD, 25), NO_SOUND, 3, 95, 2
 "Star shard inside the\n"
 "Castle.\n"
 
-"A Toad managed to hide\n"
-"the Star before Bowser\n"
-"could shatter it.\n"
+"Two Toads managed to\n"
+"hide the Star before\n"
+"Bowser could shatter it.\n"
 
 "So, to be able to get\n"
 "the Star, you must\n"
-"find the Toad first."
+"find the Toads first."
 },
 
 {

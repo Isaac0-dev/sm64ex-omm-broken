@@ -12,14 +12,15 @@ extern s32 gOmmInteractionObjectLists[];
 extern s32 gOmmUnimportantObjectLists[];
 extern s32 gOmmAllObjectLists[];
 
-#define for_each_(__type__, __item__, __size__, ...)            s32 index_##__item__ = 0; for (__type__ *__item__ = __VA_ARGS__; index_##__item__ != __size__; ++index_##__item__, ++__item__)
-#define for_each_until_null(__type__, __item__, ...)            for (__type__ *__item__ = __VA_ARGS__; *__item__; ++__item__)
-#define for_each_object_in_list(__obj__, __list__)              for (struct Object* __obj__ = obj_get_first(__list__); __obj__; __obj__ = obj_get_next(__obj__, __list__))
-#define for_each_object_in_cappy_lists(__obj__)                 for (s32 *__list__ = gOmmCappyObjectLists; *__list__ != -1; ++__list__) for (struct Object* __obj__ = obj_get_first(*__list__); __obj__; __obj__ = obj_get_next(__obj__, *__list__))
-#define for_each_object_in_interaction_lists(__obj__)           for (s32 *__list__ = gOmmInteractionObjectLists; *__list__ != -1; ++__list__) for (struct Object* __obj__ = obj_get_first(*__list__); __obj__; __obj__ = obj_get_next(__obj__, *__list__))
-#define for_each_object_in_unimportant_lists(__obj__)           for (s32 *__list__ = gOmmUnimportantObjectLists; *__list__ != -1; ++__list__) for (struct Object* __obj__ = obj_get_first(*__list__); __obj__; __obj__ = obj_get_next(__obj__, *__list__))
-#define for_each_object_in_all_lists(__obj__)                   for (s32 *__list__ = gOmmAllObjectLists; *__list__ != -1; ++__list__) for (struct Object* __obj__ = obj_get_first(*__list__); __obj__; __obj__ = obj_get_next(__obj__, *__list__))
-#define for_each_object_with_behavior(__obj__, __behavior__)    for (struct Object* __obj__ = obj_get_first_with_behavior(__behavior__); __obj__; __obj__ = obj_get_next_with_behavior(__obj__, __behavior__))
+#define for_each_(_T_, _item_, _start_, _size_)             u32 i_##_item_ = 0; for (_T_ *_item_ = _start_; i_##_item_ != _size_; ++i_##_item_, _item_++)
+#define for_each_in_(_T_, _item_, ...)                      _T_ arr_##_item_[] = __VA_ARGS__; u32 i_##_item_ = 0; for (_T_ *_item_ = arr_##_item_; i_##_item_ != array_length(arr_##_item_); ++i_##_item_, _item_++)
+#define for_each_until_null(_T_, _item_, _start_)           for (_T_ *_item_ = _start_; *_item_; _item_++)
+#define for_each_object_in_list(_obj_, _list_)              for (struct Object* _obj_ = obj_get_first(_list_); _obj_; _obj_ = obj_get_next(_obj_, _list_))
+#define for_each_object_in_cappy_lists(_obj_)               for (s32 *_list_ = gOmmCappyObjectLists; *_list_ != -1; ++_list_) for (struct Object* _obj_ = obj_get_first(*_list_); _obj_; _obj_ = obj_get_next(_obj_, *_list_))
+#define for_each_object_in_interaction_lists(_obj_)         for (s32 *_list_ = gOmmInteractionObjectLists; *_list_ != -1; ++_list_) for (struct Object* _obj_ = obj_get_first(*_list_); _obj_; _obj_ = obj_get_next(_obj_, *_list_))
+#define for_each_object_in_unimportant_lists(_obj_)         for (s32 *_list_ = gOmmUnimportantObjectLists; *_list_ != -1; ++_list_) for (struct Object* _obj_ = obj_get_first(*_list_); _obj_; _obj_ = obj_get_next(_obj_, *_list_))
+#define for_each_object_in_all_lists(_obj_)                 for (s32 *_list_ = gOmmAllObjectLists; *_list_ != -1; ++_list_) for (struct Object* _obj_ = obj_get_first(*_list_); _obj_; _obj_ = obj_get_next(_obj_, *_list_))
+#define for_each_object_with_behavior(_obj_, _bhv_)         for (struct Object* _obj_ = obj_get_first_with_behavior(_bhv_); _obj_; _obj_ = obj_get_next_with_behavior(_obj_, _bhv_))
 
 //
 // Objects
@@ -78,6 +79,7 @@ void obj_set_forward_vel(struct Object *o, s16 yaw, f32 mag, f32 velMax);
 void obj_set_forward_and_y_vel(struct Object *o, f32 forwardVel, f32 yVel);
 void obj_set_angle_vel(struct Object *o, s16 pitch, s16 yaw, s16 roll);
 void obj_set_scale(struct Object *o, f32 x, f32 y, f32 z);
+void obj_apply_drag_xz(struct Object *o, f32 dragStrength);
 void obj_apply_displacement(struct Object *o, struct Object *obj, Vec3f prevPos, Vec3s prevAngle, Vec3f prevScale, bool updatePrev);
 void obj_approach_orbit(struct Object *o, f32 t, f32 radius, f32 period, f32 offset, f32 rubberband, s16 pitchVel, s16 yawVel);
 f32  obj_bounce_on_wall(struct Object *o, struct Surface *surf, bool updateForwardVel, bool updateFaceYaw);
@@ -154,6 +156,7 @@ bool omm_obj_is_kickable_board(struct Object *o);
 bool omm_obj_is_wf_star_wall(struct Object *o);
 bool omm_obj_is_exclamation_box(struct Object *o);
 bool omm_obj_is_unagis_tail(struct Object *o);
+bool omm_obj_is_water_diamond(struct Object *o);
 bool omm_obj_is_treasure_chest(struct Object *o);
 bool omm_obj_is_collectible(struct Object *o);
 bool omm_obj_is_unimportant(struct Object *o);
@@ -264,6 +267,7 @@ struct Object *omm_obj_spawn_star_ring(struct Object *o, f32 x, f32 y, f32 z, bo
 struct Object *omm_obj_spawn_big_flame(struct Object *o, f32 x, f32 y, f32 z);
 struct Object *omm_obj_spawn_bitfs_pillar(struct Object *o, f32 x, f32 y, f32 z);
 struct Object *omm_obj_spawn_problem(struct Object *o);
+struct Object *omm_obj_spawn_peach(struct Object *o);
 
 // Peach
 struct Object *omm_obj_spawn_peach_vibe_aura(struct Object *o, bool full);
@@ -305,6 +309,6 @@ void omm_stars_set_flags(u8 starFlags);
 bool omm_stars_is_collected(s32 starIndex);
 bool omm_stars_all_collected(s32 levelNum, s32 modeIndex);
 bool omm_stars_get_star_data(s32 levelNum, s32 areaIndex, s32 starIndex, const BehaviorScript **bhv, s32 *behParams);
-#define OMM_ALL_STARS (omm_stars_all_collected(gCurrLevelNum, OMM_GAME_MODE) && !OMM_SPARKLY_MODE_IS_LUNATIC)
+#define OMM_ALL_STARS omm_stars_all_collected(gCurrLevelNum, OMM_GAME_MODE)
 
 #endif // OMM_OBJECT_H

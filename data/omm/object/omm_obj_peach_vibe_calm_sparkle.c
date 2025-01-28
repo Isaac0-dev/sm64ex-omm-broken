@@ -8,7 +8,7 @@
 //
 
 static const Vtx omm_peach_vibe_calm_sparkle_vertices[] = {
-    OMM_VTX_RECT(32, 0, 0, 1),
+    OMM_VTX_RECT(32, 0, 0, 1, 1),
 };
 
 static const Gfx omm_peach_vibe_calm_sparkle_triangles[] = {
@@ -47,7 +47,7 @@ const GeoLayout omm_geo_peach_vibe_calm_sparkle[] = {
 static void bhv_omm_peach_vibe_calm_sparkle_update() {
     struct Object *o = gCurrentObject;
     if (o->oTimer < 30) {
-        f32 *marioRootPos = geo_get_marios_root_pos();
+        Vec3f marioRootPos; geo_get_marios_root_pos(marioRootPos);
         o->oPosX = marioRootPos[0] + o->oHomeX + o->oVelX * o->oTimer;
         o->oPosY = marioRootPos[1] + o->oHomeY + o->oVelY * o->oTimer;
         o->oPosZ = marioRootPos[2] + o->oHomeZ + o->oVelZ * o->oTimer;

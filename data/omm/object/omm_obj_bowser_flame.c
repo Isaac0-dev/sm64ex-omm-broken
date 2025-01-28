@@ -8,99 +8,23 @@
 //
 
 static const Vtx omm_bowser_flame_vertices[] = {
-    { { { -50, 0, 0 }, 0, { 512, 2944 }, { 255, 255, 255, 255 } } },
-    { { { -50, 150, 0 }, 0, { 512, 0 }, { 255, 255, 255, 255 } } },
-    { { { +50, 0, 0 }, 0, { 2560, 2944 }, { 255, 255, 255, 255 } } },
-    { { { +50, 150, 0 }, 0, { 2560, 0 }, { 255, 255, 255, 255 } } },
-    { { { -50, 0, 0 }, 0, { 3584, 2944 }, { 255, 255, 255, 255 } } },
-    { { { -50, 150, 0 }, 0, { 3584, 0 }, { 255, 255, 255, 255 } } },
-    { { { +50, 0, 0 }, 0, { 5632, 2944 }, { 255, 255, 255, 255 } } },
-    { { { +50, 150, 0 }, 0, { 5632, 0 }, { 255, 255, 255, 255 } } },
-    { { { -50, 0, 0 }, 0, { 512, 6016 }, { 255, 255, 255, 255 } } },
-    { { { -50, 150, 0 }, 0, { 512, 3072 }, { 255, 255, 255, 255 } } },
-    { { { +50, 0, 0 }, 0, { 2560, 6016 }, { 255, 255, 255, 255 } } },
-    { { { +50, 150, 0 }, 0, { 2560, 3072 }, { 255, 255, 255, 255 } } },
-    { { { -50, 0, 0 }, 0, { 3584, 6016 }, { 255, 255, 255, 255 } } },
-    { { { -50, 150, 0 }, 0, { 3584, 3072 }, { 255, 255, 255, 255 } } },
-    { { { +50, 0, 0 }, 0, { 5632, 6016 }, { 255, 255, 255, 255 } } },
-    { { { +50, 150, 0 }, 0, { 5632, 3072 }, { 255, 255, 255, 255 } } },
+    OMM_VTX_RECT_XY(-75, 75, 0, 150, 0, 0, (256.f / 96.f), (256.f / 96.f)),
+    OMM_VTX_RECT_XY(-75, 75, 0, 150, 0, 1, (256.f / 96.f), (256.f / 96.f)),
+    OMM_VTX_RECT_XY(-75, 75, 0, 150, 1, 0, (256.f / 96.f), (256.f / 96.f)),
+    OMM_VTX_RECT_XY(-75, 75, 0, 150, 1, 1, (256.f / 96.f), (256.f / 96.f)),
 };
 
-static const Gfx omm_bowser_flame_0_triangles[] = {
-    gsSPVertex(omm_bowser_flame_vertices + 0, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0x0, 2, 3, 1, 0x0),
-    gsSPEndDisplayList(),
+static const Gfx omm_bowser_flame_triangles[] = {
+    OMM_GFX_QUAD(omm_bowser_flame_vertices, 0),
+    OMM_GFX_QUAD(omm_bowser_flame_vertices, 1),
+    OMM_GFX_QUAD(omm_bowser_flame_vertices, 2),
+    OMM_GFX_QUAD(omm_bowser_flame_vertices, 3),
 };
 
-static const Gfx omm_bowser_flame_1_triangles[] = {
-    gsSPVertex(omm_bowser_flame_vertices + 4, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0x0, 2, 3, 1, 0x0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_flame_2_triangles[] = {
-    gsSPVertex(omm_bowser_flame_vertices + 8, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0x0, 2, 3, 1, 0x0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_flame_3_triangles[] = {
-    gsSPVertex(omm_bowser_flame_vertices + 12, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0x0, 2, 3, 1, 0x0),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_flame_0_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_BREATH, G_IM_FMT_RGBA, G_IM_SIZ_32b, 256, 256, 0, 0, 0, 0, 0, 0, 0),
-    gsSPDisplayList(omm_bowser_flame_0_triangles),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_flame_1_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_BREATH, G_IM_FMT_RGBA, G_IM_SIZ_32b, 256, 256, 0, 0, 0, 0, 0, 0, 0),
-    gsSPDisplayList(omm_bowser_flame_1_triangles),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_flame_2_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_BREATH, G_IM_FMT_RGBA, G_IM_SIZ_32b, 256, 256, 0, 0, 0, 0, 0, 0, 0),
-    gsSPDisplayList(omm_bowser_flame_2_triangles),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_flame_3_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_BREATH, G_IM_FMT_RGBA, G_IM_SIZ_32b, 256, 256, 0, 0, 0, 0, 0, 0, 0),
-    gsSPDisplayList(omm_bowser_flame_3_triangles),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
+OMM_GFX_DL(omm_bowser_flame, OMM_TEXTURE_BOWSER_FIRE_BREATH, omm_bowser_flame_triangles, 0);
+OMM_GFX_DL(omm_bowser_flame, OMM_TEXTURE_BOWSER_FIRE_BREATH, omm_bowser_flame_triangles, 1);
+OMM_GFX_DL(omm_bowser_flame, OMM_TEXTURE_BOWSER_FIRE_BREATH, omm_bowser_flame_triangles, 2);
+OMM_GFX_DL(omm_bowser_flame, OMM_TEXTURE_BOWSER_FIRE_BREATH, omm_bowser_flame_triangles, 3);
 
 //
 // Geo layout

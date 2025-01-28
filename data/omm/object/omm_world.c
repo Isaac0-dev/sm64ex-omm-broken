@@ -4,11 +4,6 @@
 #include "behavior_commands.h"
 #include <time.h>
 
-OMM_INLINE struct tm *omm_get_current_time() {
-    time_t t = time(NULL);
-    return localtime(&t);
-}
-
 static struct {
 
     // Course
@@ -183,6 +178,11 @@ static void omm_update_warp_pipes(struct MarioState *m) {
         _WarpPipeInfo(LEVEL_THI, 3, 0x35,     0,  2560,     0, 0x0000, 0x0000, 0x0000, false)
     );
     }
+#elif OMM_GAME_IS_SMMS
+    load_warp_pipe(
+        _WarpPipeInfo(LEVEL_SSL, 1, 0x32,  3660,  2895, -6524, 0x0000, 0x0000, 0x0000,  true),
+        _WarpPipeInfo(LEVEL_SSL, 2, 0x32, -1612, -1612, -4875, 0x0000, 0x0000, 0x0000, false)
+    );
 #endif
 
     // Update
@@ -316,7 +316,52 @@ static void omm_update_worlds(struct MarioState *m) {
         case COURSE_CAKE_END: {
         } break;
 
+        // Zero Life Area
+        case COURSE_NONE: {
+            if (gCurrLevelNum == LEVEL_ZERO_LIFE) {
+                omm_secrets_unlock(OMM_SECRET_SMSR_SECRET);
+            }
+        } break;
+
 #elif OMM_GAME_IS_SMMS
+
+        // Skyland Fortress
+        // - Spawn the secret warp to Yellow Dunes
+        case COURSE_HMC: {
+            static const Vtx omm_smms_ssl_warp_vtx[] = {
+                {{{ -160, -160, 0 }, 0, { 0, 992 }, { 0xFF, 0xFF, 0xFF, 0xFF }}},
+                {{{ +160, -160, 0 }, 0, { 992, 992 }, { 0xFF, 0xFF, 0xFF, 0xFF }}},
+                {{{ -160, +160, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF }}},
+                {{{ +160, +160, 0 }, 0, { 992, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF }}},
+            };
+            static const Gfx omm_smms_ssl_warp_gfx[] = {
+                gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
+                gsSPSetGeometryMode(G_CULL_BACK),
+                gsDPSetCombineMode(G_CC_DECALRGB, G_CC_DECALRGB),
+                gsDPLoadTextureBlock("menu/smms/painting.rgba32", G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
+                gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
+                gsSPVertex(omm_smms_ssl_warp_vtx, 4, 0),
+                gsSP2Triangles(0, 1, 2, 0, 2, 1, 3, 0),
+                gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
+                gsSPSetGeometryMode(G_CULL_BACK | G_LIGHTING),
+                gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
+                gsSPEndDisplayList(),
+            };
+            static const GeoLayout omm_smms_ssl_warp_geo[] = {
+                GEO_NODE_START(),
+                GEO_OPEN_NODE(),
+                    GEO_DISPLAY_LIST(LAYER_OPAQUE, omm_smms_ssl_warp_gfx),
+                GEO_CLOSE_NODE(),
+                GEO_END(),
+            };
+            if (!obj_get_first_with_behavior_and_field_s32(bhvOmmWallWarp, _FIELD(oWallWarpKind), 0)) {
+                omm_obj_spawn_wall_warp(
+                    m->marioObj, 0, -860, 1640, -480, 160, 160, 0x4000,
+                    LEVEL_SSL, 1, 0x0A, 30, WARP_TRANSITION_FADE_INTO_CIRCLE, 20, 0x000000,
+                    1.f, 1.f, 1.f, omm_smms_ssl_warp_geo, NULL
+                );
+            }
+        } break;
 
         // Sweet Sweet Rush
         // - Add more coins to be able to get the 100 coins star
@@ -333,6 +378,34 @@ static void omm_update_worlds(struct MarioState *m) {
                 spawn_object_abs_with_rot(m->marioObj, 0, MODEL_NONE,            bhvCoinFormation,  -2730, 1000, -6400, 0, 0x0000, 0)->oBehParams2ndByte = COIN_FORMATION_FLAG_FLYING;
                 obj_set_dormant(box3coins, true);
             }
+        } break;
+
+        // Yellow Dunes
+        // - Hide the pipe in the sub-area while Eyerok is alive
+        case COURSE_SSL: {
+            omm_secrets_unlock(OMM_SECRET_SMMS_SECRET);
+            if (gCurrAreaIndex == 1) {
+                sOmmWorld->wpTimer = 20;
+            } else {
+                omm_world_behavior_set_dormant(bhvWarpPipe, obj_get_first_with_behavior(bhvEyerokBoss) != NULL);
+            }
+        } break;
+
+#elif OMM_GAME_IS_SMGS
+
+        // Molten Magma Galaxy
+        case COURSE_SL: {
+            struct Object *spark = obj_get_first_with_behavior(bhvStaticObject);
+            if (!spark) {
+                spark = spawn_object_abs_with_rot(m->marioObj, 0, MODEL_SPARKLES, bhvStaticObject, 2720, 0, 6780, 0, 0, 0);
+            }
+            spark->oAnimState++;
+            spark->oNodeFlags |= GRAPH_RENDER_BILLBOARD;
+        } break;
+
+        // Not Vanish Cap under the Moat
+        case COURSE_VCUTM: {
+            omm_secrets_unlock(OMM_SECRET_SMGS_SECRET);
         } break;
 
 #elif OMM_GAME_IS_SM64
@@ -582,24 +655,10 @@ static void omm_update_worlds(struct MarioState *m) {
                 } break;
 
                 // Basement
-                // Darken the basement between 0:00 and 0:59 included
-                // - During that time, Mips and Toads go to sleep
-                // - It gets even darker if the flames are cleared
+                // After 120 stars, make Peach appear?
                 case AREA_CASTLE_BASEMENT: {
-                    struct tm *t = omm_get_current_time();
-                    bool darken = (m->numStars >= 120 && t->tm_hour == 0);
-                    omm_world_behavior_set_dormant(bhvMips, darken);
-                    omm_world_behavior_set_dormant(bhvToadMessage, darken);
-                    if (darken) {
-                        struct Object *gfxPaletteModifier = obj_get_first_with_behavior(bhvOmmGfxPaletteModifier);
-                        if (!gfxPaletteModifier) gfxPaletteModifier = spawn_object(m->marioObj, MODEL_NONE, bhvOmmGfxPaletteModifier);
-                        s32 remainingFlames = obj_get_count_with_behavior(bhvFlame);
-                        f32 intensityModifier = 0.04f * remainingFlames;
-                        gfxPaletteModifier->oGfxPaletteModifierR = intensityModifier;
-                        gfxPaletteModifier->oGfxPaletteModifierG = intensityModifier;
-                        gfxPaletteModifier->oGfxPaletteModifierB = intensityModifier;
-                    } else {
-                        obj_deactivate_all_with_behavior(bhvOmmGfxPaletteModifier);
+                    if (m->numStars >= 120 && !obj_get_first_with_behavior(bhvOmmPeach)) {
+                        omm_obj_spawn_peach(m->marioObj);
                     }
                 } break;
 
@@ -711,6 +770,10 @@ bool omm_world_is_dark() {
 }
 
 OMM_ROUTINE_LEVEL_ENTRY(omm_world_on_level_entry) {
+    if (omm_is_main_menu()) {
+        sOmmWorld->prevCourseNum = COURSE_NONE;
+        sOmmWorld->currCourseNum = COURSE_NONE;
+    }
     sOmmWorld->isFrozen = false;
     sOmmWorld->isFlooded = false;
     sOmmWorld->isDark = false;

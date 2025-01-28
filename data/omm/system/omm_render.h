@@ -118,7 +118,6 @@ extern const char *gOmmFontHud[0x100];
 #define OMM_RENDER_POWER_SEGMENT_COLOR_R(index)             ((0xFFF00000 >> (8 * (index))) & 0xFF)
 #define OMM_RENDER_POWER_SEGMENT_COLOR_G(index)             ((0x00F0E8E0 >> (8 * (index))) & 0xFF)
 #define OMM_RENDER_POWER_SEGMENT_COLOR_B(index)             ((0x000000FF >> (8 * (index))) & 0xFF)
-#define OMM_RENDER_POWER_SEGMENT_GRADIENT(index)            (OMM_MOVESET_ODYSSEY && ((0b0110 >> (index)) & 1))
 #define OMM_RENDER_POWER_SEGMENT_DELTA                      (OMM_RENDER_POWER_SIZE / 16.f)
 #define OMM_RENDER_POWER_HEART_NUM_PIECES                   (32)
 #define OMM_RENDER_POWER_HEART_RADIUS_1_X                   (OMM_RENDER_POWER_SIZE * 1.250f)
@@ -134,7 +133,8 @@ extern const char *gOmmFontHud[0x100];
 #define OMM_RENDER_POWER_NUMBER_OFFSET_Y                    ((OMM_RENDER_POWER_SIZE * 11) / 16)
 #define OMM_RENDER_POWER_FULL_SEGMENTS                      ((0x06060308 >> (8 * gOmmMovesetType)) & 0xFF) // 8,  3,  6,  6
 #define OMM_RENDER_POWER_TICKS_PER_SEGMENT                  ((0x0A0A0A01 >> (8 * gOmmMovesetType)) & 0xFF) // 1, 10, 10, 10
-#define OMM_RENDER_POWER_TICKS_NORMAL                       ((0x3C3C1E06 >> (8 * gOmmMovesetType)) & 0xFF) // 6, 30, 60, 60
+#define OMM_RENDER_POWER_TICKS_MAX                          ((0x3C3C1E06 >> (8 * gOmmMovesetType)) & 0xFF) // 6, 30, 60, 60
+#define OMM_RENDER_POWER_TICKS_NORMAL                       ((0x3C1E1E06 >> (8 * gOmmMovesetType)) & 0xFF) // 6, 30, 30, 60
 #define OMM_RENDER_POWER_TICKS_LOW                          ((0x14141404 >> (8 * gOmmMovesetType)) & 0xFF) // 4, 20, 20, 20
 #define OMM_RENDER_POWER_TICKS_CRITICAL                     ((0x0A0A0A02 >> (8 * gOmmMovesetType)) & 0xFF) // 2, 10, 10, 10
 #define OMM_RENDER_POWER_TICKS_TO_SEGMENTS(ticks)           (((ticks) + OMM_RENDER_POWER_TICKS_PER_SEGMENT / 2) / OMM_RENDER_POWER_TICKS_PER_SEGMENT)
@@ -247,8 +247,10 @@ void omm_render_string_hud(s16 x, s16 y, u8 red, u8 green, u8 blue, u8 alpha, co
 s32  omm_render_get_char_width(u8 c);
 s32  omm_render_get_char_width_hud(u8 c);
 s32  omm_render_get_string_width(const u8 *str64);
+s32  omm_render_get_string_width_sized(const u8 *str64, s16 w);
 s32  omm_render_get_string_width_hud(const u8 *str64);
-const void *omm_render_get_star_glyph(s32 index, bool colored, bool collected);
+const void *omm_render_get_star_glyph(s32 index, MODE_INDEX s32 modeIndex, bool colored, bool collected);
+const u8 *omm_render_get_star_rgb(s32 modeIndex, bool colored, bool collected);
 
 #define omm_render_string_left_align(x, y, red, green, blue, alpha, str64, shadow)          omm_render_string(x, y, red, green, blue, alpha, str64, shadow)
 #define omm_render_string_right_align(x, y, red, green, blue, alpha, str64, shadow)         omm_render_string(x - omm_render_get_string_width(str64), y, red, green, blue, alpha, str64, shadow)

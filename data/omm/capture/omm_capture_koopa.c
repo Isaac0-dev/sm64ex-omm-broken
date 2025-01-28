@@ -173,8 +173,10 @@ void omm_cappy_koopa_update_gfx(struct Object *o) {
     if (gOmmObject->state.actionState == OMM_CAPPY_KOOPA_STATE_SHELLED_SLIDING) {
         obj_scale(o, gOmmObject->koopa.scale / 1.5f);
         o->oGfxAngle[1] = gGlobalTimer * 0x2000;
+        o->oFlags |= OBJ_FLAG_SHADOW_COPY_OBJ_POS;
     } else {
         obj_scale(o, gOmmObject->koopa.scale);
+        o->oFlags &= ~OBJ_FLAG_SHADOW_COPY_OBJ_POS;
     }
 
     // Cappy transform

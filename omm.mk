@@ -2,7 +2,7 @@
 # Odyssey Mario's Moveset
 # -----------------------
 
-OMM_VERSION_NUMBER := 8.0.1
+OMM_VERSION_NUMBER := 8.1.0
 OMM_DEVELOPER := PeachyPeach
 
 # ------
@@ -13,6 +13,7 @@ SRC_DIRS += \
 data/omm \
 data/omm/system \
 data/omm/engine \
+data/omm/engine/miniaudio \
 data/omm/object \
 data/omm/models \
 data/omm/mario \
@@ -95,7 +96,7 @@ CUSTOM_C_DEFINES += \
   -DOMM_GAME_CODE="\"$(OMM_GAME_CODE)\"" \
   -D$(OMM_GAME_CODE) \
   -DDYNOS_INL
-BITS += -lz
+BITS += -lz -lstdc++
 
 # -------
 # Defines
@@ -133,6 +134,10 @@ endif
 ifeq ($(DEBUG),1)
   CC := $(CROSS)gcc $(INC_DIRS)
   CXX := $(CROSS)g++ $(INC_DIRS)
+  ifeq ($(WERROR),1)
+    CC += -Werror
+    CXX += -Werror
+  endif
 else
   CC := $(CROSS)gcc -w $(INC_DIRS)
   CXX := $(CROSS)g++ -w $(INC_DIRS)
@@ -141,6 +146,8 @@ endif
 # ---------
 # OMM rules
 # ---------
+
+.PHONY: OMM_VERSION OMM_FIX_BANK_SETS_SIZE OMM_BASEPACK_ZIP OMM_BASEPACK_LST
 
 all: OMM_VERSION OMM_FIX_BANK_SETS_SIZE OMM_BASEPACK_ZIP
 
@@ -185,6 +192,7 @@ OMM_BASEPACK_ZIP: $(EXE) $(OMM_GAME_BASEPACK_LST)
 ifneq ($(DEBUG),1)
 	@rm -f $(OMM_GAME_BASEPACK_LST)
 	@ls $(BUILD_DIR) | grep -vE "^res$$|^sm64|^dynos$$|^baserom|\.dll$$" | awk '{print "$(BUILD_DIR)/"$$1}' | xargs rm -rf
+	@objcopy -p --strip-unneeded $(EXE)
 endif
 
 OMM_BASEPACK_LST:

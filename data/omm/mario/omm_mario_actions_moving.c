@@ -97,6 +97,20 @@ static void omm_act_walking_anim_and_audio(struct MarioState *m) {
     }
 }
 
+void omm_act_roll_update_gfx(struct MarioState *m) {
+    f32 headHeight;
+    geo_compute_marios_heights(m->marioObj);
+    geo_get_marios_heights(NULL, &headHeight, NULL);
+    f32 rollOffsetMult = (1.f + 0.5f * ((headHeight - 85.f) / 85.f)) * m->marioObj->oScaleY;
+    Vec3f v = { 0.f, -60.f * rollOffsetMult, -20.f };
+    vec3f_rotate_zxy(v, v, m->faceAngle[0], m->faceAngle[1], 0);
+    m->marioObj->oGfxPos[0] += v[0];
+    m->marioObj->oGfxPos[1] += v[1] + 50.f * rollOffsetMult + 10.f * rollOffsetMult * sins(m->faceAngle[0]);
+    m->marioObj->oGfxPos[2] += v[2];
+    m->marioObj->oGfxAngle[0] = m->faceAngle[0];
+    m->marioObj->oFlags |= OBJ_FLAG_SHADOW_COPY_OBJ_POS;
+}
+
 static void omm_act_roll_audio_and_particles(struct MarioState *m, s16 prevAngle) {
 
     // Terrain
@@ -147,7 +161,7 @@ static s32 omm_act_walking(struct MarioState *m) {
     action_zb_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_ROLL, 0, RETURN_CANCEL);
     action_a_pressed(OMM_MOVESET_ODYSSEY && analog_stick_held_back(m) && m->forwardVel >= 8.f, ACT_SIDE_FLIP, 0, RETURN_CANCEL);
     action_a_pressed(1, 0, 0, RETURN_CANCEL, set_jump_from_landing(m););
-    action_b_pressed(OMM_MOVESET_ODYSSEY && !omm_player_is_selected(OMM_PLAYER_WARIO), ACT_MOVE_PUNCHING, 0, RETURN_CANCEL);
+    action_b_pressed(OMM_MOVESET_ODYSSEY && !OMM_PLAYER_IS_WARIO, ACT_MOVE_PUNCHING, 0, RETURN_CANCEL);
     action_z_pressed(1, ACT_CROUCH_SLIDE, 0, RETURN_CANCEL);
     action_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_SPIN_GROUND, 0, RETURN_CANCEL);
     action_condition(!omm_peach_vibe_is_gloom() && should_begin_sliding(m), ACT_BEGIN_SLIDING, 0, RETURN_CANCEL);
@@ -424,15 +438,8 @@ static s32 omm_act_roll(struct MarioState *m) {
     m->faceAngle[0] += (s16) (0x1C00 * speed);
     ANM(MARIO_ANIM_FORWARD_SPINNING, 0.01f);
     obj_anim_set_frame(m->marioObj, 0);
-    Vec3f v = { 0, -60, -20 };
-    vec3f_rotate_zxy(v, v, m->faceAngle[0], m->faceAngle[1], 0);
-    m->marioObj->oGfxPos[0] += v[0];
-    m->marioObj->oGfxPos[1] += v[1] + 50.f + 10.f * sins(m->faceAngle[0]);
-    m->marioObj->oGfxPos[2] += v[2];
-    m->marioObj->oGfxAngle[0] = m->faceAngle[0];
-    m->marioObj->oFlags |= OBJ_FLAG_SHADOW_COPY_OBJ_POS;
+    omm_act_roll_update_gfx(m);
     omm_act_roll_audio_and_particles(m, prevAngle);
-
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }
 

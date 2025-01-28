@@ -101,6 +101,11 @@ Mat4_ts _throwMatrix;
 #else
 #define OMM_CODE_DEBUG 0
 #endif
+#if OMM_CODE_DEBUG
+#define DEBUG_ONLY
+#else
+#define DEBUG_ONLY UNUSED
+#endif
 
 // OMM_DEV | If set, enables super secret features (dev branch only)
 #if defined(OMM_DEV)

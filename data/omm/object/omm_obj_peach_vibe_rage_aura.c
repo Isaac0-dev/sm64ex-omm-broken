@@ -6,8 +6,8 @@
 #define OMM_PEACH_VIBE_RAGE_AURA_POINTS_PER_SEGMENT   30
 #define OMM_PEACH_VIBE_RAGE_AURA_NUM_SEGMENTS         30
 #define OMM_PEACH_VIBE_RAGE_AURA_RADIUS              120,  5, 0xA59
-#define OMM_PEACH_VIBE_RAGE_AURA_Y_MIN              -100,  8, 0x1E3
-#define OMM_PEACH_VIBE_RAGE_AURA_Y_MID                20, 12, 0x814
+#define OMM_PEACH_VIBE_RAGE_AURA_Y_MIN               lerp_f(height, -80, -100),  8, 0x1E3
+#define OMM_PEACH_VIBE_RAGE_AURA_Y_MID               lerp_f(height,  30,   20), 12, 0x814
 #define OMM_PEACH_VIBE_RAGE_AURA_Y_MAX               200, 10, 0x3F7
 #define OMM_PEACH_VIBE_RAGE_AURA_Y_MIN_OPACITY        10,  0, 0x000
 #define OMM_PEACH_VIBE_RAGE_AURA_Y_MID_OPACITY         6,  1, 0x152
@@ -75,6 +75,7 @@ static f32 oscillate_min_mid_max(f32 t,
 }
 
 static void bhv_omm_peach_vibe_rage_aura_update() {
+    struct MarioState *m = gMarioState;
     struct Object *o = gCurrentObject;
     OmmPeachVibeRageAuraGeoData *data = geo_get_geo_data(o,
         sizeof(OmmPeachVibeRageAuraGeoData),
@@ -87,6 +88,7 @@ static void bhv_omm_peach_vibe_rage_aura_update() {
     o->oTimer *= (o->oAction == isRage);
     o->oAction = isRage;
     f32 alpha  = invlerp_0_1_s(o->oTimer, 15 * !isRage, 15 * isRage);
+    f32 height = clamp_0_1_f((m->pos[1] - m->floorHeight) / 100.f);
 
     // Vertices and triangles
     Vtx *vtx = data->vtx;
@@ -142,9 +144,15 @@ static void bhv_omm_peach_vibe_rage_aura_update() {
     }
 
     // Update object
-    f32 *marioRootPos = geo_get_marios_root_pos();
-    obj_set_xyz(o, marioRootPos[0], marioRootPos[1], marioRootPos[2]);
-    obj_set_home(o, marioRootPos[0], marioRootPos[1], marioRootPos[2]);
+    if (omm_mario_is_ledge_climbing(m)) { height = 1.f; }
+    f32 rootHeight; geo_get_marios_heights(&rootHeight, NULL, NULL);
+    f32 gpHeight = 25.f * (m->action == ACT_GROUND_POUND && m->actionState != 0);
+    Vec3f pos; geo_get_marios_root_pos(pos);
+    pos[0] = lerp_f(height, m->pos[0], pos[0]);
+    pos[1] = lerp_f(height, m->pos[1] + rootHeight, pos[1] + gpHeight);
+    pos[2] = lerp_f(height, m->pos[2], pos[2]);
+    obj_set_xyz(o, pos[0], pos[1], pos[2]);
+    obj_set_home(o, pos[0], pos[1], pos[2]);
     obj_set_angle(o, 0, 0, 0);
     obj_set_scale(o, 1.f, 1.f, 1.f);
 

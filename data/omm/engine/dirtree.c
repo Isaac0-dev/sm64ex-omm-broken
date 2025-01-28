@@ -22,9 +22,24 @@ static fs_dirtree_entry_t *dirtree_add_ancestors(fs_dirtree_t *tree, char *name)
     return ent;
 }
 
+// Due to how linked lists work, files are walked through in reverse order
+static fs_dirtree_entry_t *get_last_entry(fs_dirtree_entry_t *ent) {
+    if (ent) {
+        ent->prev_sibling = NULL;
+        for (;; ent = ent->next_sibling) {
+            if (!ent->next_sibling) {
+                return ent;
+            }
+            ent->next_sibling->prev_sibling = ent;
+        }
+    }
+    return NULL;
+}
+
 static s32 dirtree_walk_impl(fs_dirtree_entry_t *ent, walk_fn_t walkfn, void *user, const bool recur) {
     s32 res = FS_WALK_SUCCESS;
-    for (ent = ent->next_child; ent && res == FS_WALK_SUCCESS; ent = ent->next_sibling) {
+    for (ent = get_last_entry(ent->next_child); ent && res == FS_WALK_SUCCESS; ent = ent->prev_sibling) {
+    // for (ent = ent->next_child; ent && res == FS_WALK_SUCCESS; ent = ent->next_sibling) {
         if (ent->is_dir && recur && ent->next_child) {
             res = dirtree_walk_impl(ent, walkfn, user, recur);
         } else if (!ent->is_dir && !walkfn(user, ent->name)) {
@@ -73,11 +88,11 @@ static char *strrstr(char *str, const char *substr) {
 }
 
 static char *get_shortened_name(char *name) {
-    for_each_until_null(const char *, dir, array_of(const char *) {
+    static const char *sResourceDirs[] = {
         "/" FS_TEXTUREDIR "/",
         "/" FS_SOUNDDIR "/",
-        NULL
-    }) {
+    };
+    array_for_each_(const char *, dir, sResourceDirs) {
         char *res = strrstr(name, *dir);
         if (res) {
             return res + 1;
@@ -86,8 +101,21 @@ static char *get_shortened_name(char *name) {
     return name;
 }
 
+static bool should_shorten_name(const char *name) {
+    return (
+        strstr(name, ".png") ||
+        strstr(name, ".wav") ||
+        strstr(name, "/bank_sets") ||
+        strstr(name, "/sequences.bin") ||
+        strstr(name, "/sound_data.ctl") ||
+        strstr(name, "/sound_data.tbl")
+    );
+}
+
 fs_dirtree_entry_t *fs_dirtree_add(fs_dirtree_t *tree, char *name, const bool is_dir) {
-    name = get_shortened_name(name);
+    if (should_shorten_name(name)) {
+        name = get_shortened_name(name);
+    }
     fs_dirtree_entry_t *ent = fs_dirtree_find(tree, name);
     if (!ent) {
         fs_dirtree_entry_t *parent = dirtree_add_ancestors(tree, name);

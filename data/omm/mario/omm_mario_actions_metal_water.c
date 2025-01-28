@@ -157,6 +157,14 @@ static s32 omm_act_metal_water_idle(struct MarioState *m) {
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
 
+static s32 omm_act_metal_water_first_person(struct MarioState *m) {
+    action_init(m->forwardVel, 0, 0, NO_SOUND, music_lower_volume(SEQ_PLAYER_LEVEL, 60, 40));
+
+    s32 animID = obj_anim_is_at_end(m->marioObj) ? MARIO_ANIM_FIRST_PERSON : m->marioObj->oAnimID;
+    omm_metal_water_common_stationary_step(m, 0, animID);
+    return OMM_MARIO_ACTION_RESULT_BREAK;
+}
+
 static s32 omm_act_metal_water_walking(struct MarioState *m) {
     action_cappy(1, ACT_OMM_METAL_WATER_CAPPY_THROW_GROUND, 0, RETURN_CANCEL);
     action_za_pressed(OMM_MOVESET_ODYSSEY && m->forwardVel >= OMM_MARIO_METAL_WATER_LONG_JUMP_MIN_VEL, ACT_OMM_METAL_WATER_LONG_JUMP, 0, RETURN_CANCEL);
@@ -1098,6 +1106,7 @@ s32 omm_mario_execute_metal_water_action(struct MarioState *m) {
 
         // Moves
         case ACT_OMM_METAL_WATER_IDLE:                      return omm_act_metal_water_idle(m);
+        case ACT_OMM_METAL_WATER_FIRST_PERSON:              return omm_act_metal_water_first_person(m);
         case ACT_OMM_METAL_WATER_WALKING:                   return omm_act_metal_water_walking(m);
         case ACT_OMM_METAL_WATER_START_CROUCHING:           return omm_act_metal_water_start_crouching(m);
         case ACT_OMM_METAL_WATER_CROUCHING:                 return omm_act_metal_water_crouching(m);

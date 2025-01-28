@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "data/omm/omm_constants.h"
 #include "level_commands.h"
 
 typedef void (*OmmRoutine)(void);
@@ -208,7 +209,7 @@ static void omm_pre_render_update_caps_models() {
         omm_player_graphics_get_metal_cap,
         omm_player_graphics_get_winged_metal_cap,
     };
-    s32 playerIndex = omm_player_get_selected_index();
+    s32 playerIndex = omm_player_get_selected_index_model_and_sounds();
     omm_array_for_each(omm_obj_get_cap_behaviors(), p_bhv) {
         const BehaviorScript *bhv = (const BehaviorScript *) p_bhv->as_ptr;
         for_each_object_with_behavior(obj, bhv) {
@@ -229,24 +230,23 @@ static void omm_pre_render_update_caps_models() {
 }
 
 void omm_pre_render() {
+    struct MarioState *m = gMarioState;
+    struct Object *o = gMarioObject;
 
-    // Mario model state
-    if (gMarioState->marioBodyState) {
-        if (OMM_EXTRAS_INVISIBLE_MODE) {
-            gMarioState->marioBodyState->modelState &= ~0xFF;
-            gMarioState->marioBodyState->modelState |= 0x100;
-        } else if (omm_is_main_menu()) {
-            gMarioState->marioBodyState->modelState &= ~0x1FF;
-        }
+    // Always make Mario fully opaque on title screen
+    if (m->marioBodyState && omm_is_main_menu()) {
+        m->marioBodyState->modelState &= ~0x1FF;
     }
 
     // Sparkly Stars sparkles
-    if (OMM_SPARKLY_STARS_COMPLETION_REWARD && gMarioObject && !(gMarioObject->oNodeFlags & GRAPH_RENDER_INVISIBLE) && get_dialog_id() == -1 && !omm_is_game_paused()) {
-        f32 vel = vec3f_dist(gMarioState->pos, gOmmMario->state.previous.pos);
+    if (OMM_SPARKLY_STARS_COMPLETION_REWARD && !OMM_EXTRAS_INVISIBLE_MODE && o && !(o->oNodeFlags & GRAPH_RENDER_INVISIBLE) && get_dialog_id() == -1 && !omm_is_game_paused()) {
+        f32 vel = vec3f_dist(m->pos, gOmmMario->state.previous.pos);
         if (gGlobalTimer % (3 - clamp_s(vel / 25.f, 0, 2)) == 0) {
-            struct Object *sparkle = omm_obj_spawn_sparkly_star_sparkle_mario(gMarioObject, OMM_SPARKLY_STARS_COMPLETION_REWARD, 20.f, 10.f, 0.4f, 30.f);
-            f32 *marioRootPos = geo_get_marios_root_pos();
-            vec3f_sub(vec3f_add(&sparkle->oPosX, marioRootPos), &gMarioObject->oPosX);
+            struct Object *sparkle = omm_obj_spawn_sparkly_star_sparkle_mario(o, OMM_SPARKLY_STARS_COMPLETION_REWARD, 20.f, 10.f, 0.4f, 30.f);
+            Vec3f marioRootPos; geo_get_marios_root_pos(marioRootPos);
+            sparkle->oPosX += (marioRootPos[0] - o->oPosX);
+            sparkle->oPosY += (marioRootPos[1] - o->oPosY);
+            sparkle->oPosZ += (marioRootPos[2] - o->oPosZ);
         }
     }
 
@@ -262,15 +262,15 @@ void omm_pre_render() {
         const BehaviorScript *bhv = (const BehaviorScript *) p_bhv->as_ptr;
         for_each_object_with_behavior(obj, bhv) {
             if (OMM_EXTRAS_INVISIBLE_MODE) {
-                obj->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
+                obj->oFlags |= OBJ_FLAG_INVISIBLE_MODE;
             } else {
-                obj->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
+                obj->oFlags &= ~OBJ_FLAG_INVISIBLE_MODE;
             }
         }
     }
 
     // Cut the music before resuming save file from last course
-    if (!sOmmSystem->isMainMenu && sOmmSystem->warpToLastCourseNum != COURSE_NONE && gMarioObject) {
+    if (!sOmmSystem->isMainMenu && sOmmSystem->warpToLastCourseNum != COURSE_NONE && o) {
         music_fade_out(SEQ_PLAYER_LEVEL, 1);
         music_pause();
     }
@@ -300,10 +300,13 @@ void *omm_update_cmd(void *cmd, UNUSED s32 reg) {
         gMarioState->action = 0;
         configSkipIntro = false;
         sOmmSystem->skipIntro = false;
-        sOmmSystem->isMainMenu = true;
         sOmmSystem->isEndingCutscene = false;
         sOmmSystem->isEndingCake = false;
         sOmmSystem->returnToMainMenu = 0;
+        if (!sOmmSystem->isMainMenu) {
+            sOmmSystem->isMainMenu = true;
+            omm_execute_routines(OMM_ROUTINE_TYPE_LEVEL_ENTRY);
+        }
     }
 
     // Loading screen
@@ -349,11 +352,13 @@ void *omm_update_cmd(void *cmd, UNUSED s32 reg) {
             sOmmSystem->isEndingCutscene = true;
         }
 
+#if OMM_GAME_IS_SM64
         // Ending cake screen
         if (cmd == level_script_cake_ending) {
             sOmmSystem->isEndingCutscene = true;
             sOmmSystem->isEndingCake = true;
         }
+#endif
 
         // Skip ending
         if (sOmmSystem->isEndingCutscene && !sOmmSystem->returnToMainMenu && (gPlayer1Controller->buttonPressed & START_BUTTON)) {
@@ -402,7 +407,7 @@ bool omm_is_main_menu() {
 }
 
 bool omm_is_game_paused() {
-    return gMenuMode != -1;
+    return sCurrPlayMode == PLAY_MODE_PAUSED || gMenuMode != -1;
 }
 
 bool omm_is_transition_active() {

@@ -5,6 +5,10 @@
 #define OMM_CONFIGFILE_NAME "omm_config.txt"
 
 static const struct ConfigOption OMM_CONFIG_OPTIONS[] = {
+    CONFIG_TOGGLE("cs_palette_preset", gOmmCsPalettePreset),
+    CONFIG_TOGGLE("cs_animations", gOmmCsAnimations),
+    CONFIG_TOGGLE("cs_voices", gOmmCsVoices),
+    CONFIG_SCROLL("cs_voice_volume_factor", gOmmCsVoiceVolumeFactor),
     CONFIG_TOGGLE("time_trials_enabled", gOmmTimeTrialsEnabled),
     CONFIG_TOGGLE("time_trials_show_star_ghosts", gOmmTimeTrialsShowStarGhosts),
     CONFIG_TOGGLE("time_trials_show_bowser_ghosts", gOmmTimeTrialsShowBowserGhosts),
@@ -33,7 +37,11 @@ static const struct ConfigOption OMM_CONFIG_OPTIONS[] = {
     CONFIG_KBINDS("omm_key_stickleft", gOmmControlsStickLeft),
     CONFIG_KBINDS("omm_key_stickright", gOmmControlsStickRight),
     CONFIG_CHOICE("omm_frame_rate", gOmmFrameRate),
+#if OMM_CODE_DEBUG
+    CONFIG_CHOICE("omm_show_fps", gOmmShowFPS),
+#else
     CONFIG_TOGGLE("omm_show_fps", gOmmShowFPS),
+#endif
     CONFIG_CHOICE("omm_texture_caching", gOmmTextureCaching),
     CONFIG_TOGGLE("omm_model_pack_caching", gOmmModelPackCaching),
     CONFIG_CHOICE("omm_hud_mode", gOmmHudMode),
@@ -58,6 +66,7 @@ static const struct ConfigOption OMM_CONFIG_OPTIONS[] = {
     CONFIG_TOGGLE_SC("omm_extras_reveal_secrets", gOmmExtrasRevealSecrets),
     CONFIG_TOGGLE_SC("omm_extras_show_star_number", gOmmExtrasShowStarNumber),
     CONFIG_TOGGLE_SC("omm_extras_invisible_mode", gOmmExtrasInvisibleMode),
+    CONFIG_TOGGLE_SC("omm_extras_mario_mode", gOmmExtrasMarioMode),
 #if OMM_CODE_DEBUG
     CONFIG_TOGGLE_SC("omm_debug_hitbox", gOmmDebugHitbox),
     CONFIG_TOGGLE_SC("omm_debug_hurtbox", gOmmDebugHurtbox),
@@ -119,7 +128,7 @@ void configfile_load(const char *filename) {
             }
 
             // SM64 config
-            for_each_(const struct ConfigOption, option_sm64, array_length(options), options) {
+            array_for_each_(const struct ConfigOption, option_sm64, options) {
                 if (strcmp(tokens[0], option_sm64->name) == 0) {
                     option = option_sm64;
                     break;
@@ -128,7 +137,7 @@ void configfile_load(const char *filename) {
 
             // OMM config
             if (!option) {
-                for_each_(const struct ConfigOption, option_omm, array_length(OMM_CONFIG_OPTIONS), OMM_CONFIG_OPTIONS) {
+                array_for_each_(const struct ConfigOption, option_omm, OMM_CONFIG_OPTIONS) {
                     if (strcmp(tokens[0], option_omm->name) == 0) {
                         option = option_omm;
                         break;
@@ -179,7 +188,7 @@ void configfile_save(const char *filename) {
         FILE *file = fopen(fs_get_save_path(filepath, filename), "w");
         if (file) {
             omm_log("Saving configuration to \"%s\"\n",, filename);
-            for_each_(const struct ConfigOption, option_sm64, array_length(options), options) {
+            array_for_each_(const struct ConfigOption, option_sm64, options) {
                 configfile_save_option(file, option_sm64);
             }
             omm_array_for_each(sOmmUnknownConfigOptions, p_line) {
@@ -187,7 +196,7 @@ void configfile_save(const char *filename) {
                 if (strstr(line, "key_") == line) continue; // Don't save old key binds
                 fprintf(file, "%s\n", line);
             }
-            for_each_(const struct ConfigOption, option_omm, array_length(OMM_CONFIG_OPTIONS), OMM_CONFIG_OPTIONS) {
+            array_for_each_(const struct ConfigOption, option_omm, OMM_CONFIG_OPTIONS) {
                 configfile_save_option(file, option_omm);
             }
             omm_models_write_config(file);

@@ -72,19 +72,14 @@ static void bhv_omm_goomba_stack_update() {
     }
 
     // Always follow the bottom Goomba
-    o->oPosX = p->oPosX;
-    o->oPosY = p->oPosY + o->oAction * o->oScaleY * omm_behavior_data_get_capture(p->behavior)->hitboxHeight;
-    o->oPosZ = p->oPosZ;
-    o->oFaceAnglePitch = 0;
-    o->oFaceAngleYaw = p->oFaceAngleYaw;
-    o->oFaceAngleRoll = 0;
-    o->oMoveAnglePitch = 0;
-    o->oMoveAngleYaw = p->oFaceAngleYaw;
-    o->oMoveAngleRoll = 0;
+    obj_set_xyz(o, p->oPosX, p->oPosY + o->oAction * o->oScaleY * omm_behavior_data_get_capture(p->behavior)->hitboxHeight, p->oPosZ);
+    obj_set_home(o, p->oPosX, p->oPosY, p->oPosZ);
+    obj_set_angle(o, 0, p->oFaceAngleYaw, 0);
+    obj_copy_scale(o, p);
     obj_update_gfx(o);
     obj_anim_play(o, 0, 1.f);
     obj_update_blink_state(o, &o->oGoombaBlinkTimer, 30, 50, 5);
-    o->oTransparency = 0;
+    obj_copy_visibility_and_transparency(o, p);
 }
 
 const BehaviorScript bhvOmmGoombaStack[] = {

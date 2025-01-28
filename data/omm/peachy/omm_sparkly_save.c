@@ -65,6 +65,10 @@ bool omm_sparkly_read(const char *name, const char *value, bool *invalid) {
 
             // Stars
             s32 num; invert(num, 8, 1);
+            if (num < 0 || num > OMM_SPARKLY_STARS_MAX) {
+                omm_log_error("Invalid star count: %d\n",, num);
+                return true;
+            }
             while (num) {
                 u8 bits; invert(bits, 5, 1);
                 saves[j].stars[max_s(0, num - 1)] = ((bits >> 0) & 1);
@@ -84,11 +88,11 @@ bool omm_sparkly_read(const char *name, const char *value, bool *invalid) {
 
         // Check matching
         if (modes[0] != modes[1]) {
-            omm_log("[ERROR] Modes don't match!\n");
+            omm_log_error("Modes don't match!\n");
             return true;
         }
         if (!mem_eq(&saves[0], &saves[1], sizeof(OmmSparklySaveData))) {
-            omm_log("[ERROR] Save data don't match!\n");
+            omm_log_error("Save data don't match!\n");
             return true;
         }
 
@@ -254,6 +258,7 @@ void omm_sparkly_collect_star(s32 sparklyMode, s32 starIndex) {
 void omm_sparkly_collect_grand_star(s32 sparklyMode) {
     CHECK_MODE();
     sOmmSparklySave->grandStar = true;
+    sOmmSparklySave->completed = true;
     omm_save_file_set_last_course(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
     omm_save_file_do_save();
 }
@@ -279,20 +284,7 @@ void omm_sparkly_clear_all() {
     omm_save_file_do_save();
 }
 
-bool omm_sparkly_check_cheats(struct MarioState *m) {
-
-    // No more problem after getting all Sparkly Stars
-    if (OMM_SPARKLY_ALLOW_CHEATS) {
-        return false;
-    }
-
-    // Regular cheats
-    // The option "Enable Cheats" is not counted as a cheat
-    static const u8 NO_CHEAT[sizeof(Cheats) - sizeof(Cheats.EnableCheats)] = {0};
-    const u8 *cheats = ((const u8 *) &Cheats) + sizeof(Cheats.EnableCheats);
-    if (!mem_eq(cheats, NO_CHEAT, sizeof(NO_CHEAT))) {
-        return true;
-    }
+bool omm_sparkly_are_regular_cheats_enabled(struct MarioState *m, bool skipIfCheatsDisabled) {
 
     // Debug move
     if (m->action == ACT_DEBUG_FREE_MOVE) {
@@ -301,6 +293,35 @@ bool omm_sparkly_check_cheats(struct MarioState *m) {
 
     // OMM cheats
     if (OMM_CHEATS_ENABLED) {
+        return true;
+    }
+
+    // Enable cheats
+    if (!Cheats.EnableCheats && skipIfCheatsDisabled) {
+        return false;
+    }
+
+    // Cheats menu
+    // The option "Enable Cheats" is not counted as a cheat
+    static const u8 NO_CHEAT[sizeof(Cheats) - sizeof(Cheats.EnableCheats)] = {0};
+    const u8 *cheats = ((const u8 *) &Cheats) + sizeof(Cheats.EnableCheats);
+    if (!mem_eq(cheats, NO_CHEAT, sizeof(NO_CHEAT))) {
+        return true;
+    }
+
+    // OK
+    return false;
+}
+
+bool omm_sparkly_check_cheats(struct MarioState *m) {
+
+    // No more problem after getting all Sparkly Stars
+    if (OMM_SPARKLY_IS_MODE_COMPLETED) {
+        return false;
+    }
+
+    // Check regular cheats
+    if (omm_sparkly_are_regular_cheats_enabled(m, false)) {
         return true;
     }
 
@@ -335,7 +356,7 @@ bool omm_sparkly_check_cheats(struct MarioState *m) {
 }
 
 void omm_sparkly_turn_off_cheats() {
-    if (!OMM_SPARKLY_ALLOW_CHEATS) {
+    if (!OMM_SPARKLY_IS_MODE_COMPLETED) {
         mem_zero(&Cheats, sizeof(Cheats));
         OMM_CHEATS_DISABLE;
     }

@@ -10651,7 +10651,7 @@ static const Gfx omm_peach_normal_wing_gfx[] = {
 //
 
 static const Gfx omm_peach_metal_gfx_begin[] = {
-    gsSPSetGeometryMode(G_TEXTURE_GEN),
+    gsSPSetGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_INVERT),
     gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, 0, 0, 0, ENVIRONMENT, TEXEL0, 0, SHADE, 0, 0, 0, 0, ENVIRONMENT),
     gsDPLoadTextureBlock(OMM_TEXTURE_PEACH_METAL, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
     gsSPTexture(0x07C0, 0x07C0, 0, G_TX_RENDERTILE, G_ON),
@@ -10661,7 +10661,7 @@ static const Gfx omm_peach_metal_gfx_begin[] = {
 };
 
 static const Gfx omm_peach_metal_gfx_end[] = {
-    gsSPClearGeometryMode(G_TEXTURE_GEN),
+    gsSPClearGeometryMode(G_TEXTURE_GEN | G_TEXTURE_GEN_INVERT),
     gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
     gsSPTexture(0x07C0, 0x07C0, 0, G_TX_RENDERTILE, G_OFF),
     gsSPEndDisplayList(),

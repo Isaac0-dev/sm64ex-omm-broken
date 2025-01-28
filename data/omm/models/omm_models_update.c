@@ -30,60 +30,52 @@ static s32 get_obj_current_anim_index(struct Object *obj) {
     return -1;
 }
 
-void omm_models_swap_animations(void *ptr) {
-    static struct Animation *default_anim = NULL;
-    static struct Animation gfx_data_anim[1];
+void omm_models_update_current_animation(void *ptr) {
 
-    // Does the object has a model?
+    // Does the object have a model?
     struct Object *obj = (struct Object *) ptr;
     if (!obj->oGraphNode) {
         return;
     }
 
-    // Swap the current animation with the one from the Gfx data
-    if (!default_anim) {
-        default_anim = obj->oCurrAnim;
+    // Actor index
+    s32 actor_index = omm_models_get_actor_index(obj->oGraphNode->georef);
+    if (actor_index == -1) {
+        return;
+    }
 
-        // Actor index
-        s32 actor_index = omm_models_get_actor_index(obj->oGraphNode->georef);
-        if (actor_index == -1) {
-            return;
+    // Gfx data
+    OmmActorGfx *actor_gfx = (OmmActorGfx *) omm_array_get(gOmmActorList, ptr, actor_index);
+    OmmGfxData *gfx_data = actor_gfx->gfx_data;
+    if (!gfx_data) {
+        return;
+    }
+
+    // Animation index
+    s32 anim_index = (obj == gMarioObject ? get_mario_current_anim_index() : get_obj_current_anim_index(obj));
+    if (anim_index == -1) {
+        return;
+    }
+
+    // Animation data
+    const Animation *anim_data = NULL;
+
+    // Retrieve the animation from the CS pack (Mario only)
+    if (gOmmCsAnimations && obj == gMarioObject) {
+        u32 cs_index = ((const OmmPackData *) omm_array_get(gOmmPackList, ptr, actor_gfx->pack_index))->cs_index;
+        if (cs_index) {
+            anim_data = omm_models_cs_get_animation(cs_index, anim_index);
         }
+    }
 
-        // Gfx data
-        OmmGfxData *gfx_data = ((OmmActorGfx *) omm_array_get(gOmmActorList, ptr, actor_index))->gfx_data;
-        if (!gfx_data) {
-            return;
-        }
+    // Retrieve the animation from the model
+    if (!anim_data && anim_index < omm_array_count(gfx_data->animation_table)) {
+        anim_data = (const Animation *) omm_array_get(gfx_data->animation_table, ptr, anim_index);
+    }
 
-        // Animation table
-        if (omm_array_count(gfx_data->animation_table) == 0) {
-            return;
-        }
-
-        // Animation index
-        s32 anim_index = (obj == gMarioObject ? get_mario_current_anim_index() : get_obj_current_anim_index(obj));
-        if (anim_index == -1) {
-            return;
-        }
-
-        // Animation data
-        const OmmAnimData *anim_data = (const OmmAnimData *) omm_array_get(gfx_data->animation_table, ptr, anim_index);
-        if (anim_data) {
-            gfx_data_anim->flags = anim_data->flags;
-            gfx_data_anim->mStartFrame = anim_data->start_frame;
-            gfx_data_anim->mLoopStart = anim_data->loop_start;
-            gfx_data_anim->mLoopEnd = anim_data->loop_end;
-            gfx_data_anim->values = anim_data->values;
-            gfx_data_anim->index = anim_data->index;
-            gfx_data_anim->length = anim_data->length;
-            obj->oCurrAnim = gfx_data_anim;
-        }
-
-    // Restore the default animation
-    } else {
-        obj->oCurrAnim = default_anim;
-        default_anim = NULL;
+    // Use the model custom animation
+    if (anim_data) {
+        obj->oCurrAnim = (Animation *) anim_data;
     }
 }
 
@@ -102,12 +94,16 @@ void omm_models_update_object(struct Object *obj) {
             OmmActorGfx *actor_gfx = (OmmActorGfx *) omm_array_get(gOmmActorList, ptr, actor_index);
             omm_array_for_each(gOmmPackList, p_pack) {
                 const OmmPackData *pack = (const OmmPackData *) p_pack->as_ptr;
-                if (!pack || !pack->exists) continue;
+                if (!pack || !pack->exists || pack->caching == OMM_MODELS_CACHING_ENABLED) continue;
 
                 // If pack is enabled
                 // load the pack's model
                 if (pack->enabled) {
-                    OmmGfxData *gfx_data = omm_models_load_from_binary(pack->path, omm_models_get_actor_names(actor_index), NULL);
+                    OmmGfxData *gfx_data = (
+                        pack->cs_index ?
+                        omm_models_cs_load(pack->cs_index, *omm_models_get_actor_names(actor_index), NULL) :
+                        omm_models_load_from_binary(pack->path, omm_models_get_actor_names(actor_index), NULL)
+                    );
 
                     // If no pack is selected for that actor or the loaded model has higher priority
                     // replace the actor's current model
@@ -142,8 +138,18 @@ void omm_models_update_object(struct Object *obj) {
 void omm_models_update() {
     if (gObjectLists && omm_array_count(gOmmPackList) != 0) {
         omm_models_load_all(NULL);
+        omm_models_cs_update_current();
         for_each_object_in_all_lists(obj) {
             omm_models_update_object(obj);
+        }
+    }
+}
+
+void omm_models_disable_all() {
+    omm_array_for_each(gOmmPackList, p_pack) {
+        OmmPackData *pack = (OmmPackData *) p_pack->as_ptr;
+        if (pack) {
+            pack->enabled = false;
         }
     }
 }

@@ -9,7 +9,16 @@
 
 static void bhv_omm_dorrie_update() {
     struct Object *o = gCurrentObject;
+    struct MarioState *m = gMarioState;
     obj_approach_orbit(o, o->oTimer + o->oBehParams, 7000.f, 1800, -2500.f, 1.2f, 0x100, 0x100);
+    if (m->marioObj->platform == o) {
+        o->oSubAction++;
+        if (o->oSubAction == 30) {
+            omm_secrets_unlock(OMM_SECRET_FLYING_DORRIE);
+        }
+    } else {
+        o->oSubAction = 0;
+    }
 }
 
 const BehaviorScript bhvOmmDorrie[] = {

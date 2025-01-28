@@ -29,7 +29,8 @@ bool omm_sparkly_check_bowser_4(struct MarioState *m) {
         if (!OMM_SPARKLY_BYPASS_BOWSER_RULES) {
 
             // No cap
-            m->capTimer = min_s(m->capTimer, 1);
+            omm_mario_unset_cap(m);
+            gOmmAllow->capModifier = false;
 
             // No capture other than flaming bob-ombs
             struct Object *capture = gOmmCapture;
@@ -37,9 +38,12 @@ bool omm_sparkly_check_bowser_4(struct MarioState *m) {
                 omm_mario_unpossess_object(m, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
                 obj_mark_for_deletion(capture);
             }
+            gOmmAllow->captures = false;
+            gOmmAllow->yoshiSummon = false;
 
             // No Vibe
             omm_peach_vibe_deactivate(m);
+            gOmmAllow->vibes = false;
         }
 
         // Change the grand star to a Sparkly Grand Star

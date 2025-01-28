@@ -60,9 +60,3 @@ const BehaviorScript bhvOmmMainMenuCappy[] = {
     BHV_BEGIN_LOOP(),
     BHV_END_LOOP()
 };
-
-const BehaviorScript bhvOmmGfxPaletteModifier[] = {
-    OBJ_TYPE_UNIMPORTANT,
-    BHV_BEGIN_LOOP(),
-    BHV_END_LOOP()
-};

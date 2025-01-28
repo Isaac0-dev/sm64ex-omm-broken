@@ -1,6 +1,7 @@
 #define OMM_ALL_HEADERS
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
+#include "data/omm/omm_constants.h"
 
 static struct {
     s32 levelNum;
@@ -41,7 +42,7 @@ bool omm_restart_level() {
         1,
 #endif
         gCurrActNum)) {
-        gOmmStats->restarts++;
+        omm_stats_increase(restarts, 1);
         return true;
     }
 #endif
@@ -50,7 +51,7 @@ bool omm_restart_level() {
 bool omm_restart_area() {
     for (s32 i = gCurrAreaIndex; i != 0; --i) {
         if (omm_warp_to_level(gCurrLevelNum, i, gCurrActNum)) {
-            gOmmStats->restarts++;
+            omm_stats_increase(restarts, 1);
             return true;
         }
     }
@@ -79,13 +80,12 @@ bool omm_exit_level(s32 levelNum, s32 areaIndex, bool instant) {
         fadeout_level_music(0);
 
         // Play a fade-out transition, and trigger a "fake" warp
-        omm_speedrun_split(OMM_SPLIT_EXIT);
         if (!instant) {
             play_transition(WARP_TRANSITION_FADE_INTO_COLOR, 16, 0, 0, 0);
             level_set_transition(30, NULL);
             warp_special(0);
         }
-        sWarpDest.type = 0;
+        sWarpDest.type = WARP_TYPE_NOT_WARPING;
         sOmmWarpState->levelNum = levelNum;
         sOmmWarpState->areaIndex = areaIndex;
         sOmmWarpState->exit = true;
@@ -97,9 +97,8 @@ bool omm_exit_level(s32 levelNum, s32 areaIndex, bool instant) {
 }
 
 bool omm_return_to_castle(bool fadeOut, bool force) {
-    if (force || (!omm_is_game_paused() && !omm_is_transition_active() && !omm_is_warping() && sCurrPlayMode != 4)) {
-        initiate_warp(OMM_LEVEL_RETURN_TO_CASTLE);
-        omm_speedrun_split(OMM_SPLIT_EXIT);
+    if (force || (!omm_is_game_paused() && !omm_is_transition_active() && !omm_is_warping() && sCurrPlayMode != PLAY_MODE_CHANGE_LEVEL)) {
+        initiate_warp(OMM_LEVEL_RETURN_TO_CASTLE, 0);
         if (fadeOut) {
             fade_into_special_warp(0, 0);
         } else {
@@ -180,8 +179,13 @@ void *omm_update_warp(void *cmd, bool inited) {
 
                 // Exit warp to Castle warp
                 // Uses the death warp, as it's the only warp that exists for every stage in the game
+                // In case it doesn't exist, fall back to the "Return to Castle" warp
                 Warp *warp = omm_level_get_death_warp(sOmmWarpState->levelNum, sOmmWarpState->areaIndex);
-                sOmmWarpState->targetWarp = omm_level_get_warp(warp->dstLevelNum, warp->dstAreaIndex, warp->dstId);
+                Warp *targetWarp = (
+                    warp != NULL ?
+                    omm_level_get_warp(warp->dstLevelNum, warp->dstAreaIndex, warp->dstId) :
+                    omm_level_get_warp(OMM_LEVEL_RETURN_TO_CASTLE)
+                );
 
                 // Free everything from the current level
                 clear_objects();
@@ -200,14 +204,15 @@ void *omm_update_warp(void *cmd, bool inited) {
                 gOmmData->reset();
 
                 // Set up new level values
-                gCurrLevelNum = warp->dstLevelNum;
+                gCurrLevelNum = targetWarp->srcLevelNum;
                 gCurrCourseNum = omm_level_get_course(gCurrLevelNum);
                 gSavedCourseNum = gCurrCourseNum;
-                gCurrAreaIndex = warp->dstAreaIndex;
-                sOmmWarpState->targetArea = warp->dstAreaIndex;
+                gCurrAreaIndex = targetWarp->srcAreaIndex;
+                sOmmWarpState->targetArea = targetWarp->srcAreaIndex;
+                sOmmWarpState->targetWarp = targetWarp;
 
                 // Set up new level script
-                sWarpDest.type = 0;
+                sWarpDest.type = WARP_TYPE_NOT_WARPING;
                 sWarpDest.levelNum = 0;
                 sWarpDest.areaIdx = gCurrAreaIndex;
                 sWarpDest.nodeId = 0;
@@ -324,7 +329,7 @@ void *omm_update_warp(void *cmd, bool inited) {
                 sOmmWarpState->targetArea = gCurrAreaIndex;
 
                 // Set up new level script
-                sWarpDest.type = 0;
+                sWarpDest.type = WARP_TYPE_NOT_WARPING;
                 sWarpDest.levelNum = 0;
                 sWarpDest.areaIdx = gCurrAreaIndex;
                 sWarpDest.nodeId = 0;

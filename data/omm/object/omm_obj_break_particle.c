@@ -8,53 +8,35 @@
 //
 
 static const Vtx omm_break_particle_vertices[] = {
-    { { { -32, 0, 0 }, 0, { 0, 992 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
-    { { { 32, 0, 0 }, 0, { 992, 992 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
-    { { { 32, 64, 0 }, 0, { 992, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
-    { { { -32, 64, 0 }, 0, { 0, 0 }, { 0xFF, 0xFF, 0xFF, 0xFF } } },
+    OMM_VTX_RECT(32, 0, 0, 2, 4),
+    OMM_VTX_RECT(32, 0, 1, 2, 4),
+    OMM_VTX_RECT(32, 0, 2, 2, 4),
+    OMM_VTX_RECT(32, 0, 3, 2, 4),
+    OMM_VTX_RECT(32, 1, 0, 2, 4),
+    OMM_VTX_RECT(32, 1, 1, 2, 4),
+    OMM_VTX_RECT(32, 1, 2, 2, 4),
+    OMM_VTX_RECT(32, 1, 3, 2, 4),
 };
 
 static const Gfx omm_break_particle_triangles[] = {
-    gsSPVertex(omm_break_particle_vertices, 4, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsSPEndDisplayList(),
+    OMM_GFX_QUAD(omm_break_particle_vertices, 0),
+    OMM_GFX_QUAD(omm_break_particle_vertices, 1),
+    OMM_GFX_QUAD(omm_break_particle_vertices, 2),
+    OMM_GFX_QUAD(omm_break_particle_vertices, 3),
+    OMM_GFX_QUAD(omm_break_particle_vertices, 4),
+    OMM_GFX_QUAD(omm_break_particle_vertices, 5),
+    OMM_GFX_QUAD(omm_break_particle_vertices, 6),
+    OMM_GFX_QUAD(omm_break_particle_vertices, 7),
 };
 
-static const Gfx omm_break_particle_shared_gfx[] = {
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsSPDisplayList(omm_break_particle_triangles),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsSPSetGeometryMode(G_LIGHTING),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_break_particle_1_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_EFFECT_BREAK_PARTICLE_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPBranchList(omm_break_particle_shared_gfx),
-};
-
-static const Gfx omm_break_particle_2_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_EFFECT_BREAK_PARTICLE_2, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPBranchList(omm_break_particle_shared_gfx),
-};
-
-static const Gfx omm_break_particle_3_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_EFFECT_BREAK_PARTICLE_3, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPBranchList(omm_break_particle_shared_gfx),
-};
-
-static const Gfx omm_break_particle_4_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_EFFECT_BREAK_PARTICLE_4, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPBranchList(omm_break_particle_shared_gfx),
-};
-
-static const Gfx omm_break_particle_5_gfx[] = {
-    gsDPLoadTextureBlock(OMM_TEXTURE_EFFECT_BREAK_PARTICLE_5, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 0, 0, 0, 0),
-    gsSPBranchList(omm_break_particle_shared_gfx),
-};
+OMM_GFX_DL_COMB(omm_break_particle, OMM_TEXTURE_EFFECT_BREAK_PARTICLE, omm_break_particle_triangles, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0);
+OMM_GFX_DL_COMB(omm_break_particle, OMM_TEXTURE_EFFECT_BREAK_PARTICLE, omm_break_particle_triangles, 1, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0);
+OMM_GFX_DL_COMB(omm_break_particle, OMM_TEXTURE_EFFECT_BREAK_PARTICLE, omm_break_particle_triangles, 2, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0);
+OMM_GFX_DL_COMB(omm_break_particle, OMM_TEXTURE_EFFECT_BREAK_PARTICLE, omm_break_particle_triangles, 3, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0);
+OMM_GFX_DL_COMB(omm_break_particle, OMM_TEXTURE_EFFECT_BREAK_PARTICLE, omm_break_particle_triangles, 4, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0);
+OMM_GFX_DL_COMB(omm_break_particle, OMM_TEXTURE_EFFECT_BREAK_PARTICLE, omm_break_particle_triangles, 5, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0);
+OMM_GFX_DL_COMB(omm_break_particle, OMM_TEXTURE_EFFECT_BREAK_PARTICLE, omm_break_particle_triangles, 6, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0);
+OMM_GFX_DL_COMB(omm_break_particle, OMM_TEXTURE_EFFECT_BREAK_PARTICLE, omm_break_particle_triangles, 7, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0, TEXEL0, 0, ENVIRONMENT, 0);
 
 static Gfx omm_break_particle_set_env_color[] = {
     gsDPSetEnvColor(0xFF, 0xFF, 0xFF, 0xFF),
@@ -93,13 +75,16 @@ const GeoLayout omm_geo_break_particle[] = {
             GEO_ASM(0, omm_geo_break_particle_update_color),
             GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_break_particle_set_env_color),
             GEO_OPEN_NODE(),
-                GEO_SWITCH_CASE(5, geo_switch_anim_state),
+                GEO_SWITCH_CASE(8, geo_switch_anim_state),
                 GEO_OPEN_NODE(),
+                    GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_break_particle_0_gfx),
                     GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_break_particle_1_gfx),
                     GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_break_particle_2_gfx),
                     GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_break_particle_3_gfx),
                     GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_break_particle_4_gfx),
                     GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_break_particle_5_gfx),
+                    GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_break_particle_6_gfx),
+                    GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_break_particle_7_gfx),
                 GEO_CLOSE_NODE(),
             GEO_CLOSE_NODE(),
             GEO_DISPLAY_LIST(LAYER_TRANSPARENT, omm_break_particle_reset_env_color),
@@ -138,7 +123,7 @@ struct Object *omm_obj_spawn_break_particle(struct Object *o, u8 r, u8 g, u8 b, 
     f32 fvel                = velMin + (velMax - velMin) * random_float();
     s16 fangle              = random_u16();
     struct Object *particle = obj_spawn_from_geo(o, omm_geo_break_particle, bhvOmmBreakParticle);
-    particle->oAnimState    = random_u16() % 5;
+    particle->oAnimState    = random_u16() % 8;
     particle->oPosX         = o->oPosX;
     particle->oPosY         = o->oPosY + offsetY;
     particle->oPosZ         = o->oPosZ;

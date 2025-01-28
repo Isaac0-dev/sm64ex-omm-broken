@@ -81,6 +81,6 @@ void bhv_hidden_star_trigger_loop(void) {
             );
         }
         obj_mark_for_deletion(o);
-        gOmmStats->secretsCollected++;
+        omm_stats_increase(secretsCollected, 1);
     }
 }

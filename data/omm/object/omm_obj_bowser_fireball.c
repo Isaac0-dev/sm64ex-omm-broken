@@ -8,295 +8,59 @@
 //
 
 static const Vtx omm_bowser_fireball_vertices[] = {
-    { { { -128, -128, 0 }, 0, { 0, 4096 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 0, 0 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 4096, 4096 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 4096, 0 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 4096, 4096 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 4096, 0 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 8192, 4096 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 8192, 0 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 8192, 4096 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 8192, 0 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 12288, 4096 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 12288, 0 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 12288, 4096 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 12288, 0 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 16384, 4096 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 16384, 0 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 0, 8192 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 0, 4096 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 4096, 8192 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 4096, 4096 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 4096, 8192 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 4096, 4096 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 8192, 8192 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 8192, 4096 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 8192, 8192 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 8192, 4096 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 12288, 8192 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 12288, 4096 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 12288, 8192 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 12288, 4096 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 16384, 8192 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 16384, 4096 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 0, 12288 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 0, 8192 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 4096, 12288 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 4096, 8192 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 4096, 12288 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 4096, 8192 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 8192, 12288 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 8192, 8192 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 8192, 12288 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 8192, 8192 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 12288, 12288 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 12288, 8192 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 12288, 12288 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 12288, 8192 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 16384, 12288 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 16384, 8192 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 0, 16384 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 0, 12288 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 4096, 16384 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 4096, 12288 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 4096, 16384 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 4096, 12288 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 8192, 16384 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 8192, 12288 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 8192, 16384 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 8192, 12288 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 12288, 16384 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 12288, 12288 }, { 255, 255, 255, 255 } } },
-    { { { -128, -128, 0 }, 0, { 12288, 16384 }, { 255, 255, 255, 255 } } },
-    { { { -128, 128, 0 }, 0, { 12288, 12288 }, { 255, 255, 255, 255 } } },
-    { { { 128, -128, 0 }, 0, { 16384, 16384 }, { 255, 255, 255, 255 } } },
-    { { { 128, 128, 0 }, 0, { 16384, 12288 }, { 255, 255, 255, 255 } } },
+    OMM_VTX_RECT(128, 0, 0, 4, 4),
+    OMM_VTX_RECT(128, 0, 1, 4, 4),
+    OMM_VTX_RECT(128, 0, 2, 4, 4),
+    OMM_VTX_RECT(128, 0, 3, 4, 4),
+    OMM_VTX_RECT(128, 1, 0, 4, 4),
+    OMM_VTX_RECT(128, 1, 1, 4, 4),
+    OMM_VTX_RECT(128, 1, 2, 4, 4),
+    OMM_VTX_RECT(128, 1, 3, 4, 4),
+    OMM_VTX_RECT(128, 2, 0, 4, 4),
+    OMM_VTX_RECT(128, 2, 1, 4, 4),
+    OMM_VTX_RECT(128, 2, 2, 4, 4),
+    OMM_VTX_RECT(128, 2, 3, 4, 4),
+    OMM_VTX_RECT(128, 3, 0, 4, 4),
+    OMM_VTX_RECT(128, 3, 1, 4, 4),
+    OMM_VTX_RECT(128, 3, 2, 4, 4),
+    OMM_VTX_RECT(128, 3, 3, 4, 4),
 };
 
-static const Gfx omm_bowser_fireball_0_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 0, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
+static const Gfx omm_bowser_fireball_triangles[] = {
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 0),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 1),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 2),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 3),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 4),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 5),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 6),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 7),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 8),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 9),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 10),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 11),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 12),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 13),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 14),
+    OMM_GFX_QUAD(omm_bowser_fireball_vertices, 15),
 };
 
-static const Gfx omm_bowser_fireball_1_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 4, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_2_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 8, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_3_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 12, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_4_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 16, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_5_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 20, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_6_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 24, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_7_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 28, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_8_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 32, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_9_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 36, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_10_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 40, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_11_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 44, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_12_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 48, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_13_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 52, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_14_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 56, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx omm_bowser_fireball_15_gfx[] = {
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPClearGeometryMode(G_LIGHTING | G_CULL_BOTH),
-    gsDPSetCombineLERP(TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPLoadTextureBlock(OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0),
-    gsSPVertex(omm_bowser_fireball_vertices + 60, 4, 0),
-    gsSP2Triangles(0, 2, 1, 0, 2, 3, 1, 0),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsSPEndDisplayList(),
-};
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 0);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 1);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 2);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 3);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 4);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 5);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 6);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 7);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 8);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 9);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 10);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 11);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 12);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 13);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 14);
+OMM_GFX_DL(omm_bowser_fireball, OMM_TEXTURE_BOWSER_FIRE_MAGIC_1, omm_bowser_fireball_triangles, 15);
 
 //
 // Geo layout

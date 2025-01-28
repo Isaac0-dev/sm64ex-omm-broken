@@ -160,7 +160,7 @@ const GeoLayout omm_geo_peach_vibe_aura_full[] = {
 
 static void bhv_omm_peach_vibe_aura_update() {
     struct Object *o = gCurrentObject;
-    f32 *marioRootPos = geo_get_marios_root_pos();
+    Vec3f marioRootPos; geo_get_marios_root_pos(marioRootPos);
     f32 t = invlerp_0_1_s(o->oTimer, 0, 30);
     obj_set_xyz(o, marioRootPos[0], marioRootPos[1], marioRootPos[2]);
     obj_scale(o, gMarioObject->oScaleY * sqrtf(t) * 5.f);

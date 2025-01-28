@@ -67,6 +67,8 @@ static bool omm_sparkly_act_star_dance_update(struct MarioState *m) {
         omm_obj_spawn_sparkly_star_celebration(m->marioObj, gOmmSparklyMode);
         set_time_stop_flags(TIME_STOP_ENABLED | TIME_STOP_MARIO_AND_DOORS);
         m->marioObj->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
+        m->marioObj->oAnimID = -1;
+        m->marioObj->oCurrAnim = NULL;
     }
 
     // Display the text box "Pink-Gold/Crystal/Nebula star"
@@ -107,8 +109,8 @@ static bool omm_sparkly_act_star_dance_update(struct MarioState *m) {
     ANM(frame->animID, frame->animSpeed);
     if (m->actionTimer >= 33) obj_anim_clamp_frame(m->marioObj, 0, 9); // Luigi's freaking flutter jump
     m->marioBodyState->handState = frame->handState;
-    m->marioObj->oGfxAngle[1] = m->faceAngle[1] - (s16) frame->yawOffset;
-    m->marioObj->oGfxPos[1] = m->pos[1] + frame->yOffset;
+    vec3f_set(m->marioObj->oGfxPos, m->pos[0], m->pos[1] + frame->yOffset, m->pos[2]);
+    vec3s_set(m->marioObj->oGfxAngle, 0, m->faceAngle[1] - frame->yawOffset, 0);
     m->actionTimer++;
     return false;
 }
@@ -245,6 +247,10 @@ s32 omm_sparkly_act_ending_1(struct MarioState *m) {
     struct Object *grandStar = omm_sparkly_act_ending_get_grand_star();
     if (grandStar && gOmmSparkly->grandStar) {
         grandStar->oGraphNode = geo_layout_to_graph_node(NULL, OMM_SPARKLY_STAR_GEO_OPAQUE[OMM_SPARKLY_STARS_MODE]);
+        if (grandStar->curBhvCommand < bhvOmmSparklyGrandStarEnding || grandStar->curBhvCommand >= bhvOmmSparklyGrandStarEnding + 6) {
+            grandStar->curBhvCommand = bhvOmmSparklyGrandStarEnding;
+            grandStar->bhvStackIndex = 0;
+        }
     }
 
     // Play a different cutscene during the 'bad' ending

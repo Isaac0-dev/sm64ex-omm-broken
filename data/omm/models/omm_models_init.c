@@ -27,6 +27,11 @@ static s32 omm_models_pack_list_cmp(const void *l, const void *r) {
 
 static bool omm_models_register_packs(UNUSED void *user, const char *path) {
 
+    // Character Select
+    if (strstr(path, ".lua")) {
+        omm_models_cs_init(path);
+    }
+
     // Check if it's a bin file
     if (strstr(path, ".bin")) {
 
@@ -36,6 +41,11 @@ static bool omm_models_register_packs(UNUSED void *user, const char *path) {
             sys_path_t pack_folder = {0};
             mem_cpy(pack_folder, path, sep - path);
             const char *pack_name = omm_models_get_pack_name(pack_folder);
+
+            // Not a Model pack
+            if (strcmp(pack_name, "actors") == 0) {
+                return true;
+            }
 
             // Check if the pack is already registered
             OmmPackData *existing_pack = NULL;
@@ -54,6 +64,7 @@ static bool omm_models_register_packs(UNUSED void *user, const char *path) {
                 str_cpy(new_pack->path, sizeof(new_pack->path), pack_folder);
                 new_pack->exists = true;
                 new_pack->enabled = false;
+                new_pack->cs_index = 0;
                 omm_array_add(gOmmPackList, ptr, new_pack);
                 omm_printf("Model pack found: \"%s\"\n",, pack_name);
             }
@@ -113,6 +124,9 @@ const void **omm_models_init() {
     // Scan the packs folders
     fs_walk("", omm_models_register_packs, NULL, true, FS_DIR_PACKS);
 
+    // Register model packs from CS packs
+    omm_models_cs_register_packs();
+
     // Sort packs by alphabetical order
     s32 pack_count = omm_array_count(gOmmPackList);
     qsort(gOmmPackList.p, pack_count, sizeof(__OmmNoP), omm_models_pack_list_cmp);
@@ -162,6 +176,7 @@ bool omm_models_read_config(const char *name, const char *value) {
             str_cpy(pack->name, sizeof(pack->name), pack_name);
             pack->exists = false;
             pack->enabled = true;
+            pack->cs_index = 0; // Can't tell for now if it's a CS pack
             omm_array_add(gOmmPackList, ptr, pack);
         }
         return true;
@@ -180,9 +195,20 @@ void omm_models_write_config(FILE *file) {
     }
 }
 
+s32 omm_models_get_model_pack_count() {
+    s32 count = 0;
+    omm_array_for_each(gOmmPackList, p_pack) {
+        const OmmPackData *pack = (const OmmPackData *) p_pack->as_ptr;
+        count += (pack != NULL && pack->exists);
+    }
+    return count;
+}
+
 s32 omm_models_get_model_pack_index(const void *geo_layout) {
-    s32 index = omm_models_get_actor_index(geo_layout);
-    if (index != -1) return ((const OmmActorGfx *) omm_array_get(gOmmActorList, ptr, index))->pack_index;
+    s32 actor_index = omm_models_get_actor_index(geo_layout);
+    if (actor_index >= 0 && actor_index < omm_array_count(gOmmActorList)) {
+        return ((const OmmActorGfx *) omm_array_get(gOmmActorList, ptr, actor_index))->pack_index;
+    }
     return -1;
 }
 

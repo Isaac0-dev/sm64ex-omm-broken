@@ -501,8 +501,8 @@ OMM_ROUTINE_LEVEL_ENTRY(omm_render_at_level_entry) {
 //
 
 void omm_render_hud_stars(s16 x, s16 y, u8 alpha, s32 levelNum) {
-    static const u8 STAR_SHADING[2][2] = { { 0x00, 0x00 }, { 0xA0, 0xFF } };
-    static const u8 STAR_OPACITY[2][2] = { { 0x00, 0x80 }, { 0xFF, 0xFF } };
+    static const f32 STAR_SHADING[2][2] = { { 0.f, 0.f }, { 0.625f, 1.f } };
+    static const f32 STAR_OPACITY[2][2] = { { 0.f, 0.5f }, { 1.f, 1.f } };
 
     // Course stars
     s32 courseNum = omm_level_get_course(levelNum);
@@ -521,10 +521,11 @@ void omm_render_hud_stars(s16 x, s16 y, u8 alpha, s32 levelNum) {
 #endif
             bool collected = (flag & starSaveFlags) != 0;
             bool available = (flag & starFlags) == 0;
-            u8 shading = STAR_SHADING[collected][available];
-            u8 opacity = STAR_OPACITY[collected][available];
-            const void *tex = omm_render_get_star_glyph(clamp_s(courseNum, 0, 16), OMM_EXTRAS_COLORED_STARS, collected);
-            omm_render_glyph_hud(x, y, shading, shading, shading, (alpha * opacity) / 0xFF, tex, false);
+            f32 shading = STAR_SHADING[collected][available];
+            f32 opacity = STAR_OPACITY[collected][available];
+            const void *tex = omm_render_get_star_glyph(clamp_s(courseNum, 0, 16), OMM_GAME_MODE, OMM_EXTRAS_COLORED_STARS, collected);
+            const u8 *rgb = omm_render_get_star_rgb(OMM_GAME_MODE, OMM_EXTRAS_COLORED_STARS, true);
+            omm_render_glyph_hud(x, y, rgb[0] * shading, rgb[1] * shading, rgb[2] * shading, alpha * opacity, tex, false);
             x += OMM_RENDER_STAR_OFFSET_X;
         }
     }
@@ -537,9 +538,9 @@ void omm_render_hud_stars(s16 x, s16 y, u8 alpha, s32 levelNum) {
             if (starIndex != -1) {
                 bool collected = omm_sparkly_is_star_collected(sparklyMode, starIndex);
                 bool state = OMM_SPARKLY_STATE_IS_OK;
-                u8 shading = STAR_SHADING[collected][state];
-                u8 opacity = STAR_OPACITY[collected][state];
-                omm_render_glyph_hud(x, y, shading, shading, shading, (alpha * opacity) / 0xFF, OMM_SPARKLY_HUD_GLYPH[sparklyMode], false);
+                f32 shading = STAR_SHADING[collected][state];
+                f32 opacity = STAR_OPACITY[collected][state];
+                omm_render_glyph_hud(x, y, 0xFF * shading, 0xFF * shading, 0xFF * shading, alpha * opacity, OMM_SPARKLY_HUD_GLYPH[sparklyMode], false);
                 return;
             }
         }
@@ -633,29 +634,34 @@ static void omm_render_hud_power_meter_background(Gfx **gfx, Vtx **vtx, f32 x, f
     }
 }
 
-static void omm_render_hud_power_meter_get_segment_color(s32 index, f32 ticks, Vec3s color) {
-    if (OMM_RENDER_POWER_SEGMENT_GRADIENT(index)) {
+static void omm_render_hud_power_meter_get_segment_color(s32 index0, s32 index1, f32 ticks, Vec3s color) {
+    if (OMM_MOVESET_ODYSSEY && index0 != index1) {
         f32 delta = (fmodf(ticks - 0.001f, OMM_HEALTH_ODYSSEY_NUM_TICKS_PER_SEGMENT) + 0.001f) / OMM_HEALTH_ODYSSEY_NUM_TICKS_PER_SEGMENT;
-        color[0] = lerp_s(delta, OMM_RENDER_POWER_SEGMENT_COLOR_R(index + 1), OMM_RENDER_POWER_SEGMENT_COLOR_R(index));
-        color[1] = lerp_s(delta, OMM_RENDER_POWER_SEGMENT_COLOR_G(index + 1), OMM_RENDER_POWER_SEGMENT_COLOR_G(index));
-        color[2] = lerp_s(delta, OMM_RENDER_POWER_SEGMENT_COLOR_B(index + 1), OMM_RENDER_POWER_SEGMENT_COLOR_B(index));
+        color[0] = lerp_s(delta, OMM_RENDER_POWER_SEGMENT_COLOR_R(index1), OMM_RENDER_POWER_SEGMENT_COLOR_R(index0));
+        color[1] = lerp_s(delta, OMM_RENDER_POWER_SEGMENT_COLOR_G(index1), OMM_RENDER_POWER_SEGMENT_COLOR_G(index0));
+        color[2] = lerp_s(delta, OMM_RENDER_POWER_SEGMENT_COLOR_B(index1), OMM_RENDER_POWER_SEGMENT_COLOR_B(index0));
     } else {
-        color[0] = OMM_RENDER_POWER_SEGMENT_COLOR_R(index);
-        color[1] = OMM_RENDER_POWER_SEGMENT_COLOR_G(index);
-        color[2] = OMM_RENDER_POWER_SEGMENT_COLOR_B(index);
+        color[0] = OMM_RENDER_POWER_SEGMENT_COLOR_R(index0);
+        color[1] = OMM_RENDER_POWER_SEGMENT_COLOR_G(index0);
+        color[2] = OMM_RENDER_POWER_SEGMENT_COLOR_B(index0);
     }
 }
 
 static void omm_render_hud_power_meter_segments(Gfx **gfx, Vtx **vtx, f32 x0, f32 y0, f32 alpha, f32 ticks, bool isLifeUp) {
 
     // Colors
-    s32 index = !isLifeUp * (
-        (ticks <= OMM_RENDER_POWER_TICKS_NORMAL) +
+    s32 index0 = !isLifeUp * (
+        (ticks <= OMM_RENDER_POWER_TICKS_MAX) +
         (ticks <= OMM_RENDER_POWER_TICKS_LOW) +
         (ticks <= OMM_RENDER_POWER_TICKS_CRITICAL)
     );
+    s32 index1 = !isLifeUp * min_s(3, 1 + (
+        (ticks <= OMM_RENDER_POWER_TICKS_NORMAL) +
+        (ticks <= OMM_RENDER_POWER_TICKS_LOW) +
+        (ticks <= OMM_RENDER_POWER_TICKS_CRITICAL)
+    ));
     Vec3s center, border;
-    omm_render_hud_power_meter_get_segment_color(index, ticks, center);
+    omm_render_hud_power_meter_get_segment_color(index0, index1, ticks, center);
     vec3s_interpolate(border, gVec3sZero, center, 0.75f);
 
     // Render
@@ -1017,7 +1023,9 @@ static s16 omm_render_hud_star_count(struct MarioState *m, s16 y) {
         if (HUD_DISPLAY_STAR_COUNT) {
             u8 alpha = sOmmHudStarsTimer->update(sOmmHudStarsTimer, m);
             if (alpha) {
-                omm_render_glyph_hud(OMM_RENDER_VALUE_GLYPH_X, y, 0xFF, 0xFF, 0xFF, alpha, omm_render_get_star_glyph(0, OMM_EXTRAS_COLORED_STARS, true), false);
+                const void *tex = omm_render_get_star_glyph(0, OMM_GAME_MODE, OMM_EXTRAS_COLORED_STARS, true);
+                const u8 *rgb = omm_render_get_star_rgb(OMM_GAME_MODE, OMM_EXTRAS_COLORED_STARS, true);
+                omm_render_glyph_hud(OMM_RENDER_VALUE_GLYPH_X, y, rgb[0], rgb[1], rgb[2], alpha, tex, false);
                 omm_render_number_hud(OMM_RENDER_VALUE_NUMBER_X, y, alpha, gHudDisplay.stars, 3, true, false);
                 y -= OMM_RENDER_OFFSET_Y;
             }
@@ -1116,7 +1124,7 @@ static s16 omm_render_hud_power_up(struct MarioState *m, s16 y) {
               { OMM_TEXTURE_HUD_CAPPY_WARIO, OMM_TEXTURE_HUD_CAPPY_WARIO_METAL }, },
         };
 
-        s32 idx = omm_player_get_selected_index();
+        s32 idx = omm_player_get_selected_index_model_and_sounds();
         bool cc = !OMM_CAP_CLASSIC;
         bool wc = (m->flags & MARIO_WING_CAP) != 0;
         bool mc = (m->flags & MARIO_METAL_CAP) != 0;
@@ -1344,46 +1352,32 @@ static s16 omm_render_hud_sparkly_enemies(s16 y) {
             s32 enemyX = OMM_RENDER_VALUE_GLYPH_X - (enemyW - OMM_RENDER_GLYPH_SIZE) / 2;
             s32 enemyY = y - (enemyW - OMM_RENDER_GLYPH_SIZE) / 2;
             s32 enemyT = gGlobalTimer % 30;
+            s32 enemyRow = (enemyT / 8);
+            s32 enemyCol = (enemyT % 8);
 
-            // Render the animated flame
-            omm_render_texrect(
-                enemyX, enemyY, enemyW, enemyW,
-                512, 512, 0xFF, 0xFF, 0xFF, 0xFF,
-                (const void *) (array_of(const char *) {
-                    OMM_TEXTURE_HUD_ENEMY_0,
-                    OMM_TEXTURE_HUD_ENEMY_1,
-                    OMM_TEXTURE_HUD_ENEMY_2,
-                    OMM_TEXTURE_HUD_ENEMY_3,
-                    OMM_TEXTURE_HUD_ENEMY_4,
-                    OMM_TEXTURE_HUD_ENEMY_5,
-                    OMM_TEXTURE_HUD_ENEMY_6,
-                    OMM_TEXTURE_HUD_ENEMY_7,
-                    OMM_TEXTURE_HUD_ENEMY_8,
-                    OMM_TEXTURE_HUD_ENEMY_9,
-                    OMM_TEXTURE_HUD_ENEMY_10,
-                    OMM_TEXTURE_HUD_ENEMY_11,
-                    OMM_TEXTURE_HUD_ENEMY_12,
-                    OMM_TEXTURE_HUD_ENEMY_13,
-                    OMM_TEXTURE_HUD_ENEMY_14,
-                    OMM_TEXTURE_HUD_ENEMY_15,
-                    OMM_TEXTURE_HUD_ENEMY_16,
-                    OMM_TEXTURE_HUD_ENEMY_17,
-                    OMM_TEXTURE_HUD_ENEMY_18,
-                    OMM_TEXTURE_HUD_ENEMY_19,
-                    OMM_TEXTURE_HUD_ENEMY_20,
-                    OMM_TEXTURE_HUD_ENEMY_21,
-                    OMM_TEXTURE_HUD_ENEMY_22,
-                    OMM_TEXTURE_HUD_ENEMY_23,
-                    OMM_TEXTURE_HUD_ENEMY_24,
-                    OMM_TEXTURE_HUD_ENEMY_25,
-                    OMM_TEXTURE_HUD_ENEMY_26,
-                    OMM_TEXTURE_HUD_ENEMY_27,
-                    OMM_TEXTURE_HUD_ENEMY_28,
-                    OMM_TEXTURE_HUD_ENEMY_29,
-                })[enemyT],
-                false
-            );
-            
+            Vtx *vtx = omm_alloc_vtx(4);
+            vtx[0] = (Vtx) {{{ enemyX,          enemyY,          0 }, 0, { (512 * 32 * (enemyCol + 0)) / 8, (512 * 32 * (enemyRow + 1)) / 4 }, { 0xFF, 0xFF, 0xFF, 0xFF }}};
+            vtx[1] = (Vtx) {{{ enemyX + enemyW, enemyY,          0 }, 0, { (512 * 32 * (enemyCol + 1)) / 8, (512 * 32 * (enemyRow + 1)) / 4 }, { 0xFF, 0xFF, 0xFF, 0xFF }}};
+            vtx[2] = (Vtx) {{{ enemyX + enemyW, enemyY + enemyW, 0 }, 0, { (512 * 32 * (enemyCol + 1)) / 8, (512 * 32 * (enemyRow + 0)) / 4 }, { 0xFF, 0xFF, 0xFF, 0xFF }}};
+            vtx[3] = (Vtx) {{{ enemyX,          enemyY + enemyW, 0 }, 0, { (512 * 32 * (enemyCol + 0)) / 8, (512 * 32 * (enemyRow + 0)) / 4 }, { 0xFF, 0xFF, 0xFF, 0xFF }}};
+
+            Gfx *tri = omm_alloc_gfx(3);
+            gSPVertex(tri + 0, vtx, 4, 0);
+            gSP2Triangles(tri + 1, 0, 1, 2, 0, 0, 2, 3, 0);
+            gSPEndDisplayList(tri + 2);
+
+            // Render the enemy
+            omm_render_create_dl_ortho_matrix();
+            OMM_RENDER_ENABLE_ALPHA(gDisplayListHead++);
+            gSPClearGeometryMode(gDisplayListHead++, G_LIGHTING);
+            gDPSetCombineLERP(gDisplayListHead++, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0, TEXEL0, 0, SHADE, 0);
+            gDPLoadTextureBlock(gDisplayListHead++, OMM_TEXTURE_HUD_ENEMY, G_IM_FMT_RGBA, G_IM_SIZ_32b, 512, 512, 0, 0, 0, 0, 0, 0, 0);
+            gSPTexture(gDisplayListHead++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+            gSPDisplayList(gDisplayListHead++, tri);
+            gSPTexture(gDisplayListHead++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
+            gSPSetGeometryMode(gDisplayListHead++, G_LIGHTING);
+            gDPSetCombineLERP(gDisplayListHead++, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE);
+
             // Render the number
             omm_render_number_hud(OMM_RENDER_VALUE_NUMBER_X, y, 0xFF, enemies, 3, true, false);
             y -= OMM_RENDER_OFFSET_Y;
@@ -1576,11 +1570,10 @@ static ObjectsRadarTarget *omm_render_hud_objects_radar_get_target(struct MarioS
             u32 stars = 0;
 
             // Spawned stars
-            for_each_until_null(const BehaviorScript *, bhv, array_of(const BehaviorScript *) {
+            for_each_in_(const BehaviorScript *, bhv, {
                 bhvStarSpawnCoordinates,
                 bhvSpawnedStar,
                 bhvSpawnedStarNoLevelExit,
-                NULL
             }) {
                 for_each_object_with_behavior(obj, *bhv) {
                     if (obj_is_valid(m, obj)) {

@@ -27,7 +27,7 @@ static void bhv_1up_interact(void) {
 #endif
         omm_health_life_up(gMarioState);
         obj_mark_for_deletion(o);
-        gOmmStats->mushrooms1upCollected++;
+        omm_stats_increase(mushrooms1upCollected, 1);
     }
 }
 

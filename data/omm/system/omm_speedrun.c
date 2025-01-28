@@ -20,7 +20,7 @@
 #pragma GCC optimize ("O0")
 static volatile u8 sOmmSplitFlags[16] = { 'O', 'M', 'M', 'A', 'U', 'T', 'O', 'S', 'P', 'L', 'I', 'T', 0, 0, 0, 0 };
 static volatile s32 *sOmmSplitIndex = (s32 *) (&sOmmSplitFlags[12]);
-static volatile s32 sOmmSplitFrames = 0;
+static volatile u32 sOmmSplitTimestamp = 0;
 static OmmArray sOmmSplits = omm_array_zero;
 #pragma GCC pop_options
 
@@ -28,41 +28,6 @@ typedef struct {
     s32 type;
     s32 value;
 } OmmSplit;
-
-static s32 omm_speedrun_get_split_frames(OmmSplit *split) {
-    switch (split->type) {
-        case OMM_SPLIT_STAR:   return  1 * (omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE) >= split->value);
-        case OMM_SPLIT_EXIT:   return 30 * (omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE) >= split->value);
-        case OMM_SPLIT_BOWSER: return  1;
-    }
-    return false;
-}
-
-void omm_speedrun_split(s32 type) {
-    if (*sOmmSplitIndex >= 0 && *sOmmSplitIndex < omm_array_count(sOmmSplits)) {
-        OmmSplit *split = (OmmSplit *) omm_array_get(sOmmSplits, ptr, *sOmmSplitIndex);
-        if (split->type == type && sOmmSplitFrames <= 0) {
-            sOmmSplitFrames = omm_speedrun_get_split_frames(split);
-        }
-    }
-}
-
-// Main menu/File select screen -> 'reset' (-1)
-// 'start' (-2) or 'reset' (-1) but empty save and Mario not loaded -> 'start'
-// As soon as Mario loads or if an existing save file is selected, set index to 0
-OMM_ROUTINE_UPDATE(omm_speedrun_update) {
-    if (omm_is_main_menu()) {
-        *sOmmSplitIndex = -1;
-    } else if (*sOmmSplitIndex < 0) {
-        if (!gMarioObject && !omm_save_file_exists(gCurrSaveFileNum - 1, OMM_GAME_MODE)) {
-            *sOmmSplitIndex = -2;
-        } else {
-            *sOmmSplitIndex = 0;
-        }
-    } else if (sOmmSplitFrames-- == 1) {
-        (*sOmmSplitIndex)++;
-    }
-}
 
 //
 // Init
@@ -81,15 +46,15 @@ static const char *omm_speedrun_lss_get_data(str_t dst, const char *buffer, cons
     return NULL;
 }
 
-static OmmSplit *omm_speedrun_split_data_create_split(const char *s) {
+static OmmSplit *omm_speedrun_split_data_create_split(const char *s, bool lastSplit) {
 
     // Star or level exit split
-    for_each_until_null(const char *, brackets, array_of(const char *) { "[]", "()", NULL }) {
+    for_each_in_(const char *, brackets, { "[]", "()" }) {
         const char *a = strrchr(s, (*brackets)[0]);
         const char *b = strrchr(s, (*brackets)[1]);
         if (a && b && a < b) {
             s32 stars;
-            if (sscanf(a + 1, "%d", &stars)) {
+            if (sscanf(a + 1, "%d", &stars) == 1) {
                 OmmSplit *split = mem_new(OmmSplit, 1);
                 split->type = (*a == '(' ? OMM_SPLIT_EXIT : OMM_SPLIT_STAR);
                 split->value = stars;
@@ -101,7 +66,7 @@ static OmmSplit *omm_speedrun_split_data_create_split(const char *s) {
     // Bowser split
     str_t lower;
     str_lwr(lower, sizeof(lower), s);
-    if (strstr(lower, "bowser")) {
+    if (strstr(lower, "bowser") || lastSplit) {
         OmmSplit *split = mem_new(OmmSplit, 1);
         split->type = OMM_SPLIT_BOWSER;
         return split;
@@ -160,41 +125,91 @@ OMM_AT_STARTUP static void omm_speedrun_init() {
                 }
             }
         }
+        fflush(stdout);
+        fclose(f);
 
         // Generating splits
         omm_printf("Splits:\n");
         omm_array_for_each(splits, p) {
+            bool lastSplit = (i_p == omm_array_count(splits) - 1);
             const char *s = (const char *) p->as_ptr;
-            OmmSplit *split = omm_speedrun_split_data_create_split(s);
+            OmmSplit *split = omm_speedrun_split_data_create_split(s, lastSplit);
             if (split) {
                 omm_array_add(sOmmSplits, ptr, split);
                 switch (split->type) {
                     case OMM_SPLIT_STAR: {
-                        omm_printf("- %d Star split on collect: %s\n",, split->value, s);
+                        omm_printf("> %d Stars [Collect]: \"%s\"\n",, split->value, s);
                     } break;
 
                     case OMM_SPLIT_EXIT: {
-                        omm_printf("- %d Star split on level exit: %s\n",, split->value, s);
+                        omm_printf("> %d Stars (Level Exit): \"%s\"\n",, split->value, s);
                     } break;
 
                     case OMM_SPLIT_BOWSER: {
-                        if (i_p == omm_array_count(splits) - 1) {
-                            omm_printf("- Grand Star split: %s\n",, s);
+                        if (lastSplit) {
+                            omm_printf("> Grand Star: \"%s\"\n",, s);
                         } else {
-                            omm_printf("- Bowser Key split: %s\n",, s);
+                            omm_printf("> Bowser Key: \"%s\"\n",, s);
                         }
                     } break;
                 }
             } else {
-                omm_printf("[!] Invalid split format: %s\n",, s);
+                omm_printf_warning("Invalid split format: %s\n",, s);
             }
             mem_del(p->as_ptr);
         }
         omm_array_delete(splits);
+    }
+}
 
-        // Done
-        omm_printf("Data successfully extracted. Closing file.\n");
-        fflush(stdout);
-        fclose(f);
+//
+// Update
+//
+
+static bool omm_speedrun_should_split(const OmmSplit *split) {
+    switch (split->type) {
+        case OMM_SPLIT_STAR: return omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE) >= split->value;
+        case OMM_SPLIT_EXIT: return omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE) >= split->value;
+        case OMM_SPLIT_BOWSER: return true;
+    }
+    return false;
+}
+
+void omm_speedrun_split(s32 type) {
+    if (sOmmSplitTimestamp != gGlobalTimer && *sOmmSplitIndex >= 0 && *sOmmSplitIndex < omm_array_count(sOmmSplits)) {
+        const OmmSplit *split = (const OmmSplit *) omm_array_get(sOmmSplits, ptr, *sOmmSplitIndex);
+        if (split->type == type && omm_speedrun_should_split(split)) {
+            (*sOmmSplitIndex)++;
+            sOmmSplitTimestamp = gGlobalTimer;
+        }
+    }
+}
+
+OMM_ROUTINE_UPDATE(omm_speedrun_update) {
+    static s32 sPrevLevelNum = LEVEL_NONE;
+
+    // Main menu: 'reset' (-1)
+    if (omm_is_main_menu()) {
+        *sOmmSplitIndex = -1;
+        sPrevLevelNum = LEVEL_NONE;
+        return;
+    }
+
+    // New file: 'start' (-2)
+    // As soon as Mario loads in, set split index to 0
+    if (*sOmmSplitIndex < 0) {
+        if (!gMarioObject && !omm_save_file_exists(gCurrSaveFileNum - 1, OMM_GAME_MODE)) {
+            *sOmmSplitIndex = -2;
+        } else {
+            *sOmmSplitIndex = 0;
+        }
+        sPrevLevelNum = gCurrLevelNum;
+        return;
+    }
+
+    // Level exit: 'split'
+    if (sPrevLevelNum != gCurrLevelNum) {
+        omm_speedrun_split(OMM_SPLIT_EXIT);
+        sPrevLevelNum = gCurrLevelNum;
     }
 }

@@ -8,16 +8,41 @@
 // + Warp To Level
 // + Warp To Castle
 // + Model Packs
+// + Character Select
+// + Time Trials
 //   Game
 //   Camera
 //   Controls
 //   Display
 //   Sound
 //   Cheats
+// + Data Management
 // + SM74 Swap Version
 // + Return To Main Menu
 // + Change Game
 // + Exit Game
+
+#define omm_opt_skip_option(opt_type, opt_var, opt_val) { \
+    if (opt->type == opt_type && opt->opt_var == &opt_val) { \
+        subMenu->numOpts--; \
+        continue; \
+    } \
+}
+
+#define omm_opt_remove_option(opt_type, opt_var, opt_val) { \
+    if (opt->type == opt_type && opt->opt_var == &opt_val) { \
+        mem_mov(opt, opt + 1, sizeof(struct Option) * (subMenu->numOpts - j - 1)); \
+        subMenu->numOpts--; j--; \
+        continue; \
+    } \
+}
+
+#define omm_opt_rename_option(opt_type, opt_var, opt_val, opt_name) { \
+    if (opt->type == opt_type && opt->opt_var == &opt_val) { \
+        opt->label = omm_opt_text(opt_name); \
+        continue; \
+    } \
+}
 
 static void omm_opt_add_option(struct Option **head, s32 type, const u8 *label, void *value) {
     (*head)->type = type;
@@ -30,7 +55,7 @@ static void omm_opt_add_option(struct Option **head, s32 type, const u8 *label, 
 }
 
 void omm_opt_init_main_menu() {
-    s32 numOpts = menuMain.numOpts + 8 + (1 * OMM_GAME_IS_SM74);
+    s32 numOpts = menuMain.numOpts + 10 + (1 * OMM_GAME_IS_SM74);
     struct Option *opts = mem_new(struct Option, numOpts);
     struct Option *head = opts;
 
@@ -50,6 +75,13 @@ void omm_opt_init_main_menu() {
         numOpts--;
     }
 
+    // Character Select sub-menu
+    if (gOmmOptCs.subMenu) {
+        omm_opt_add_option(&head, OPT_SUBMENU, gOmmOptCs.label, gOmmOptCs.subMenu);
+    } else {
+        numOpts--;
+    }
+
     // Time Trials sub-menu
     omm_opt_add_option(&head, OPT_SUBMENU, gOmmOptTimeTrials.label, gOmmOptTimeTrials.subMenu);
 
@@ -65,16 +97,10 @@ void omm_opt_init_main_menu() {
                 struct Option *opt = subMenu->opts + j;
 
                 // Skip Precache textures toggle
-                if (opt->type == OPT_TOGGLE && opt->bval == &configPrecacheRes) {
-                    subMenu->numOpts--;
-                    continue;
-                }
+                omm_opt_skip_option(OPT_TOGGLE, bval, configPrecacheRes);
 
                 // Skip Disable billboard toggle
-                if (opt->type == OPT_TOGGLE && opt->bval == &configBillboard) {
-                    subMenu->numOpts--;
-                    continue;
-                }
+                omm_opt_skip_option(OPT_TOGGLE, bval, configBillboard);
 
                 // Copy option
                 mem_cpy(newOpts + k++, opt, sizeof(struct Option));
@@ -101,9 +127,21 @@ void omm_opt_init_main_menu() {
             newOpts[0].choices[OMM_FPS_INF] = omm_opt_text(OMM_TEXT_OPT_FRAME_RATE_UNLIMITED);
 
             // Show FPS
+#if OMM_CODE_DEBUG
+            newOpts[1].type = OPT_CHOICE;
+            newOpts[1].choices = mem_new(const u8 *, gOmmShowFPSCount);
+            newOpts[1].numChoices = gOmmShowFPSCount;
+            newOpts[1].uval = &gOmmShowFPS;
+            newOpts[1].label = omm_opt_text(OMM_TEXT_OPT_SHOW_FPS);
+            newOpts[1].choices[0] = omm_opt_text(OMM_TEXT_OPT_SHOW_FPS_DISABLED);
+            newOpts[1].choices[1] = omm_opt_text(OMM_TEXT_OPT_SHOW_FPS_ENABLED);
+            newOpts[1].choices[2] = omm_opt_text(OMM_TEXT_OPT_SHOW_FPS_PROFILER);
+            newOpts[1].choices[3] = omm_opt_text(OMM_TEXT_OPT_SHOW_FPS_GFX);
+#else
             newOpts[1].type = OPT_TOGGLE;
             newOpts[1].bval = &gOmmShowFPS;
             newOpts[1].label = omm_opt_text(OMM_TEXT_OPT_SHOW_FPS);
+#endif
 
             // Other options
             // Remove Apply button and some Render96 options
@@ -148,34 +186,24 @@ void omm_opt_init_main_menu() {
 #endif
                 }
 
+#if OMM_GFX_API_DX
+                // Skip VSync toggle on DirectX (always enabled)
+                omm_opt_skip_option(OPT_TOGGLE, bval, configWindow.vsync);
+#endif
+
                 // Skip Apply button
-                if (opt->type == OPT_BUTTON && opt->actionFn == optvideo_apply) {
-                    subMenu->numOpts--;
-                    continue;
-                }
+                omm_opt_skip_option(OPT_BUTTON, actionFn, optvideo_apply);
 
 #if OMM_GAME_IS_R96X
                 // Skip 60 FPS toggle (Render96)
-                if (opt->type == OPT_TOGGLE && opt->bval == &config60FPS) {
-                    subMenu->numOpts--;
-                    continue;
-                }
+                omm_opt_skip_option(OPT_TOGGLE, bval, config60FPS);
 
                 // Skip internal resolution settings (Render96)
-                if (opt->type == OPT_TOGGLE && opt->bval == &configInternalResolutionBool) {
-                    subMenu->numOpts--;
-                    continue;
-                }
-                if (opt->type == OPT_CHOICE && opt->uval == &configCustomInternalResolution) {
-                    subMenu->numOpts--;
-                    continue;
-                }
+                omm_opt_skip_option(OPT_TOGGLE, bval, configInternalResolutionBool);
+                omm_opt_skip_option(OPT_CHOICE, uval, configCustomInternalResolution);
 
                 // Skip draw distance scroll (Render96)
-                if (opt->type == OPT_SCROLL && opt->uval == &configDrawDistance) {
-                    subMenu->numOpts--;
-                    continue;
-                }
+                omm_opt_skip_option(OPT_SCROLL, uval, configDrawDistance);
 #endif
 
                 // Texture filtering: remove three-point
@@ -209,12 +237,34 @@ void omm_opt_init_main_menu() {
             for (s32 j = 0; j != subMenu->numOpts; ++j) {
                 struct Option *opt = newOpts + j;
 
+                // Mouse control
+                omm_opt_rename_option(OPT_TOGGLE, bval, configCameraMouse, OMM_TEXT_OPT_CAMERA_MOUSE_CONTROL);
+
+                // X sensitivity
+                omm_opt_rename_option(OPT_SCROLL, uval, configCameraXSens, OMM_TEXT_OPT_CAMERA_X_SENSITIVITY);
+
+                // Y sensitivity
+                omm_opt_rename_option(OPT_SCROLL, uval, configCameraYSens, OMM_TEXT_OPT_CAMERA_Y_SENSITIVITY);
+
+                // Centre aggression
+                omm_opt_rename_option(OPT_SCROLL, uval, configCameraAggr, OMM_TEXT_OPT_CAMERA_CENTRE_AGGRESSION);
+
                 // Remove Analog camera
-                if (opt->type == OPT_TOGGLE && opt->bval == &configCameraAnalog) {
-                    mem_mov(opt, opt + 1, sizeof(struct Option) * (subMenu->numOpts - j - 1));
-                    subMenu->numOpts--; j--;
-                    continue;
-                }
+                omm_opt_remove_option(OPT_TOGGLE, bval, configCameraAnalog);
+
+#if BETTER_CAM_IS_PUPPY_CAM
+                // Remove Camera opacity
+                omm_opt_remove_option(OPT_CHOICE, uval, configCameraOpacity);
+
+                // Remove Debug camera
+                omm_opt_remove_option(OPT_TOGGLE, bval, configDebugCamera);
+#else
+                // Remove Angle deceleration
+                omm_opt_remove_option(OPT_SCROLL, uval, configCameraDegrade);
+
+                // Remove Pan level
+                omm_opt_remove_option(OPT_SCROLL, uval, configCameraPan);
+#endif
 
                 // Replace "Invert X Axis" by "Invert 1st Person Camera"
                 if (opt->type == OPT_TOGGLE && opt->bval == &configCameraInvertX) {
@@ -222,11 +272,11 @@ void omm_opt_init_main_menu() {
                     opt->choices = mem_new(const u8 *, gOmmCameraInvert1stPersonCount);
                     opt->numChoices = gOmmCameraInvert1stPersonCount;
                     opt->uval = &gOmmCameraInvert1stPerson;
-                    opt->label = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_CAMERA_1ST_PERSON);
-                    opt->choices[0] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_CAMERA_NONE);
-                    opt->choices[1] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_CAMERA_X);
-                    opt->choices[2] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_CAMERA_Y);
-                    opt->choices[3] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_CAMERA_BOTH);
+                    opt->label = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_1ST_PERSON);
+                    opt->choices[0] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_NONE);
+                    opt->choices[1] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_X);
+                    opt->choices[2] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_Y);
+                    opt->choices[3] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_BOTH);
                     continue;
                 }
 
@@ -236,11 +286,11 @@ void omm_opt_init_main_menu() {
                     opt->choices = mem_new(const u8 *, gOmmCameraInvert3rdPersonCount);
                     opt->numChoices = gOmmCameraInvert3rdPersonCount;
                     opt->uval = &gOmmCameraInvert3rdPerson;
-                    opt->label = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_CAMERA_3RD_PERSON);
-                    opt->choices[0] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_CAMERA_NONE);
-                    opt->choices[1] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_CAMERA_X);
-                    opt->choices[2] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_CAMERA_Y);
-                    opt->choices[3] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_CAMERA_BOTH);
+                    opt->label = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_3RD_PERSON);
+                    opt->choices[0] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_NONE);
+                    opt->choices[1] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_X);
+                    opt->choices[2] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_Y);
+                    opt->choices[3] = omm_opt_text(OMM_TEXT_OPT_CAMERA_INVERT_BOTH);
                     continue;
                 }
             }
@@ -280,6 +330,9 @@ void omm_opt_init_main_menu() {
         mem_cpy(head++, &menuMain.opts[i], sizeof(struct Option));
     }
 
+    // Data management sub-menu
+    omm_opt_add_option(&head, OPT_SUBMENU, gOmmOptDataManagement.label, gOmmOptDataManagement.subMenu);
+
 #if OMM_GAME_IS_SM74
     // Change SM74 mode button
     omm_opt_add_option(&head, OPT_BUTTON, omm_opt_text(OMM_TEXT_SM74_OPT_SWAP_VERSION), omm_opt_sm74_change_mode);
@@ -303,22 +356,16 @@ void omm_opt_init_main_menu() {
     menuMain.opts = opts;
 }
 
-void omm_opt_return_to_previous_menu(UNUSED struct Option *opt, s32 arg) {
-    if (!arg) {
-        if (currentMenu->prev) {
-            currentMenu = currentMenu->prev;
-        } else {
-            optmenu_toggle();
-        }
-    }
-}
-
 //
 // State
 //
 
 static bool omm_opt_is_available(struct Option *opt) {
-    return OPT_STATE(opt->type) <= omm_opt_get_state();
+    return (
+        opt->type == OPT_SUBMENU && opt->nextMenu == gOmmOptDataManagement.subMenu ?
+        omm_is_main_menu() :
+        OPT_STATE(opt->type) <= omm_opt_get_state()
+    );
 }
 
 static struct SubMenu *omm_opt_get_current_menu(struct SubMenu *subMenu) {
@@ -460,7 +507,20 @@ static void omm_opt_draw_option(struct Option *opt, bool selected, s32 y) {
     }
 
     // Label
-    omm_opt_print_string(opt->label, OMM_OPT_TEXT_CONVERT(false), OMM_OPT_OFFSET_FROM_LEFT_EDGE, y, selected ? OMM_OPT_COLOR_SELECT : OMM_OPT_COLOR_WHITE, 1);
+    if ((void *) opt->label == (void *) OMM_TEXT_OPT_MODELS_LABEL) {
+        str_t numPacks; str_fmt(numPacks, sizeof(numPacks), " (%d)", omm_models_get_model_pack_count());
+        const u8 *label = omm_text_convert(OMM_TEXT_OPT_MODELS_LABEL, false);
+        const u8 *packs = omm_text_convert(numPacks, false);
+        s32 labelLength = omm_text_length(label);
+        s32 packsLength = omm_text_length(packs);
+        ustr_t labelWithNumPacks;
+        mem_set(labelWithNumPacks, 0xFF, sizeof(labelWithNumPacks));
+        mem_cpy(labelWithNumPacks, label, labelLength);
+        mem_cpy(labelWithNumPacks + labelLength, packs, packsLength);
+        omm_opt_print_string(labelWithNumPacks, false, OMM_OPT_OFFSET_FROM_LEFT_EDGE, y, selected ? OMM_OPT_COLOR_SELECT : OMM_OPT_COLOR_WHITE, 1);
+    } else {
+        omm_opt_print_string(opt->label, OMM_OPT_TEXT_CONVERT(false), OMM_OPT_OFFSET_FROM_LEFT_EDGE, y, selected ? OMM_OPT_COLOR_SELECT : OMM_OPT_COLOR_WHITE, 1);
+    }
 
     // Values
     switch (OPT_TYPE(opt->type)) {
@@ -574,14 +634,11 @@ static void omm_opt_toggle() {
         play_sound(SOUND_MENU_CHANGE_SELECT, gGlobalSoundArgs);
         currentMenu = &menuMain;
         optmenu_open = 1;
+        omm_opt_update_select(currentMenu, 0);
     } else {
         play_sound(SOUND_MENU_MARIO_CASTLE_WARP2, gGlobalSoundArgs);
         optmenu_open = 0;
-#if BETTER_CAM_IS_PUPPY_CAM
-        puppycam_default_config();
-#else
-        newcam_init_settings();
-#endif
+        omm_camera_update_settings();
         controller_reconfigure();
         configfile_save(configfile_name());
     }
@@ -600,6 +657,17 @@ static void omm_opt_toggle() {
 #define OMM_OPT_INPUT_HOLD_STOP     (0x10)
 #define OMM_OPT_INPUT_HOLD_RESET    (0x20)
 #define OMM_OPT_INPUT_HOLD          (0xF0)
+
+void omm_opt_return_to_previous_menu(UNUSED struct Option *opt, s32 arg) {
+    if (!arg) {
+        if (currentMenu->prev) {
+            currentMenu = currentMenu->prev;
+            omm_opt_update_select(currentMenu, 0);
+        } else {
+            optmenu_toggle();
+        }
+    }
+}
 
 static s32 omm_opt_update_opt_toggle(struct Option *opt, s32 val) {
     bool before = *opt->bval;
@@ -631,7 +699,7 @@ static s32 omm_opt_update_opt_scroll(struct Option *opt, s32 val) {
             *opt->uval = opt->scrMax;
             return OMM_OPT_INPUT_SOUND_CHANGED;
         }
-        *opt->uval = (u32) max_s((s32) *opt->uval + val, opt->scrMin);
+        *opt->uval = (u32) max_s((s32) *opt->uval + val * max_s(1, opt->scrStep), opt->scrMin);
         if (*opt->uval == opt->scrMin) {
             return OMM_OPT_INPUT_SOUND_CHANGED | OMM_OPT_INPUT_HOLD_STOP;
         }
@@ -642,7 +710,7 @@ static s32 omm_opt_update_opt_scroll(struct Option *opt, s32 val) {
             *opt->uval = opt->scrMin;
             return OMM_OPT_INPUT_SOUND_CHANGED;
         }
-        *opt->uval = (u32) min_s((s32) *opt->uval + val, opt->scrMax);
+        *opt->uval = (u32) min_s((s32) *opt->uval + val * max_s(1, opt->scrStep), opt->scrMax);
         if (*opt->uval == opt->scrMax) {
             return OMM_OPT_INPUT_SOUND_CHANGED | OMM_OPT_INPUT_HOLD_STOP;
         }
@@ -656,6 +724,7 @@ static s32 omm_opt_update_opt_submenu(struct Option *opt, s32 val) {
         if (opt->nextMenu) {
             opt->nextMenu->prev = currentMenu;
             currentMenu = opt->nextMenu;
+            omm_opt_update_select(currentMenu, 0);
             return OMM_OPT_INPUT_SOUND_CHANGED | OMM_OPT_INPUT_HOLD_RESET;
         }
         return OMM_OPT_INPUT_SOUND_ERROR | OMM_OPT_INPUT_HOLD_RESET;
@@ -732,6 +801,7 @@ static s32 omm_opt_process_inputs(u16 abzs, u16 udlr) {
     if (abzs & B_BUTTON) {
         if (currentMenu->prev) {
             currentMenu = currentMenu->prev;
+            omm_opt_update_select(currentMenu, 0);
             return OMM_OPT_INPUT_SOUND_CHANGED | OMM_OPT_INPUT_HOLD_RESET;
         }
         optmenu_toggle();

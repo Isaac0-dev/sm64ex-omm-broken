@@ -7,9 +7,9 @@
 
 extern Lights1 omm_tiara_eye_top_light;
 extern Lights1 omm_tiara_eye_bottom_light;
-static OmmHMap sOmmTiaraEyeTexLightTop = omm_hmap_zero;
-static OmmHMap sOmmTiaraEyeTexLightBottom = omm_hmap_zero;
-static OmmHMap sOmmTiaraEyeTexPixelMatrix = omm_hmap_zero;
+static OmmHMap_(Lights1 *) sOmmTiaraEyeTexLightTop = omm_hmap_zero;
+static OmmHMap_(Lights1 *) sOmmTiaraEyeTexLightBottom = omm_hmap_zero;
+static OmmHMap_(PxMtx *) sOmmTiaraEyeTexPixelMatrix = omm_hmap_zero;
 typedef struct { bool *px; f32 xc, yc, dx, dy; } PxMtx;
 
 static void omm_peach_tiara_gfx_set_tiara_tex_palette(GfxTexture *tex) {

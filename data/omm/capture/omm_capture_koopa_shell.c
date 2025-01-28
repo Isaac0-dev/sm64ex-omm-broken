@@ -94,6 +94,7 @@ void omm_cappy_koopa_shell_update_gfx(struct Object *o) {
     obj_set_angle(o, 0, o->oFaceAngleYaw, 0);
     obj_update_gfx(o);
     o->oGfxAngle[1] = gGlobalTimer * 0x2000;
+    o->oFlags |= OBJ_FLAG_SHADOW_COPY_OBJ_POS;
 
     // Cappy transform
     gOmmObject->cappy.scale = 0.f;

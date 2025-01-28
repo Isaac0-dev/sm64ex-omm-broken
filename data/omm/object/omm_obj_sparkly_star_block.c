@@ -135,6 +135,13 @@ const GeoLayout omm_geo_sparkly_star_3_block[] = {
 
 static void bhv_omm_sparkly_star_block_update() {
     struct Object *o = gCurrentObject;
+
+    // Unloads the Block if the corresponding Sparkly Stars mode is locked
+    if (!omm_sparkly_is_available(o->oSparklyStarMode) || !omm_sparkly_is_unlocked(o->oSparklyStarMode)) {
+        obj_mark_for_deletion(o);
+        return;
+    }
+
     switch (o->oAction) {
         case 0: {
             obj_load_collision_model(o);

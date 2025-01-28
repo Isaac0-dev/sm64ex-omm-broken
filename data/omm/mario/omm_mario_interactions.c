@@ -148,11 +148,14 @@ extern u32 interact_igloo_barrier(struct MarioState *m, u32 interactType, struct
 //
 
 bool omm_mario_interact_hoot(struct MarioState *m, struct Object *o) {
+    if (omm_mario_is_milk(m)) {
+        return false;
+    }
     return interact_hoot(m, INTERACT_HOOT, o);
 }
 
 bool omm_mario_interact_grabbable(struct MarioState *m, struct Object *o) {
-    if ((o->oInteractionSubtype & INT_SUBTYPE_GRABS_MARIO) && obj_is_object1_facing_object2(o, m->marioObj, 0x3000) && omm_mario_has_metal_cap(m)) {
+    if ((o->oInteractionSubtype & INT_SUBTYPE_GRABS_MARIO) && obj_is_object1_facing_object2(o, m->marioObj, 0x3000) && (omm_mario_has_metal_cap(m) || omm_mario_is_milk(m))) {
         return false;
     }
     return interact_grabbable(m, INTERACT_GRABBABLE, o);
@@ -163,7 +166,7 @@ bool omm_mario_interact_door(struct MarioState *m, struct Object *o) {
 }
 
 bool omm_mario_interact_damage(struct MarioState *m, struct Object *o) {
-    if (omm_mario_has_metal_cap(m)) {
+    if (omm_mario_has_metal_cap(m) || omm_mario_is_milk(m)) {
         omm_mario_metal_destroy_or_push_away_object(m, o);
         return false;
     }
@@ -188,7 +191,7 @@ bool omm_mario_interact_coin(struct MarioState *m, struct Object *o) {
     }
 
     // Collect coins
-    gOmmStats->coinsCollected += o->oDamageOrCoinValue;
+    omm_stats_increase(coinsCollected, o->oDamageOrCoinValue);
     return interact_coin(m, INTERACT_COIN, o);
 }
 
@@ -202,10 +205,11 @@ bool omm_mario_interact_cap(struct MarioState *m, struct Object *o) {
 
     // Cap must be valid
     // Mario isn't getting blown
+    // Mario hasn't the milk power-up
     // No Vibe active
     // Not a capture or Yoshi capture with improved Power-ups
-    if (cap && m->action != ACT_GETTING_BLOWN && !omm_peach_vibe_is_active() && (!omm_mario_is_capture(m) || (omm_capture_get_type(gOmmCapture) == OMM_CAPTURE_YOSHI && OMM_POWER_UPS_IMPROVED))) {
-        gOmmStats->capsCollected++;
+    if (cap && m->action != ACT_GETTING_BLOWN && !omm_mario_is_milk(m) && !omm_peach_vibe_is_active() && (!omm_mario_is_capture(m) || (omm_capture_get_type(gOmmCapture) == OMM_CAPTURE_YOSHI && OMM_POWER_UPS_IMPROVED))) {
+        omm_stats_increase(capsCollected, 1);
         m->interactObj = o;
         o->oInteractStatus = INT_STATUS_INTERACTED;
 
@@ -262,7 +266,7 @@ bool omm_mario_interact_koopa(struct MarioState *m, struct Object *o) {
 }
 
 bool omm_mario_interact_unknown_08(struct MarioState *m, struct Object *o) {
-    if (omm_mario_has_metal_cap(m)) {
+    if (omm_mario_has_metal_cap(m) || omm_mario_is_milk(m)) {
         omm_mario_metal_destroy_or_push_away_object(m, o);
         return false;
     }
@@ -274,7 +278,7 @@ bool omm_mario_interact_breakable(struct MarioState *m, struct Object *o) {
 }
 
 bool omm_mario_interact_strong_wind(struct MarioState *m, struct Object *o) {
-    if (omm_mario_has_metal_cap(m)) {
+    if (omm_mario_has_metal_cap(m) || omm_mario_is_milk(m)) {
         return false;
     }
     return interact_strong_wind(m, INTERACT_STRONG_WIND, o);
@@ -326,7 +330,7 @@ bool omm_mario_interact_star_or_key(struct MarioState *m, struct Object *o) {
         if (!noExit) {
             m->hurtCounter = 0;
             m->healCounter = 0;
-            m->capTimer = min_s(m->capTimer, 1);
+            omm_mario_unset_cap(m);
             drop_queued_background_music();
             fadeout_level_music(126);
             omm_render_course_complete_init();
@@ -371,7 +375,7 @@ bool omm_mario_interact_warp(struct MarioState *m, struct Object *o) {
 
         // If already selected, select Peach if unlocked
         // Otherwise, switch character if unlocked
-        if (omm_player_is_selected(target) && OMM_REWARD_IS_PLAYABLE_PEACH_UNLOCKED) {
+        if (omm_player_get_selected_index() == target && OMM_REWARD_IS_PLAYABLE_PEACH_UNLOCKED) {
             omm_player_select(OMM_PLAYER_PEACH);
             omm_mario_set_action(m, ACT_CHARACTER_SWITCH, TRUE, 0);
         } else if (omm_player_is_unlocked(target)) {
@@ -464,7 +468,7 @@ bool omm_mario_interact_bounce_top_2(struct MarioState *m, struct Object *o) {
 }
 
 bool omm_mario_interact_mr_blizzard(struct MarioState *m, struct Object *o) {
-    if (omm_mario_has_metal_cap(m)) {
+    if (omm_mario_has_metal_cap(m) || omm_mario_is_milk(m)) {
         omm_mario_metal_destroy_or_push_away_object(m, o);
         return false;
     }
@@ -516,7 +520,11 @@ bool omm_mario_interact_igloo_barrier(struct MarioState *m, struct Object *o) {
     return interact_igloo_barrier(m, INTERACT_IGLOO_BARRIER, o);
 }
 
-bool omm_mario_interact_unknown_31(UNUSED struct MarioState *m, UNUSED struct Object *o) {
+bool omm_mario_interact_unknown_31(UNUSED struct MarioState *m, struct Object *o) {
+    if (o->behavior == bhvOmmPeach) {
+        o->oAction = 8;
+        return true;
+    }
     return false;
 }
 
@@ -641,7 +649,7 @@ void omm_mario_process_interactions(struct MarioState *m) {
     omm_mario_process_interaction_types(m);
 
     // Finish interactions
-    if (OMM_MOVESET_ODYSSEY && omm_mario_is_kicking(m)) {
+    if ((OMM_MOVESET_ODYSSEY && omm_mario_is_kicking(m)) || omm_mario_is_milk(m)) {
         m->flags &= ~(MARIO_PUNCHING | MARIO_KICKING | MARIO_TRIPPING);
     }
     m->invincTimer += (m->invincTimer > 0 && sDelayInvincTimer);

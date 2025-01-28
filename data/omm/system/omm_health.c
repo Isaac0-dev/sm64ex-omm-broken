@@ -162,7 +162,7 @@ static void omm_health_update_breath(struct MarioState *m) {
 
             // Insta-kill if out of breath in the poison gas
             if (gOmmMario->state.breath >= OMM_BREATH_MAX_DURATION) {
-                gOmmStats->hitsTaken += (m->health > OMM_HEALTH_ODYSSEY_DEAD);
+                omm_stats_increase(hitsTaken, m->health > OMM_HEALTH_ODYSSEY_DEAD);
                 m->health = OMM_HEALTH_ODYSSEY_DEAD;
                 m->healCounter = 0;
                 m->hurtCounter = 0;
@@ -191,7 +191,7 @@ static void omm_health_update_breath(struct MarioState *m) {
 
                 // Insta-kill if out of breath in One-health mode
                 if (OMM_MOVESET_ODYSSEY_1H && gOmmMario->state.breath >= OMM_BREATH_MAX_DURATION) {
-                    gOmmStats->hitsTaken += (m->health > OMM_HEALTH_ODYSSEY_DEAD);
+                    omm_stats_increase(hitsTaken, m->health > OMM_HEALTH_ODYSSEY_DEAD);
                     m->health = OMM_HEALTH_ODYSSEY_DEAD;
                     m->healCounter = 0;
                     m->hurtCounter = 0;
@@ -220,7 +220,7 @@ static void omm_health_update_classic(struct MarioState *m) {
     if (sPrevHurtCounter == 0 && m->hurtCounter != 0) {
         gOmmMario->state.health.state = OMM_HEALTH_STATE_DAMAGE;
         gOmmMario->state.health.timer = 0;
-        gOmmStats->hitsTaken++;
+        omm_stats_increase(hitsTaken, 1);
     }
 
     // Drain even more health in cold water
@@ -279,7 +279,7 @@ void omm_health_update(struct MarioState *m) {
             omm_sound_play(OMM_SOUND_EFFECT_DAMAGE, NULL);
             gOmmMario->state.health.state = OMM_HEALTH_STATE_DAMAGE;
             gOmmMario->state.health.timer = 0;
-            gOmmStats->hitsTaken++;
+            omm_stats_increase(hitsTaken, 1);
         }
 
         // Update coin counter and heal Mario every N coins

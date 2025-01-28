@@ -5,21 +5,25 @@
 #include "pc/platform.h" // sys_exe_path, sys_user_path
 
 // Save filename (not used, kept because compiling issues)
-#define SAVE_FILENAME "sm64_save_file.bin"
+#define SAVE_FILENAME       "sm64_save_file.bin"
 
 // Base ROM
-#define BASEROM_US_Z64 "baserom.us.z64"
+#define BASEROM_SIZE        0x800000 // 8MB
+#define BASEROM_EXT         ".z64"
+#define BASEROM_FILENAME    "baserom.us" BASEROM_EXT
 
 // Resources
-#define FS_BASEPACK     "base." OMM_GAME_CODE ".zip"
-#define FS_TEXTUREDIR   "gfx"
-#define FS_SOUNDDIR     "sound"
-#define FS_OMM_BASEPACK "omm.zip"
+#define FS_BASEPACK         "base." OMM_GAME_CODE ".zip"
+#define FS_TEXTUREDIR       "gfx"
+#define FS_SOUNDDIR         "sound"
+#define FS_PACKSDIR         "packs"
+#define FS_DYNOSDIR         "dynos"
+#define FS_OMM_BASEPACK     "omm.zip"
 
 // Dir flags
-#define FS_DIR_READ  (1 << 0)
-#define FS_DIR_WRITE (1 << 1)
-#define FS_DIR_PACKS (1 << 2)
+#define FS_DIR_READ         (1 << 0)
+#define FS_DIR_WRITE        (1 << 1)
+#define FS_DIR_PACKS        (1 << 2)
 
 // Walk return codes
 #define FS_WALK_SUCCESS     (0)

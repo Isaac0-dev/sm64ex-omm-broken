@@ -96,6 +96,7 @@
 #define OMM_EXTRAS_OBJECTS_RADAR_ENABLED                (gOmmExtrasObjectsRadar != 0)
 #define OMM_EXTRAS_SHOW_STAR_NUMBER                     (gOmmExtrasShowStarNumber && !omm_is_ending_cutscene())
 #define OMM_EXTRAS_INVISIBLE_MODE                       (gOmmExtrasInvisibleMode)
+#define OMM_EXTRAS_MARIO_MODE                           (gOmmExtrasMarioMode)
 #define OMM_HUD_ALWAYS                                  (gOmmHudMode == OMM_HUD_MODE_ALWAYS)
 #define OMM_HUD_VANISHING                               (gOmmHudMode == OMM_HUD_MODE_VANISHING)
 #define OMM_HUD_PRO                                     (gOmmHudMode == OMM_HUD_MODE_PRO)
@@ -107,7 +108,7 @@
 #define OMM_CHEAT_CAPPY_CAN_COLLECT_STARS               (gOmmCheatCappyCanCollectStars == 1)
 #define OMM_CHEAT_PLAY_AS_CAPPY                         (gOmmCheatPlayAsCappy == 1)
 #define OMM_CHEAT_PEACH_ENDLESS_VIBE_GAUGE              (gOmmCheatPeachEndlessVibeGauge == 1)
-#define OMM_CHEAT_SHADOW_MARIO                          (gOmmCheatShadowMario == 1)
+#define OMM_CHEAT_SHADOW_MARIO                          (gOmmCheatShadowMario == 1 && OMM_PLAYER_MODEL_IS_MARIO)
 #if OMM_GAME_IS_R96X
 #define OMM_CHEAT_MOON_JUMP                             (Cheats.EnableCheats && (Cheats.MoonJump && !Cheats.ChaosMode))
 #define OMM_CHEAT_GOD_MODE                              (Cheats.EnableCheats && (Cheats.GodMode && !Cheats.ChaosMode))
@@ -208,7 +209,10 @@
 #define OMM_DIALOG_PEACHY_ROOM                          (OMM_DIALOG_START_INDEX + 0x001)
 #define OMM_DIALOG_PEACHY_ROOM_FINAL                    (OMM_DIALOG_START_INDEX + 0x002)
 #define OMM_DIALOG_LEVEL_VARIANTS                       (OMM_DIALOG_START_INDEX + 0x003)
-#define OMM_DIALOG_STATS_BOARD_RESET                    (OMM_DIALOG_START_INDEX + 0x004)
+#if OMM_GAME_IS_SM74
+#define OMM_DIALOG_SM74_ROOM_1                          (OMM_DIALOG_START_INDEX + 0x004)
+#define OMM_DIALOG_SM74_ROOM_2                          (OMM_DIALOG_START_INDEX + 0x005)
+#endif
 
 // NPCs
 #define OMM_DIALOG_YOSHI_CAPTURE                        (OMM_DIALOG_START_INDEX + 0x020)
@@ -218,6 +222,7 @@
 #define OMM_DIALOG_SPARKLY_MIPS_3                       (OMM_DIALOG_START_INDEX + 0x024)
 #define OMM_DIALOG_SPARKLY_TOAD_1                       (OMM_DIALOG_START_INDEX + 0x025)
 #define OMM_DIALOG_SPARKLY_TOAD_2                       (OMM_DIALOG_START_INDEX + 0x026)
+#define OMM_DIALOG_SPARKLY_TOAD_3                       (OMM_DIALOG_START_INDEX + 0x027)
 
 // Bowser
 #define OMM_DIALOG_BOWSER_1_INTRO                       (OMM_DIALOG_START_INDEX + 0x080)
@@ -354,18 +359,22 @@ extern int OMM_STAR_COLOR_[OMM_STAR_COLOR_COUNT];
 #define OMM_SOUND_EVENT_UNCAPTURE                       (0x51)
 #define OMM_SOUND_EVENT_LIFE_UP                         (0x52)
 #define OMM_SOUND_EVENT_SPARKLY_STAR_GET                (0x53)
-#define OMM_SOUND_EVENT_DEATH_MARIO                     (0x54)
-#define OMM_SOUND_EVENT_DEATH_MARIO_WATER               (0x55)
-#define OMM_SOUND_EVENT_DEATH_MARIO_FALL                (0x56)
-#define OMM_SOUND_EVENT_DEATH_PEACH                     (0x57)
-#define OMM_SOUND_EVENT_DEATH_PEACH_WATER               (0x58)
-#define OMM_SOUND_EVENT_DEATH_PEACH_FALL                (0x59)
-#define OMM_SOUND_EVENT_DEATH_LUIGI                     (0x5A)
-#define OMM_SOUND_EVENT_DEATH_LUIGI_WATER               (0x5B)
-#define OMM_SOUND_EVENT_DEATH_LUIGI_FALL                (0x5C)
-#define OMM_SOUND_EVENT_DEATH_WARIO                     (0x5D)
-#define OMM_SOUND_EVENT_DEATH_WARIO_WATER               (0x5E)
-#define OMM_SOUND_EVENT_DEATH_WARIO_FALL                (0x5F)
+#define OMM_SOUND_EVENT_SECRET                          (0x54)
+#define OMM_SOUND_EVENT_DEATH                           (0x55)
+#define OMM_SOUND_EVENT_DEATH_WATER                     (0x56)
+#define OMM_SOUND_EVENT_DEATH_FALL                      (0x57)
+#define OMM_SOUND_EVENT_DEATH_MARIO                     (0x58)
+#define OMM_SOUND_EVENT_DEATH_MARIO_WATER               (0x59)
+#define OMM_SOUND_EVENT_DEATH_MARIO_FALL                (0x5A)
+#define OMM_SOUND_EVENT_DEATH_PEACH                     (0x5B)
+#define OMM_SOUND_EVENT_DEATH_PEACH_WATER               (0x5C)
+#define OMM_SOUND_EVENT_DEATH_PEACH_FALL                (0x5D)
+#define OMM_SOUND_EVENT_DEATH_LUIGI                     (0x5E)
+#define OMM_SOUND_EVENT_DEATH_LUIGI_WATER               (0x5F)
+#define OMM_SOUND_EVENT_DEATH_LUIGI_FALL                (0x60)
+#define OMM_SOUND_EVENT_DEATH_WARIO                     (0x61)
+#define OMM_SOUND_EVENT_DEATH_WARIO_WATER               (0x62)
+#define OMM_SOUND_EVENT_DEATH_WARIO_FALL                (0x63)
 
 #define OMM_SOUND_EFFECT_DAMAGE                         (0x80)
 #define OMM_SOUND_EFFECT_HEAL                           (0x81)
@@ -397,10 +406,14 @@ extern int OMM_STAR_COLOR_[OMM_STAR_COLOR_COUNT];
 #define OMM_PLAYER_PEACH                                (1)
 #define OMM_PLAYER_LUIGI                                (2)
 #define OMM_PLAYER_WARIO                                (3)
-#define OMM_PLAYER_IS_MARIO                             omm_player_is_selected(OMM_PLAYER_MARIO)
-#define OMM_PLAYER_IS_PEACH                             omm_player_is_selected(OMM_PLAYER_PEACH)
-#define OMM_PLAYER_IS_LUIGI                             omm_player_is_selected(OMM_PLAYER_LUIGI)
-#define OMM_PLAYER_IS_WARIO                             omm_player_is_selected(OMM_PLAYER_WARIO)
+#define OMM_PLAYER_IS_MARIO                             (omm_player_get_selected_index() == OMM_PLAYER_MARIO)
+#define OMM_PLAYER_IS_PEACH                             (omm_player_get_selected_index() == OMM_PLAYER_PEACH)
+#define OMM_PLAYER_IS_LUIGI                             (omm_player_get_selected_index() == OMM_PLAYER_LUIGI)
+#define OMM_PLAYER_IS_WARIO                             (omm_player_get_selected_index() == OMM_PLAYER_WARIO)
+#define OMM_PLAYER_MODEL_IS_MARIO                       (omm_player_get_selected_index_model_and_sounds() == OMM_PLAYER_MARIO)
+#define OMM_PLAYER_MODEL_IS_PEACH                       (omm_player_get_selected_index_model_and_sounds() == OMM_PLAYER_PEACH)
+#define OMM_PLAYER_MODEL_IS_LUIGI                       (omm_player_get_selected_index_model_and_sounds() == OMM_PLAYER_LUIGI)
+#define OMM_PLAYER_MODEL_IS_WARIO                       (omm_player_get_selected_index_model_and_sounds() == OMM_PLAYER_WARIO)
 
 //
 // Routines
@@ -415,11 +428,15 @@ extern int OMM_STAR_COLOR_[OMM_STAR_COLOR_COUNT];
 #define OMM_ROUTINE_PRE_RENDER(func)                    static void func(void); OMM_AT_STARTUP static void func##_init() { omm_add_routine(OMM_ROUTINE_TYPE_PRE_RENDER, func); } static void func(void)
 
 //
-// Debug
+// Logs
 //
 
 #define omm_printf(fmt, ...)                            { printf(fmt __VA_ARGS__); fflush(stdout); }
+#define omm_printf_warning(fmt, ...)                    { printf("\033[33m<WARNING> "); printf(fmt __VA_ARGS__); printf("\033[0m"); fflush(stdout); }
+#define omm_printf_error(fmt, ...)                      { printf("\033[31m[ERROR] "); printf(fmt __VA_ARGS__); printf("\033[0m"); fflush(stdout); }
 #define omm_log(fmt, ...)                               { printf(__FUNCTION__); printf(": "); printf(fmt __VA_ARGS__); fflush(stdout); }
+#define omm_log_warning(fmt, ...)                       { printf("\033[33m"); printf(__FUNCTION__); printf(": <WARNING> "); printf(fmt __VA_ARGS__); printf("\033[0m"); fflush(stdout); }
+#define omm_log_error(fmt, ...)                         { printf("\033[31m"); printf(__FUNCTION__); printf(": [ERROR] "); printf(fmt __VA_ARGS__); printf("\033[0m"); fflush(stdout); }
 #if OMM_CODE_DEBUG
 #define omm_debug_log(fmt, ...)                         { printf(__FUNCTION__); printf(": "); printf(fmt __VA_ARGS__); fflush(stdout); }
 #define omm_debug_text(x, y, fmt, ...)                  { char _str_[256]; snprintf(_str_, 256, fmt, __VA_ARGS__); print_text(x, y, _str_); }

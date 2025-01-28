@@ -526,6 +526,18 @@ static s32 omm_act_knockback_water(struct MarioState *m, s32 animID) {
 // Odyssey //
 /////////////
 
+static s32 omm_act_water_first_person(struct MarioState *m) {
+    action_init_no_y_vel(m->forwardVel, 0, NO_SOUND, music_lower_volume(SEQ_PLAYER_LEVEL, 60, 40));
+
+    m->faceAngle[2] = 0;
+    s32 animID = obj_anim_is_at_end(m->marioObj) ? MARIO_ANIM_FIRST_PERSON : m->marioObj->oAnimID;
+    omm_act_submerged_update_swimming_speed(m, false);
+    perform_water_step(m);
+    ANM(animID, 1.f);
+    omm_act_submerged_set_swimming_at_surface_particles(m, PARTICLE_IDLE_WATER_WAVE);
+    return OMM_MARIO_ACTION_RESULT_BREAK;
+}
+
 static s32 omm_act_water_dash(struct MarioState *m) {
 
     // Cancels
@@ -812,6 +824,7 @@ s32 omm_mario_execute_submerged_action(struct MarioState *m) {
         case ACT_HOLD_METAL_WATER_JUMP_LAND:        return (OMM_POWER_UPS_IMPROVED ? omm_mario_set_action(m, ACT_OMM_METAL_WATER_HOLD_JUMP_LAND,     0, 0) : OMM_MARIO_ACTION_RESULT_CONTINUE);
 
         // Odyssey
+        case ACT_OMM_WATER_FIRST_PERSON:            return omm_act_water_first_person(m);
         case ACT_OMM_WATER_GROUND_POUND:            return omm_act_water_ground_pound(m);
         case ACT_OMM_WATER_GROUND_POUND_LAND:       return omm_act_water_ground_pound_land(m);
         case ACT_OMM_WATER_GROUND_POUND_JUMP:       return omm_act_water_ground_pound_jump(m);

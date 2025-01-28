@@ -38,17 +38,14 @@ static void omm_cappy_gfx_dp_set_tile_size() {
 static void omm_cappy_gfx_dp_set_texture_image() {
     gfx_dp_set_texture_image();
     omm_cappy_gfx_hide_logo();
-    omm_shadow_mario_set_texture();
 }
 
 static void omm_cappy_gfx_sp_set_other_mode_l() {
     gfx_sp_set_other_mode_l();
-    omm_shadow_mario_disable_alpha_noise();
 }
 
 static void omm_cappy_gfx_sp_set_other_mode_h() {
     gfx_sp_set_other_mode_h();
-    omm_shadow_mario_disable_alpha_noise();
 }
 
 //

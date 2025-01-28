@@ -181,6 +181,9 @@
 #define set_destroy_fire_piranha_plant(cond, numCoins, soundBits) \
     set_destroy(DESTROY_TYPE_FIRE_PIRANHA_PLANT, cond, numCoins, soundBits, 0, 0, 0, 0)
 
+#define set_destroy_wooden_post(cond, soundBits) \
+    set_destroy(DESTROY_TYPE_WOODEN_POST, cond, 0, soundBits, 0, 0, 0, 0)
+
 //
 // Raw data
 //
@@ -976,7 +979,7 @@ set_behavior(bhvMantaRayRingManager, NULL),
 set_behavior(bhvMantaRayWaterRing, NULL),
     set_bhv_types(BHV_TYPE_WATER_RING),
 set_behavior(bhvMario, mario_geo),
-    set_bhv_types(0),
+    set_bhv_types(BHV_TYPE_PLAYER),
 set_behavior(bhvMenuButton, NULL),
     set_bhv_types(0),
 set_behavior(bhvMenuButtonManager, NULL),
@@ -1004,6 +1007,8 @@ set_behavior(bhvMeshElevator, NULL),
     set_bhv_types(0),
 set_behavior(bhvMessagePanel, NULL),
     set_bhv_types(BHV_TYPE_NO_CAM_COL),
+    set_holdable(HOLD_ACTIONS_ALL, HOLD_ANIM_NONE, 0, HOLD_ANIM_NONE, 0, HOLD_HIT_FLOOR, HOLD_ACT_BOUNCE, OBJ_INT_PRESET_ATTACK_WEAK),
+    set_yoshi_tongue(YOSHI_TONGUE_TYPE_THROWABLE),
 set_behavior(bhvMetalCap, marios_metal_cap_geo),
     set_bhv_types(BHV_TYPE_CAP),
     set_yoshi_tongue(YOSHI_TONGUE_TYPE_CAP),
@@ -1568,7 +1573,9 @@ set_behavior(bhvWaterDroplet, NULL),
 set_behavior(bhvWaterDropletSplash, NULL),
     set_bhv_types(BHV_TYPE_UNIMPORTANT),
 set_behavior(bhvWaterLevelDiamond, NULL),
-    set_bhv_types(0),
+    set_bhv_types(BHV_TYPE_WATER_DIAMOND),
+    set_hitbox(70, 100, 0, 0, 0, false), /* 70, 30, 0, 0, 0 */
+    set_yoshi_tongue(YOSHI_TONGUE_TYPE_ATTACK),
 set_behavior(bhvWaterLevelPillar, NULL),
     set_bhv_types(0),
 set_behavior(bhvWaterMist, NULL),
@@ -1640,6 +1647,8 @@ set_behavior(bhvWingCap, marios_wing_cap_geo),
     set_yoshi_tongue(YOSHI_TONGUE_TYPE_CAP),
 set_behavior(bhvWoodenPost, NULL),
     set_bhv_types(BHV_TYPE_NO_CAM_COL),
+    set_destroy_wooden_post(DESTROY_COND_NONE, SOUND_GENERAL_BREAK_BOX),
+    set_yoshi_tongue(YOSHI_TONGUE_TYPE_DESTROY),
 set_behavior(bhvYellowBackgroundInMenu, NULL),
     set_bhv_types(0),
 set_behavior(bhvYellowBall, NULL),
@@ -1929,8 +1938,6 @@ set_behavior(bhvOmmActSelectStar, star_geo),
     set_bhv_types(BHV_TYPE_STAR_MODEL),
 set_behavior(bhvOmmStarCelebration, star_geo),
     set_bhv_types(BHV_TYPE_STAR_MODEL),
-set_behavior(bhvOmmGfxPaletteModifier, NULL),
-    set_bhv_types(0),
 set_behavior(bhvOmmWfTransition, NULL),
     set_bhv_types(0),
 set_behavior(bhvOmmWallWarp, NULL),
@@ -2088,6 +2095,8 @@ set_behavior(bhvOmmSparklyStar, omm_geo_sparkly_star_1_opaque),
     set_bhv_types(BHV_TYPE_STAR_OR_KEY),
 set_behavior(bhvOmmSparklyStarHint, omm_geo_sparkly_star_1_hint),
     set_bhv_types(BHV_TYPE_NO_CAM_COL),
+    set_holdable(HOLD_ACTIONS_ALL, HOLD_ANIM_NONE, 0, HOLD_ANIM_NONE, 0, HOLD_HIT_FLOOR, HOLD_ACT_BOUNCE, OBJ_INT_PRESET_ATTACK_WEAK),
+    set_yoshi_tongue(YOSHI_TONGUE_TYPE_THROWABLE),
 set_behavior(bhvOmmSparklyStarBlock1, omm_geo_sparkly_star_1_block),
     set_bhv_types(BHV_TYPE_BREAKABLE | BHV_TYPE_NO_CAM_COL),
     set_yoshi_tongue(YOSHI_TONGUE_TYPE_ATTACK),
@@ -2107,6 +2116,8 @@ set_behavior(bhvOmmSparklyStarBox, omm_geo_sparkly_star_1_box),
     set_bhv_types(BHV_TYPE_NO_CAM_COL),
     set_holdable(HOLD_ACTIONS_0, HOLD_ANIM_NONE, 0, HOLD_ANIM_NONE, 0, HOLD_HIT_FLOOR_OR_WALL, HOLD_ACT_BOUNCE_SPARKLY_STAR_BOX, OBJ_INT_PRESET_ATTACK_SPARKLY_STAR_BOX),
     set_yoshi_tongue(YOSHI_TONGUE_TYPE_THROWABLE),
+set_behavior(bhvOmmSparklyGrandStarEnding, omm_geo_sparkly_star_1_opaque),
+    set_bhv_types(0),
 set_behavior(bhvOmmMips, mips_geo),
     set_bhv_types(BHV_TYPE_GRABBABLE | BHV_TYPE_NO_CAPPY),
 set_behavior(bhvOmmRisingLava, omm_geo_rising_lava),
@@ -2169,8 +2180,8 @@ set_behavior(bhvOmmPerryCharge, omm_geo_perry_charge),
 // Processed data
 //
 
-static OmmArray sBehaviorsList = omm_array_zero;
-static OmmHMap sOmmBehaviorData = omm_hmap_zero;
+static OmmArray_(const BehaviorScript *) sBehaviorsList = omm_array_zero;
+static OmmHMap_(OmmBhvData *) sOmmBehaviorData = omm_hmap_zero;
 
 static void omm_behavior_data_init() {
     OMM_DO_ONCE {

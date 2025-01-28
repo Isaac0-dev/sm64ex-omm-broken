@@ -56,9 +56,9 @@ static const OmmPlayerProperties OMM_PLAYER_PROPERTIES[] = {
     { 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f }, }, {
     { MODEL_PEACH_OMM, omm_geo_peach },
     { MODEL_PEACHS_CAP_OMM, omm_geo_peachs_cap },
-    { MODEL_PEACHS_WING_CAP_OMM, omm_geo_peachs_cap },
+    { MODEL_PEACHS_WING_CAP_OMM, omm_geo_peachs_wing_cap },
     { MODEL_PEACHS_METAL_CAP_OMM, omm_geo_peachs_metal_cap },
-    { MODEL_PEACHS_WINGED_METAL_CAP_OMM, omm_geo_peachs_metal_cap },
+    { MODEL_PEACHS_WINGED_METAL_CAP_OMM, omm_geo_peachs_winged_metal_cap },
     } },
 
 #if OMM_GAME_IS_R96X
@@ -91,9 +91,9 @@ static const OmmPlayerProperties OMM_PLAYER_PROPERTIES[] = {
     { 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f }, }, {
     { MODEL_PEACH_OMM, omm_geo_peach },
     { MODEL_PEACHS_CAP_OMM, omm_geo_peachs_cap },
-    { MODEL_PEACHS_WING_CAP_OMM, omm_geo_peachs_cap },
+    { MODEL_PEACHS_WING_CAP_OMM, omm_geo_peachs_wing_cap },
     { MODEL_PEACHS_METAL_CAP_OMM, omm_geo_peachs_metal_cap },
-    { MODEL_PEACHS_WINGED_METAL_CAP_OMM, omm_geo_peachs_metal_cap },
+    { MODEL_PEACHS_WINGED_METAL_CAP_OMM, omm_geo_peachs_winged_metal_cap },
     } },
 
     /* Peach (Rage) */ {
@@ -102,9 +102,9 @@ static const OmmPlayerProperties OMM_PLAYER_PROPERTIES[] = {
     { 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f }, }, {
     { MODEL_PEACH_OMM, omm_geo_peach },
     { MODEL_PEACHS_CAP_OMM, omm_geo_peachs_cap },
-    { MODEL_PEACHS_WING_CAP_OMM, omm_geo_peachs_cap },
+    { MODEL_PEACHS_WING_CAP_OMM, omm_geo_peachs_wing_cap },
     { MODEL_PEACHS_METAL_CAP_OMM, omm_geo_peachs_metal_cap },
-    { MODEL_PEACHS_WINGED_METAL_CAP_OMM, omm_geo_peachs_metal_cap },
+    { MODEL_PEACHS_WINGED_METAL_CAP_OMM, omm_geo_peachs_winged_metal_cap },
     } },
 
     /* Peach (Gloom) */ {
@@ -113,9 +113,9 @@ static const OmmPlayerProperties OMM_PLAYER_PROPERTIES[] = {
     { 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f }, }, {
     { MODEL_PEACH_OMM, omm_geo_peach },
     { MODEL_PEACHS_CAP_OMM, omm_geo_peachs_cap },
-    { MODEL_PEACHS_WING_CAP_OMM, omm_geo_peachs_cap },
+    { MODEL_PEACHS_WING_CAP_OMM, omm_geo_peachs_wing_cap },
     { MODEL_PEACHS_METAL_CAP_OMM, omm_geo_peachs_metal_cap },
-    { MODEL_PEACHS_WINGED_METAL_CAP_OMM, omm_geo_peachs_metal_cap },
+    { MODEL_PEACHS_WINGED_METAL_CAP_OMM, omm_geo_peachs_winged_metal_cap },
     } },
 
     /* Peach (Calm) */ {
@@ -124,9 +124,9 @@ static const OmmPlayerProperties OMM_PLAYER_PROPERTIES[] = {
     { 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f }, }, {
     { MODEL_PEACH_OMM, omm_geo_peach },
     { MODEL_PEACHS_CAP_OMM, omm_geo_peachs_cap },
-    { MODEL_PEACHS_WING_CAP_OMM, omm_geo_peachs_cap },
+    { MODEL_PEACHS_WING_CAP_OMM, omm_geo_peachs_wing_cap },
     { MODEL_PEACHS_METAL_CAP_OMM, omm_geo_peachs_metal_cap },
-    { MODEL_PEACHS_WINGED_METAL_CAP_OMM, omm_geo_peachs_metal_cap },
+    { MODEL_PEACHS_WINGED_METAL_CAP_OMM, omm_geo_peachs_winged_metal_cap },
     } },
 };
 
@@ -225,12 +225,12 @@ void omm_player_select(s32 playerIndex) {
     }
 }
 
-bool omm_player_is_selected(s32 playerIndex) {
-    return sOmmPlayerIndex == playerIndex;
-}
-
 s32 omm_player_get_selected_index() {
     return sOmmPlayerIndex;
+}
+
+s32 omm_player_get_selected_index_model_and_sounds() {
+    return OMM_EXTRAS_MARIO_MODE ? OMM_PLAYER_MARIO : omm_player_get_selected_index();
 }
 
 //
@@ -261,7 +261,7 @@ const void *omm_player_properties_get_anims(s32 playerIndex) {
 // Physics properties
 //
 
-#define PLAYER_INDEX (OMM_SPARKLY_ENABLE_PLAYER_PHYSICS ? playerIndex : OMM_PLAYER_MARIO)
+#define PLAYER_INDEX ((playerIndex >= OMM_NUM_PLAYABLE_CHARACTERS || OMM_SPARKLY_ENABLE_PLAYER_PHYSICS) ? playerIndex : OMM_PLAYER_MARIO)
 
 f32 omm_player_physics_get_ground(s32 playerIndex, bool isCapture) {
     return (gMarioState->action == ACT_WALKING ? OMM_PLAYER_PROPERTIES[PLAYER_INDEX].physics[isCapture].walk : OMM_PLAYER_PROPERTIES[PLAYER_INDEX].physics[isCapture].ground);
@@ -324,6 +324,14 @@ s32 omm_player_graphics_get_cap(s32 playerIndex, bool wing, bool metal) {
 
 OMM_ROUTINE_LEVEL_ENTRY(omm_player_init) {
     omm_player_select(gOmmCharacter);
+
+    // Load the graphics into the gLoadedGraphNodes table
+    const OmmPlayerProperties *pp = &OMM_PLAYER_PROPERTIES[sOmmPlayerIndex];
+    gLoadedGraphNodes[pp->graphics.body.id]  = geo_layout_to_graph_node(NULL, pp->graphics.body.geo);
+    gLoadedGraphNodes[pp->graphics.cap.id]   = geo_layout_to_graph_node(NULL, pp->graphics.cap.geo);
+    gLoadedGraphNodes[pp->graphics.wcap.id]  = geo_layout_to_graph_node(NULL, pp->graphics.wcap.geo);
+    gLoadedGraphNodes[pp->graphics.mcap.id]  = geo_layout_to_graph_node(NULL, pp->graphics.mcap.geo);
+    gLoadedGraphNodes[pp->graphics.wmcap.id] = geo_layout_to_graph_node(NULL, pp->graphics.wmcap.geo);
 }
 
 OMM_ROUTINE_UPDATE(omm_player_update) {
@@ -337,14 +345,14 @@ OMM_ROUTINE_UPDATE(omm_player_update) {
 
 OMM_ROUTINE_PRE_RENDER(omm_player_update_gfx) {
     if (gLoadedGraphNodes && gMarioObject) {
-        const OmmPlayerProperties *pp            = &OMM_PLAYER_PROPERTIES[sOmmPlayerIndex];
+        const OmmPlayerProperties *pp            = &OMM_PLAYER_PROPERTIES[OMM_EXTRAS_MARIO_MODE ? OMM_PLAYER_MARIO : sOmmPlayerIndex];
         gLoadedGraphNodes[pp->graphics.body.id]  = geo_layout_to_graph_node(NULL, pp->graphics.body.geo);
         gLoadedGraphNodes[pp->graphics.cap.id]   = geo_layout_to_graph_node(NULL, pp->graphics.cap.geo);
         gLoadedGraphNodes[pp->graphics.wcap.id]  = geo_layout_to_graph_node(NULL, pp->graphics.wcap.geo);
         gLoadedGraphNodes[pp->graphics.mcap.id]  = geo_layout_to_graph_node(NULL, pp->graphics.mcap.geo);
         gLoadedGraphNodes[pp->graphics.wmcap.id] = geo_layout_to_graph_node(NULL, pp->graphics.wmcap.geo);
         gMarioObject->oGraphNode                 = geo_layout_to_graph_node(NULL, pp->graphics.body.geo);
-        gMarioAnimations                         = (struct_MarioAnimations *) pp->anims;
+        gMarioAnimations                         = (struct_MarioAnimations *) OMM_PLAYER_PROPERTIES[sOmmPlayerIndex].anims;
 #if OMM_GAME_IS_R96X
         Cheats.ChaosPlayAs = 0;
         Cheats.PlayAs = 0;

@@ -49,6 +49,8 @@ const char *fb_read_str(OmmFileBuffer *fb, str_t dst);
 // Structs
 //
 
+typedef struct Animation Animation;
+
 typedef struct {
     const u8 *png_data;
     const u8 *raw_data;
@@ -56,17 +58,6 @@ typedef struct {
     s32 raw_height;
     bool uploaded;
 } OmmTexData;
-
-typedef struct {
-    s16 flags;
-    s16 start_frame;
-    s16 loop_start;
-    s16 loop_end;
-    s16 bone_count;
-    const s16 *values;
-    const u16 *index;
-    s32 length;
-} OmmAnimData;
 
 #define OmmDataNode_(type) \
 typedef struct { \
@@ -80,7 +71,7 @@ OmmDataNode_(OmmTexData);
 OmmDataNode_(Vtx);
 OmmDataNode_(Gfx);
 OmmDataNode_(GeoLayout);
-OmmDataNode_(OmmAnimData);
+OmmDataNode_(Animation);
 
 typedef struct {
     OmmArray_(OmmDataNode_Lights1 *) lights;
@@ -88,9 +79,10 @@ typedef struct {
     OmmArray_(OmmDataNode_Vtx *) vertices;
     OmmArray_(OmmDataNode_Gfx *) display_lists;
     OmmArray_(OmmDataNode_GeoLayout *) geo_layouts;
-    OmmArray_(OmmDataNode_OmmAnimData *) animations;
-    OmmArray_(OmmAnimData *) animation_table;
+    OmmArray_(OmmDataNode_Animation *) animations;
+    OmmArray_(Animation *) animation_table;
     bool disable_billboard;
+    bool use_emblem;
     u8 priority;
 } OmmGfxData;
 
@@ -105,6 +97,7 @@ typedef struct {
     sys_path_t path;
     bool exists;
     bool enabled;
+    u32 cs_index;
     s32 caching;
 } OmmPackData;
 
@@ -124,6 +117,7 @@ const char **omm_models_get_actor_names(s32 index);
 const void  *omm_models_get_actor_layout(s32 index);
 s32          omm_models_get_actor_index(const void *geo_layout);
 void        *omm_models_get_func_pointer(s32 index);
+s32          omm_models_get_model_pack_count();
 s32          omm_models_get_model_pack_index(const void *geo_layout);
 s32          omm_models_get_mario_model_pack_index();
 s32         *omm_models_get_caching_state(bool *toggle);
@@ -135,6 +129,23 @@ bool         omm_models_read_config(const char *name, const char *value);
 void         omm_models_write_config(FILE *file);
 void         omm_models_update();
 void         omm_models_update_object(struct Object *obj);
-void         omm_models_swap_animations(void *ptr);
+void         omm_models_update_current_animation(void *ptr);
+void         omm_models_disable_all();
+
+void         omm_models_cs_init(const char *path);
+void         omm_models_cs_register_packs();
+OmmGfxData  *omm_models_cs_load(u32 cs_index, const char *actor_name, u64 *loaded_bytes);
+void         omm_models_cs_load_all(u32 cs_index, u64 *loaded_bytes);
+void         omm_models_cs_update_current();
+u64          omm_models_cs_get_size(u32 cs_index);
+u32          omm_models_cs_get_current_cs_index();
+const u32  **omm_models_cs_get_palette_preset(u32 cs_index);
+const Animation *omm_models_cs_get_animation(u32 cs_index, s32 anim_index);
+const char  *omm_models_cs_get_pack_folder(u32 cs_index);
+const char  *omm_models_cs_get_sound_name(u32 cs_index, s32 char_sound, s32 variant);
+void        *omm_models_cs_sound_load(const char *pack_folder, const char *sound_name, u64 *loaded_bytes);
+bool         omm_models_cs_sound_play(u32 cs_index, s32 character_sound, f32 *pos);
+bool         omm_models_cs_sound_play_with_priority(u32 cs_index, s32 character_sound, f32 *pos, u8 priority);
+bool         omm_models_cs_sound_stop(u32 cs_index, s32 character_sound);
 
 #endif

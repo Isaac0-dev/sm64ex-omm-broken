@@ -153,7 +153,7 @@ struct Object *omm_obj_spawn_problem(struct Object *o) {
     drop_and_set_mario_action(m, sOmmProblemMarioActions[(((m->action & (ACT_FLAG_SWIMMING | ACT_FLAG_METAL_WATER)) != 0) << 2) | (((m->action & ACT_FLAG_AIR) != 0) << 1) | (random_u16() & 1)], 1);
     gOmmMario->state.health.state = OMM_HEALTH_STATE_DAMAGE;
     gOmmMario->state.health.timer = 0;
-    gOmmStats->hitsTaken += (m->health > OMM_HEALTH_DEAD);
+    omm_stats_increase(hitsTaken, m->health > OMM_HEALTH_DEAD);
     gOmmGlobals->marioTimer = gGlobalTimer;
     return problem;
 }

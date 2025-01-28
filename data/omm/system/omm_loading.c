@@ -132,4 +132,5 @@ void omm_loading_screen_start() {
         omm_load_textures_and_model_packs(NULL);
     }
     gfx_texture_precache_end();
+    rom_asset_copy_baserom_to_appdata();
 }
