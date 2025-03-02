@@ -148,6 +148,11 @@
 #define cur_obj_is_mario_ground_pounding_platform_1 cur_obj_is_mario_ground_pounding_platform(void)
 #define cur_obj_is_mario_ground_pounding_platform(...) CAT(cur_obj_is_mario_ground_pounding_platform_, N_ARGS(__VA_ARGS__))
 
+// check_instant_warp is replaced by omm_check_instant_warp
+#define check_instant_warp_0 omm_check_instant_warp()
+#define check_instant_warp_1 check_instant_warp()
+#define check_instant_warp(...) CAT(check_instant_warp_, N_ARGS(__VA_ARGS__))
+
 // Update the number of defeated enemies
 #define unload_deactivated_objects_0 omm_stats_update_defeated_enemies()
 #define unload_deactivated_objects_1 \
@@ -162,9 +167,37 @@ omm_stats_update_defeated_enemies() { \
 } void _unload_deactivated_objects()
 #define unload_deactivated_objects(...) CAT(unload_deactivated_objects_, N_ARGS(__VA_ARGS__))
 
+// Trigger a level exit in Yoshi mode for star and death exits
+// Star Road: if the player dies as Zero-life Yoshi, return to the Zero-life area
+// TODO: YOSHIMODE
+// #if OMM_GAME_IS_SMSR
+// #define check_return_to_zero_life() { \
+//     if (gOmmGlobals->booZeroLife && sDelayedWarpOp == WARP_OP_DEATH) { \
+//         sDelayedWarpOp = WARP_OP_NONE; \
+//         gOmmGlobals->yoshiMode = false; \
+//         gOmmGlobals->booZeroLife = false; \
+//         initiate_warp(LEVEL_ZERO_LIFE, 1, 0x0A, 0); \
+//         return; \
+//     } \
+// }
+// #else
+// #define check_return_to_zero_life()
+// #endif
+// #define reset_dialog_render_state_0 \
+// reset_dialog_render_state(); \
+// if (gOmmGlobals->yoshiMode && (sDelayedWarpOp == WARP_OP_STAR_EXIT || sDelayedWarpOp == WARP_OP_DEATH)) { \
+//     check_return_to_zero_life(); \
+//     if (omm_exit_level(gCurrLevelNum, gCurrAreaIndex, true)) { \
+//         sDelayedWarpOp = WARP_OP_NONE; \
+//         return; \
+//     } \
+// }
+// #define reset_dialog_render_state_1 reset_dialog_render_state()
+// #define reset_dialog_render_state(...) CAT(reset_dialog_render_state_, N_ARGS(__VA_ARGS__))
+
 // Star Road: Don't print the Hard Mode strings
 #if OMM_GAME_IS_SMSR
-#define print_hard_mode_strings_0 
+#define print_hard_mode_strings_0
 #define print_hard_mode_strings_1 print_hard_mode_strings(void)
 #define print_hard_mode_strings(...) CAT(print_hard_mode_strings_, N_ARGS(__VA_ARGS__))
 #endif
@@ -197,7 +230,7 @@ if (gDialogScrollOffsetY >= dialog->linesPerBox * DIAG_VAL1) { \
 } \
 break
 
-// Keep heldObj, riddenObj, capture and their children alive when unloading the area
+// Keep heldObj, riddenObj, Cappy, capture and their children alive when unloading the area
 #define obj_keep_held_ridden_capture_alive() \
 for (bool ok = false; !ok;) { ok = true; \
     for (s32 objList = 0; objList != NUM_OBJ_LISTS; ++objList) { \
@@ -205,6 +238,7 @@ for (bool ok = false; !ok;) { ok = true; \
             if (!(obj->oFlags & OBJ_FLAG_UPDATE_AREA_INDEX) && ( \
                 obj == gMarioState->riddenObj || \
                 obj == gMarioState->heldObj || \
+                obj == omm_cappy_get_object() || \
                 obj == gOmmCapture || \
                 obj == gOmmObject->state.heldObj || \
                 (obj->parentObj && (obj->parentObj->oFlags & OBJ_FLAG_UPDATE_AREA_INDEX))) \

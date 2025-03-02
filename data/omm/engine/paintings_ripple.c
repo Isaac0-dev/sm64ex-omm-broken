@@ -47,11 +47,11 @@ void gfx_interpolate_painting(Vtx *vtx, s32 numVtx) {
             mem_cpy(vb0->vtx, vtx, sizeof(Vtx) * numVtx);
         }
         vb0->count = numVtx;
-        
+
         // Current frame
         mem_cpy(vb1->vtx, vtx, sizeof(Vtx) * numVtx);
         vb1->count = numVtx;
-        
+
         // Increase painting count
         sPaintingCount++;
     }

@@ -43,7 +43,7 @@ static bool omm_mario_check_cap_modifier(struct MarioState *m) {
 //
 
 static bool omm_mario_check_yoshi_summon(struct MarioState *m) {
-    if (gOmmAllow->yoshiSummon && OMM_REWARD_IS_SUMMON_YOSHI_UNLOCKED && !omm_bowser_is_active()) { // Disable Yoshi summon during OMM Bowser fights
+    if (!gOmmGlobals->yoshiMode && gOmmAllow->yoshiSummon && OMM_REWARD_IS_SUMMON_YOSHI_UNLOCKED && !omm_bowser_is_active()) { // Disable Yoshi summon during OMM Bowser fights
         switch (m->controller->buttonPressed & (Y_BUTTON)) {
             case Y_BUTTON: return omm_obj_spawn_yoshi(m->marioObj, m->faceAngle[1]) != NULL;
         }

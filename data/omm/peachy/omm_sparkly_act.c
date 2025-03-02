@@ -73,7 +73,7 @@ static bool omm_sparkly_act_star_dance_update(struct MarioState *m) {
 
     // Display the text box "Pink-Gold/Crystal/Nebula star"
     else if (m->actionTimer == 28) {
-        s32 starIndex = omm_sparkly_get_index(gOmmSparklyMode, gCurrLevelNum, gCurrAreaIndex);
+        s32 starIndex = omm_sparkly_get_star_index(gOmmSparklyMode, gCurrLevelNum, gCurrAreaIndex);
         ustr_t levelName, starName;
         omm_render_effect_you_got_a_star_begin(
             OMM_SPARKLY_TEXT_STAR[gOmmSparklyMode],

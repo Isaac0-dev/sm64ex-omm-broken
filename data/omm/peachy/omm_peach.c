@@ -19,7 +19,7 @@ static void omm_peach_play_random_attack_sound(struct MarioState *m) {
             case 2: nextSound = SOUND_MARIO_PUNCH_HOO; break;
         }
     } while (nextSound == prevSound);
-    SFX(nextSound); 
+    SFX(nextSound);
     prevSound = nextSound;
 }
 
@@ -28,13 +28,13 @@ static void omm_peach_perry_charge_update_animation_and_sound(struct MarioState 
     obj_anim_set_frame(m->marioObj, frameMin + animAccel * (gOmmPerryCharge - OMM_PERRY_CHARGE_ACTION));
     obj_anim_clamp_frame(m->marioObj, frameMin, frameMax);
     m->actionTimer = max_s(0, gOmmPerryCharge - OMM_PERRY_CHARGE_ACTION);
-    
+
     // Play the charge sound effect when Peach starts charging
     if (m->actionState == 1 && gOmmPerryCharge >= OMM_PERRY_CHARGE_START) {
         omm_sound_play(OMM_SOUND_EFFECT_PERRY_CHARGE, m->marioObj->oCameraToObject);
         m->actionState = 2;
     }
-    
+
     // Play the charged sound when fully charged
     if (m->actionState == 2 && gOmmPerryCharge >= OMM_PERRY_CHARGE_FULL) {
         omm_sound_play(OMM_SOUND_EFFECT_PERRY_CHARGED, m->marioObj->oCameraToObject);
@@ -139,10 +139,11 @@ s32 omm_act_peach_glide(struct MarioState *m) {
 }
 
 s32 omm_act_peach_attack_ground(struct MarioState *m) {
-    action_condition(!OMM_PERRY_SWORD_ACTION, ACT_FREEFALL, 0, RETURN_CANCEL);
+    action_condition(!OMM_PERRY_IS_AVAILABLE, ACT_FREEFALL, 0, RETURN_CANCEL);
     action_condition((m->actionState == 0) && (m->controller->buttonDown & A_BUTTON), ACT_JUMP_KICK, 0, RETURN_CANCEL);
-    action_init(((abs_f(m->forwardVel) < 12.f) ? 12.f : m->forwardVel), 0.f, 0, 0);
+    action_init(((abs_f(m->forwardVel) < 12.f) ? 12.f : m->forwardVel), 0.f, 0, 0, m->actionTimer = 0;);
     action_cappy(1, ACT_OMM_CAPPY_THROW_GROUND, 0, RETURN_CANCEL);
+    action_zb_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_ROLL, 0, RETURN_CANCEL);
     action_a_pressed(1, ACT_JUMP, 0, RETURN_CANCEL);
     action_off_floor(1, ACT_FREEFALL, 0, RETURN_CANCEL);
     action_condition((m->forwardVel > 28.f) && (m->controller->stickMag > 56.f), ACT_OMM_PEACH_ATTACK_FAST, 0, RETURN_CANCEL);
@@ -161,6 +162,7 @@ s32 omm_act_peach_attack_ground(struct MarioState *m) {
     action_condition(step == GROUND_STEP_LEFT_GROUND, ACT_FREEFALL, 0, RETURN_BREAK);
 
     // Update attack sequence
+    m->actionTimer++;
     switch (m->actionArg) {
 
         // First attack (part 1)
@@ -174,7 +176,7 @@ s32 omm_act_peach_attack_ground(struct MarioState *m) {
         // First attack (part 2)
         case 1: {
             omm_peach_set_animation_and_play_sound(m, MARIO_ANIM_FIRST_PUNCH_FAST, 1.f, 0);
-            action_b_pressed(1, 0, 0, NO_RETURN, m->actionArg = 2;);
+            action_b_pressed(1, 0, 0, NO_RETURN, m->actionArg = 2; m->actionTimer = 0;);
             action_condition(obj_anim_is_at_end(m->marioObj), ACT_IDLE, 0, RETURN_BREAK);
             m->actionState = 1 + (m->marioObj->oAnimFrame < 2);
         } break;
@@ -189,14 +191,14 @@ s32 omm_act_peach_attack_ground(struct MarioState *m) {
         // Second attack (part 2)
         case 3: {
             omm_peach_set_animation_and_play_sound(m, MARIO_ANIM_SECOND_PUNCH_FAST, 1.f, 0);
-            action_b_pressed(1, 0, 0, NO_RETURN, m->actionArg = 4;);
+            action_b_pressed(1, 0, 0, NO_RETURN, m->actionArg = 4; m->actionTimer = 0;);
             action_condition(obj_anim_is_at_end(m->marioObj), ACT_IDLE, 0, RETURN_BREAK);
             m->actionState = 1 + (m->marioObj->oAnimFrame < 2);
         } break;
 
         // Spin attack
         case 4: {
-            if (m->actionTimer++ == 0 && OMM_PEACH_SPAWN_PERRY_SHOCKWAVE) {
+            if (m->actionTimer == 1 && OMM_PEACH_SPAWN_PERRY_SHOCKWAVE) {
                 omm_obj_spawn_perry_shockwave(m->marioObj, 8, omm_perry_get_type(m), true);
             }
             if (OMM_EXTRAS_SMO_ANIMATIONS) {
@@ -220,9 +222,10 @@ s32 omm_act_peach_attack_ground(struct MarioState *m) {
 }
 
 s32 omm_act_peach_attack_fast(struct MarioState *m) {
-    action_condition(!OMM_PERRY_SWORD_ACTION, ACT_FREEFALL, 0, RETURN_CANCEL);
+    action_condition(!OMM_PERRY_IS_AVAILABLE, ACT_FREEFALL, 0, RETURN_CANCEL);
     action_init(m->forwardVel * 1.2f, 0.f, PARTICLE_HORIZONTAL_STAR, 0);
     action_cappy(1, ACT_OMM_CAPPY_THROW_GROUND, 0, RETURN_CANCEL);
+    action_zb_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_ROLL, 0, RETURN_CANCEL);
     action_a_pressed(1, ACT_JUMP, 0, RETURN_CANCEL);
     action_off_floor(1, ACT_FREEFALL, 0, RETURN_CANCEL);
 
@@ -281,9 +284,9 @@ s32 omm_act_peach_attack_air(struct MarioState *m) {
         m->controller->buttonPressed &= ~(B_BUTTON * !(m->controller->buttonDown & B_BUTTON));
         m->actionState = 2;
     }
-    
+
     // Cancels
-    action_condition(!OMM_PERRY_SWORD_ACTION, ACT_FREEFALL, 0, RETURN_CANCEL);
+    action_condition(!OMM_PERRY_IS_AVAILABLE, ACT_FREEFALL, 0, RETURN_CANCEL);
     action_cappy(1, ACT_OMM_CAPPY_THROW_AIRBORNE, 0, RETURN_CANCEL);
     action_z_pressed(OMM_MOVESET_ODYSSEY, ACT_GROUND_POUND, 0, RETURN_CANCEL);
     action_b_pressed(omm_mario_has_wing_cap(m), ACT_FLYING, 0, RETURN_CANCEL);
@@ -329,7 +332,7 @@ s32 omm_act_peach_perry_charge_ground(struct MarioState *m) {
     action_condition(m->input & INPUT_ABOVE_SLIDE, ACT_BEGIN_SLIDING, 0, RETURN_CANCEL);
     action_condition(m->input & INPUT_FIRST_PERSON, ACT_FIRST_PERSON, 0, RETURN_CANCEL);
     action_condition(!gOmmPerryCharge, ACT_IDLE, 0, RETURN_CANCEL);
-    
+
     // Animation and sound
     omm_peach_perry_charge_update_animation_and_sound(m, MARIO_ANIM_SUMMON_STAR, 4.f, 18, 58);
 
@@ -600,7 +603,7 @@ OMM_ROUTINE_PRE_RENDER(omm_act_peach_perry_charge_update) {
         // Cancel charge if...
         if (!OMM_REWARD_IS_PERRY_CHARGE_UNLOCKED ||  // Not unlocked
             !OMM_SPARKLY_STARS_PERRY_CHARGE ||       // Not enabled
-            !OMM_PERRY_SWORD_ACTION ||               // Not wielding a sword
+            !OMM_PERRY_IS_AVAILABLE ||               // Not wielding a sword
             !OMM_MOVESET_ODYSSEY ||                  // Not Odyssey Moveset
             (!OMM_PERRY_CHARGED && !a->charge) ||    // Not a valid action during the charge
             (OMM_PERRY_CHARGED && !a->charged))      // Not a valid action when fully charged
@@ -631,7 +634,7 @@ OMM_ROUTINE_PRE_RENDER(omm_act_peach_perry_charge_update) {
                     }
                 }
             }
-            
+
             // B button released
             else {
 

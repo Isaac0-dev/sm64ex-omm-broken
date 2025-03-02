@@ -23,7 +23,8 @@ static s32 get_obj_current_anim_index(struct Object *obj) {
         return -1;
     }
     for (s32 i = 0; obj->oAnimations[i] != NULL; ++i) {
-        if (obj->oAnimations[i] == obj->oCurrAnim) {
+        if (obj->oAnimations[i] == obj->oCurrAnim ||
+            obj->oAnimations[i] == obj->oCurrAnimRef) {
             return i;
         }
     }
@@ -58,7 +59,7 @@ void omm_models_update_current_animation(void *ptr) {
     }
 
     // Animation data
-    const Animation *anim_data = NULL;
+    Animation *anim_data = NULL;
 
     // Retrieve the animation from the CS pack (Mario only)
     if (gOmmCsAnimations && obj == gMarioObject) {
@@ -70,12 +71,12 @@ void omm_models_update_current_animation(void *ptr) {
 
     // Retrieve the animation from the model
     if (!anim_data && anim_index < omm_array_count(gfx_data->animation_table)) {
-        anim_data = (const Animation *) omm_array_get(gfx_data->animation_table, ptr, anim_index);
+        anim_data = (Animation *) omm_array_get(gfx_data->animation_table, ptr, anim_index);
     }
 
     // Use the model custom animation
     if (anim_data) {
-        obj->oCurrAnim = (Animation *) anim_data;
+        obj->oCurrAnim = anim_data;
     }
 }
 
@@ -89,6 +90,7 @@ void omm_models_update_object(struct Object *obj) {
         // Actor index
         s32 actor_index = omm_models_get_actor_index(obj->oGraphNode->georef);
         if (actor_index != -1) {
+            bool changed = false;
 
             // Replace the object's model and animations
             OmmActorGfx *actor_gfx = (OmmActorGfx *) omm_array_get(gOmmActorList, ptr, actor_index);
@@ -114,6 +116,7 @@ void omm_models_update_object(struct Object *obj) {
                         actor_gfx->graph_node = (struct GraphNode *) geo_layout_to_graph_node(NULL, geo_layout_node->data);
                         actor_gfx->graph_node->georef = omm_models_get_actor_layout(actor_index);
                         actor_gfx->graph_node->noBillboard = gfx_data->disable_billboard;
+                        changed = true;
                         break;
                     }
                 }
@@ -125,12 +128,16 @@ void omm_models_update_object(struct Object *obj) {
                     actor_gfx->gfx_data = NULL;
                     actor_gfx->graph_node = (struct GraphNode *) geo_layout_to_graph_node(NULL, (const GeoLayout *) omm_models_get_actor_layout(actor_index));
                     actor_gfx->graph_node->noBillboard = false;
+                    changed = true;
                 }
             }
 
             // Update object
             obj->oGraphNode = actor_gfx->graph_node;
             obj->oNodeFlags &= ~((GRAPH_RENDER_BILLBOARD | GRAPH_RENDER_CYLBOARD) * actor_gfx->graph_node->noBillboard);
+            if (changed && obj->oCurrAnim && obj->oCurrAnimRef) {
+                obj->oCurrAnim = (void *) obj->oCurrAnimRef;
+            }
         }
     }
 }

@@ -124,7 +124,7 @@ fs_dirtree_entry_t *fs_dirtree_add(fs_dirtree_t *tree, char *name, const bool is
             const u64 allocsize = tree->entry_len + name_len + 1;
             ent = (fs_dirtree_entry_t *) mem_new(u8, allocsize);
             if (OMM_LIKELY(ent)) {
-                ent->name = (const char *) ent + tree->entry_len; 
+                ent->name = (const char *) ent + tree->entry_len;
                 strcpy((char *) ent->name, name);
                 const u32 hash = dirtree_hash(name, name_len);
                 ent->next_hash = tree->buckets[hash];

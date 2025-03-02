@@ -63,6 +63,8 @@ OMM_BHV_(bhvOmmYoshiFireball)
 OMM_BHV_(bhvOmmYoshiEgg)
 OMM_BHV_(bhvOmmYoshiTongue)
 OMM_BHV_(bhvOmmYoshiWings)
+OMM_BHV_(bhvOmmYoshiModeYoshi)
+OMM_BHV_(bhvOmmYoshiModeCap)
 
 // Bowser
 OMM_BHV_(bhvOmmBowser)

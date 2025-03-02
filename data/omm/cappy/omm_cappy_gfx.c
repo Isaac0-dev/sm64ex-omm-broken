@@ -27,74 +27,76 @@ Lights1 omm_cappy_eye_bottom_light = gdSPDefLights1(
 // Cappy eyes
 //
 
-typedef struct { u32 id; f32 x, y, z; s16 pitch, yaw, roll; f32 radius; s32 count; } OmmCappyEyesParams;
+typedef struct { u32 id; s32 scale; f32 x, y, z; s16 pitch, yaw, roll; f32 radius; s32 count; } OmmCappyEyesParams;
 static const OmmCappyEyesParams OMM_CAPPY_EYES_PARAMS[] = {
-/* SM64 Mario -------------------------------------------------------------- */
-/* Mario      */ { 0xBD98920E, 235,  93,   0, 0x3800, 0x4000, 0x8000, 44,  8 },
-/* Normal cap */ { 0x007C0068,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* Wing cap   */ { 0x00A40078,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* Metal Cap  */ { 0x007C0068,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* W+M Cap    */ { 0x00A40078,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* Moonshine Mario --------------------------------------------------------- */
-/* Mario      */ { 0xDB2EEEDE, 245,  93,   0, 0x3900, 0x4000, 0x8000, 44, 32 },
-/* Normal cap */ { 0x285C1E70,   0,  96, 114, 0x0000, 0x0000, 0x0000, 40, 32 },
-/* Wing cap   */ { 0x450636A8,   0,  96, 114, 0x0000, 0x0000, 0x0000, 40, 32 },
-/* Metal Cap  */ { 0x285C1E70,   0,  96, 114, 0x0000, 0x0000, 0x0000, 40, 32 },
-/* W+M Cap    */ { 0x450636A8,   0,  96, 114, 0x0000, 0x0000, 0x0000, 40, 32 },
-/* Render96 Mario ---------------------------------------------------------- */
-/* Mario      */ { 0x2FE48D64, 229,  73,   0, 0x3F00, 0x4000, 0x8000, 44, 32 },
-/* Normal cap */ { 0x065C057C,  -3,  72, 138, 0xF700, 0x0000, 0x0000, 44, 32 },
-/* Wing cap   */ { 0x4AEE422A,  -3,  72, 138, 0xF700, 0x0000, 0x0000, 44, 32 },
-/* Metal Cap  */ { 0x065C057C,  -3,  72, 138, 0xF700, 0x0000, 0x0000, 44, 32 },
-/* W+M Cap    */ { 0x4AEE422A,  -3,  72, 138, 0xF700, 0x0000, 0x0000, 44, 32 },
-/* Low-Poly Promo Mario ---------------------------------------------------- */
-/* Mario      */ { 0x656C57A8, 242,  94,   0, 0x3F00, 0x4000, 0x8000, 44,  8 },
-/* Normal cap */ { 0x00D000B0,  -3,  71, 136, 0xF200, 0x0000, 0x0000, 44,  8 },
-/* Wing cap   */ { 0x139E1086,  -3,  71, 136, 0xF200, 0x0000, 0x0000, 44,  8 },
-/* Metal Cap  */ { 0x00D000B0,  -3,  71, 136, 0xF200, 0x0000, 0x0000, 44,  8 },
-/* W+M Cap    */ { 0x139E1086,  -3,  71, 136, 0xF200, 0x0000, 0x0000, 44,  8 },
-/* VaniLla Mario ----------------------------------------------------------- */
-/* Mario      */ { 0xBD98920E, 235,  93,   0, 0x3800, 0x4000, 0x8000, 44,  8 },
-/* Normal cap */ { 0x007C0068,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* Wing cap   */ { 0x00A40078,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* Metal Cap  */ { 0x007C0068,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* W+M Cap    */ { 0x00A40078,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* Render96 Luigi ---------------------------------------------------------- */
-/* Mario      */ { 0xEB8EB218, 239,  96,   0, 0x3B00, 0x4000, 0x8000, 36, 32 },
-/* Normal cap */ { 0x0DEA0BC0,   0,  55, 102, 0xF500, 0x0000, 0x0000, 36, 32 },
-/* Wing cap   */ { 0x56434B90,   0,  55, 102, 0xF500, 0x0000, 0x0000, 36, 32 },
-/* Metal Cap  */ { 0x0DEA0BC0,   0,  55, 102, 0xF500, 0x0000, 0x0000, 36, 32 },
-/* W+M Cap    */ { 0x56434B90,   0,  55, 102, 0xF500, 0x0000, 0x0000, 36, 32 },
-/* Low-Poly Promo Luigi ---------------------------------------------------- */
-/* Mario      */ { 0x35CC2EC8, 187,  73,   0, 0x3F00, 0x4000, 0x8000, 36,  8 },
-/* Normal cap */ { 0x010A00E4,  -2,  71, 136, 0xF000, 0x0000, 0x0000, 44,  8 },
-/* Wing cap   */ { 0x13F510D4,  -2,  71, 136, 0xF000, 0x0000, 0x0000, 44,  8 },
-/* Metal Cap  */ { 0x010A00E4,  -2,  71, 136, 0xF000, 0x0000, 0x0000, 44,  8 },
-/* W+M Cap    */ { 0x13F510D4,  -2,  71, 136, 0xF000, 0x0000, 0x0000, 44,  8 },
-/* VaniLla Luigi ----------------------------------------------------------- */
-/* Mario      */ { 0x2D642ABE, 200,  74,   0, 0x3900, 0x4000, 0x8000, 36,  8 },
-/* Normal cap */ { 0x007C0068,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* Wing cap   */ { 0x00A40078,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* Metal Cap  */ { 0x007C0068,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* W+M Cap    */ { 0x00A40078,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 },
-/* Render96 Wario ---------------------------------------------------------- */
-/* Mario      */ { 0x20CEA0D0, 200, 182,  -4, 0x3F00, 0x4000, 0x8000, 40, 32 },
-/* Normal cap */ { 0x06FA061E,   2,  60, 136, 0x0000, 0x0000, 0x0000, 40, 32 },
-/* Wing cap   */ { 0x4BDB431D,   2,  60, 136, 0x0000, 0x0000, 0x0000, 40, 32 },
-/* Metal Cap  */ { 0x06FA061E,   2,  60, 136, 0x0000, 0x0000, 0x0000, 40, 32 },
-/* W+M Cap    */ { 0x4BDB431D,   2,  60, 136, 0x0000, 0x0000, 0x0000, 40, 32 },
-/* Low-Poly Promo Wario ---------------------------------------------------- */
-/* Mario      */ { 0xD968BF5E, 217, 171,  -3, 0x3600, 0x4000, 0x8000, 40,  8 },
-/* Normal cap */ { 0x00D200AC,   0,  87, 154, 0x0800, 0x0000, 0x0000, 44,  8 },
-/* Wing cap   */ { 0x13A11080,   0,  87, 154, 0x0800, 0x0000, 0x0000, 44,  8 },
-/* Metal Cap  */ { 0x00D200AC,   0,  87, 154, 0x0800, 0x0000, 0x0000, 44,  8 },
-/* W+M Cap    */ { 0x13A11080,   0,  87, 154, 0x0800, 0x0000, 0x0000, 44,  8 },
-/* VaniLla Wario ----------------------------------------------------------- */
-/* Mario      */ { 0x291422A8, 214, 108,   0, 0x3600, 0x4000, 0x8000, 44,  8 },
-/* Normal cap */ { 0x003C0030,   0,  59, 130, 0xFC00, 0x0000, 0x0000, 40,  8 },
-/* Wing cap   */ { 0x004C0038,   0,  59, 130, 0xFC00, 0x0000, 0x0000, 40,  8 },
-/* Metal Cap  */ { 0x003C0030,   0,  59, 130, 0xFC00, 0x0000, 0x0000, 40,  8 },
-/* W+M Cap    */ { 0x003C0030,   0,  59, 130, 0xFC00, 0x0000, 0x0000, 40,  8 },
+
+  ///////////
+ // Mario //
+///////////
+
+// SM64 --------------------------------------------------------------- //
+{ 0xBD98920E, 0x10000, 235,  93,   0, 0x3800, 0x4000, 0x8000, 44,  8 }, // Mario
+{ 0x007C0068, 0x10000,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 }, // Regular cap
+{ 0x00A40078, 0x10000,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 }, // Wing cap
+
+// Moonshine ---------------------------------------------------------- //
+{ 0xDB2EEEDE, 0x10000, 245,  93,   0, 0x3900, 0x4000, 0x8000, 44, 32 }, // Mario
+{ 0x285C1E70, 0x10000,   0,  96, 114, 0x0000, 0x0000, 0x0000, 40, 32 }, // Regular cap
+{ 0x450636A8, 0x10000,   0,  96, 114, 0x0000, 0x0000, 0x0000, 40, 32 }, // Wing cap
+
+// Render96 ----------------------------------------------------------- //
+{ 0x446EE43E, 0x044D7, 210,  86,   0, 0x3800, 0x4000, 0x8000, 40, 32 }, // Mario (v3.25) + color
+{ 0x3C78E810, 0x044D7, 210,  86,   0, 0x3800, 0x4000, 0x8000, 40, 32 }, // Mario (v3.25)
+{ 0x2FE48D64, 0x10000, 229,  73,   0, 0x3F00, 0x4000, 0x8000, 44, 32 }, // Mario (v3.2)
+{ 0x065C057C, 0x10000,  -3,  72, 138, 0xF700, 0x0000, 0x0000, 44, 32 }, // Regular cap
+{ 0x4AEE422A, 0x10000,  -3,  72, 138, 0xF700, 0x0000, 0x0000, 44, 32 }, // Wing cap
+
+// Low-Poly Promo ----------------------------------------------------- //
+{ 0x656C57A8, 0x10000, 242,  94,   0, 0x3F00, 0x4000, 0x8000, 44,  8 }, // Mario
+{ 0x00D000B0, 0x10000,  -3,  71, 136, 0xF200, 0x0000, 0x0000, 44,  8 }, // Regular cap
+{ 0x139E1086, 0x10000,  -3,  71, 136, 0xF200, 0x0000, 0x0000, 44,  8 }, // Wing cap
+
+  ///////////
+ // Luigi //
+///////////
+
+// Render96 ----------------------------------------------------------- //
+{ 0x2790CAA4, 0x044D7, 208,  84,   0, 0x3B00, 0x4000, 0x8000, 36, 32 }, // Luigi (v3.25) + color
+{ 0x2498CB98, 0x044D7, 208,  84,   0, 0x3B00, 0x4000, 0x8000, 36, 32 }, // Luigi (v3.25)
+{ 0xEB8EB218, 0x10000, 239,  96,   0, 0x3B00, 0x4000, 0x8000, 36, 32 }, // Luigi (v3.2)
+{ 0x0DEA0BC0, 0x10000,   0,  55, 102, 0xF500, 0x0000, 0x0000, 36, 32 }, // Regular cap
+{ 0x56434B90, 0x10000,   0,  55, 102, 0xF500, 0x0000, 0x0000, 36, 32 }, // Wing cap
+
+// Low-Poly Promo ----------------------------------------------------- //
+{ 0x35CC2EC8, 0x10000, 187,  73,   0, 0x3F00, 0x4000, 0x8000, 36,  8 }, // Luigi
+{ 0x010A00E4, 0x10000,  -2,  71, 136, 0xF000, 0x0000, 0x0000, 44,  8 }, // Regular cap
+{ 0x13F510D4, 0x10000,  -2,  71, 136, 0xF000, 0x0000, 0x0000, 44,  8 }, // Wing cap
+
+// VaniLla ------------------------------------------------------------ //
+{ 0x2D642ABE, 0x10000, 200,  74,   0, 0x3900, 0x4000, 0x8000, 36,  8 }, // Luigi
+{ 0x007C0068, 0x10000,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 }, // Regular cap
+{ 0x00A40078, 0x10000,   0,  73, 135, 0xF800, 0x0000, 0x0000, 44,  8 }, // Wing cap
+
+  ///////////
+ // Wario //
+///////////
+
+// Render96 ----------------------------------------------------------- //
+{ 0x9290DDB8, 0x044D7, 175, 105,   0, 0x3800, 0x4000, 0x8000, 40, 32 }, // Wario (v3.25)
+{ 0x20CEA0D0, 0x10000, 200, 182,  -4, 0x3F00, 0x4000, 0x8000, 40, 32 }, // Wario (v3.2)
+{ 0x06FA061E, 0x10000,   2,  60, 136, 0x0000, 0x0000, 0x0000, 40, 32 }, // Regular cap
+{ 0x4BDB431D, 0x10000,   2,  60, 136, 0x0000, 0x0000, 0x0000, 40, 32 }, // Wing cap
+
+// Low-Poly Promo ----------------------------------------------------- //
+{ 0xD968BF5E, 0x10000, 217, 171,  -3, 0x3600, 0x4000, 0x8000, 40,  8 }, // Wario
+{ 0x00D200AC, 0x10000,   0,  87, 154, 0x0800, 0x0000, 0x0000, 44,  8 }, // Regular cap
+{ 0x13A11080, 0x10000,   0,  87, 154, 0x0800, 0x0000, 0x0000, 44,  8 }, // Wing cap
+
+// VaniLla ------------------------------------------------------------ //
+{ 0x291422A8, 0x10000, 214, 108,   0, 0x3600, 0x4000, 0x8000, 44,  8 }, // Wario
+{ 0x003C0030, 0x10000,   0,  59, 130, 0xFC00, 0x0000, 0x0000, 40,  8 }, // Regular cap
+{ 0x004C0038, 0x10000,   0,  59, 130, 0xFC00, 0x0000, 0x0000, 40,  8 }, // Wing cap
+
 };
 
 static const OmmCappyEyesParams *omm_cappy_gfx_get_eyes_params(u32 id) {
@@ -110,13 +112,13 @@ static const OmmCappyEyesParams *omm_cappy_gfx_get_eyes_params(u32 id) {
 // Cappy eyes display list
 //
 
-static Vtx omm_cappy_gfx_get_vertex(Vec3f ori, Vec3f hrz, Vec3f vrt, Vec3f fwd, f32 gap, f32 radius, f32 sign, s32 count, s32 i, bool back) {
+static Vtx omm_cappy_gfx_get_vertex(Vec3f ori, Vec3f hrz, Vec3f vrt, Vec3f fwd, f32 gap, f32 radius, f32 scale, f32 sign, s32 count, s32 i, bool back) {
     s16 a    = (s16) ((65536.f * (i - 1)) / count);
     f32 texu = (i == 0 ? 0.5f : (1.f - ((1.f + sins(a)) / 2.f)) * sign - ((sign - 1.f) / 2.f));
     f32 texv = (i == 0 ? 0.5f : (1.f - ((1.f + coss(a)) / 2.f)));
     f32 hrzv = ((i != 0) * radius * sins(a) - sign * gap) * -OMM_CAPPY_EYES_WH_RATIO;
     f32 vrtv = ((i != 0) * radius * coss(a));
-    f32 fwdv = -((1.f - coss(((i != 0) * (radius != 0.f) * sins(-sign * a) + 1.f) * 0x2000)) * OMM_CAPPY_EYES_CURVE + (back ? OMM_CAPPY_EYES_DEPTH : 0.f));
+    f32 fwdv = -((1.f - coss(((i != 0) * (radius != 0.f) * sins(-sign * a) + 1.f) * 0x2000)) * OMM_CAPPY_EYES_CURVE * scale + (back ? OMM_CAPPY_EYES_DEPTH * scale : 0.f));
     if (texu < 0) texu = ((texu + 0.5f) * OMM_CAPPY_EYES_TEXCOORDS_MULT) - 0.5f;
     else          texu = ((texu - 0.5f) * OMM_CAPPY_EYES_TEXCOORDS_MULT) + 0.5f;
     if (texv < 0) texv = ((texv + 0.5f) * OMM_CAPPY_EYES_TEXCOORDS_MULT) - 0.5f;
@@ -128,13 +130,13 @@ static Vtx omm_cappy_gfx_get_vertex(Vec3f ori, Vec3f hrz, Vec3f vrt, Vec3f fwd, 
     return vtx;
 }
 
-static Vtx omm_cappy_gfx_get_pupil_vertex(Vec3f ori, Vec3f hrz, Vec3f vrt, Vec3f fwd, f32 gap, f32 radius, f32 sign, s32 count, s32 i, f32 v) {
+static Vtx omm_cappy_gfx_get_pupil_vertex(Vec3f ori, Vec3f hrz, Vec3f vrt, Vec3f fwd, f32 gap, f32 radius, f32 scale, f32 sign, s32 count, s32 i, f32 v) {
     s16 a    = (s16) ((65536.f * i) / count);
     f32 texu = (1.f - ((1.f + sins(a)) / 2.f)) * sign - ((sign - 1.f) / 2.f);
     f32 texv = (1.f - ((1.f + v) / 2.f));
     f32 hrzv = (radius * sins(a) - sign * gap) * -OMM_CAPPY_EYES_WH_RATIO;
     f32 vrtv = (radius * v) / 2.f;
-    f32 fwdv = 0.01f - (1.f - coss((sins(-sign * a) + 1.f) * 0x2000)) * OMM_CAPPY_EYES_CURVE;
+    f32 fwdv = 0.01f - (1.f - coss((sins(-sign * a) + 1.f) * 0x2000)) * OMM_CAPPY_EYES_CURVE * scale;
     if (texu < 0) texu = ((texu + 0.5f) * OMM_CAPPY_EYES_TEXCOORDS_MULT) - 0.5f;
     else          texu = ((texu - 0.5f) * OMM_CAPPY_EYES_TEXCOORDS_MULT) + 0.5f;
     if (texv < 0) texv = ((texv + 0.5f) * OMM_CAPPY_EYES_TEXCOORDS_MULT) - 0.5f;
@@ -160,12 +162,15 @@ static Gfx **omm_cappy_gfx_get_display_lists(u32 id, bool metal) {
     // Find params from id
     const OmmCappyEyesParams *params = omm_cappy_gfx_get_eyes_params(id);
     if (params) {
+        Vec3f fwd, vrt, hrz, ori;
 
         // Extract params
-        Vec3f fwd, vrt, hrz;
-        Vec3f ori = { params->x, params->y, params->z };
-        f32 radius = params->radius;
+        f32 scale = (f32) 0x10000 / (f32) params->scale;
+        f32 radius = params->radius * scale;
         s32 count = params->count;
+
+        // Origin
+        vec3f_mul(vec3f_set(ori, params->x, params->y, params->z), scale);
 
         // Forward axis
         vec3f_set_dist_and_angle(gVec3fZero, fwd, 1.f, params->pitch, params->yaw);
@@ -250,12 +255,12 @@ static Gfx **omm_cappy_gfx_get_display_lists(u32 id, bool metal) {
                 gSPVertex(tri0++, vtx0, 6, 0);
                 gSP2Triangles(tri0++, 0, 2, 4, 0, 5, 3, 1, 0); // Front & Back
                 gSP2Triangles(tri0++, 2, 3, 4, 0, 5, 4, 3, 0); // Border
-                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, sign, count,     0, 0);
-                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius,    0.f, sign, count, i + 0, 1);
-                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, sign, count, i + 0, 0);
-                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, sign, count, i + 0, 1);
-                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, sign, count, i + 1, 0);
-                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, sign, count, i + 1, 1);
+                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, scale, sign, count,     0, 0);
+                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius,    0.f, scale, sign, count, i + 0, 1);
+                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, scale, sign, count, i + 0, 0);
+                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, scale, sign, count, i + 0, 1);
+                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, scale, sign, count, i + 1, 0);
+                *(vtx0++) = omm_cappy_gfx_get_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, scale, sign, count, i + 1, 1);
 
                 // Pupils
                 if (i <= count / 2) {
@@ -264,13 +269,13 @@ static Gfx **omm_cappy_gfx_get_display_lists(u32 id, bool metal) {
                     gSPLight(tri1++, &omm_cappy_eye_top_light.l, 1);
                     gSPLight(tri1++, &omm_cappy_eye_top_light.a, 2);
                     gSPVertexTC(tri1++, vtx1, 2, 0);
-                    *(vtx1++) = omm_cappy_gfx_get_pupil_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, sign, count, j0, 1);
-                    *(vtx1++) = omm_cappy_gfx_get_pupil_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, sign, count, j1, 1);
+                    *(vtx1++) = omm_cappy_gfx_get_pupil_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, scale, sign, count, j0, 1);
+                    *(vtx1++) = omm_cappy_gfx_get_pupil_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, scale, sign, count, j1, 1);
                     gSPLight(tri1++, &omm_cappy_eye_bottom_light.l, 1);
                     gSPLight(tri1++, &omm_cappy_eye_bottom_light.a, 2);
                     gSPVertexTC(tri1++, vtx1, 2, 2);
-                    *(vtx1++) = omm_cappy_gfx_get_pupil_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, sign, count, j0, -1);
-                    *(vtx1++) = omm_cappy_gfx_get_pupil_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, sign, count, j1, -1);
+                    *(vtx1++) = omm_cappy_gfx_get_pupil_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, scale, sign, count, j0, -1);
+                    *(vtx1++) = omm_cappy_gfx_get_pupil_vertex(ori, hrz, vrt, fwd, OMM_CAPPY_EYES_GAP * radius, radius, scale, sign, count, j1, -1);
                     gSP2Triangles(tri1++, 2, 1, 0, 0, 1, 2, 3, 0);
                 }
             }

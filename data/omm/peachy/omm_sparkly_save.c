@@ -10,7 +10,7 @@
 #define TIMER_MAX               (10799970) // 99h 59m 59s
 #define CHECK_MODE(ret)         if (sparklyMode < 1 || sparklyMode >= OMM_SPARKLY_MODE_COUNT) { return ret; }
 #define CHECK_INDEX_LAST(ret)   if (starIndex < 0 || starIndex >= omm_sparkly_get_bowser_4_index(sparklyMode)) { return ret; }
-#define CHECK_INDEX_COUNT(ret)  if (starIndex < 0 || starIndex >= omm_sparkly_get_bowser_4_index(sparklyMode) + 1) { return ret; }
+#define CHECK_INDEX_COUNT(ret)  if (starIndex < 0 || starIndex >= omm_sparkly_get_num_stars(sparklyMode)) { return ret; }
 
 typedef struct {
     bool unlocked;
@@ -126,7 +126,7 @@ void omm_sparkly_write() {
                            (sOmmSparklySave->grandStar    << 3) |
                            (sOmmSparklySave->completed    << 4);
                 convert(flags, 5, 1);
-                
+
                 // Stars
                 s32 num = OMM_SPARKLY_STARS_MAX;
                 convert(num, 8, 1);
@@ -212,7 +212,7 @@ bool omm_sparkly_is_bowser_4_unlocked(s32 sparklyMode) {
 
 bool omm_sparkly_is_bowser_4_battle() {
 #if OMM_GAME_IS_SM64
-    return gCurrLevelNum == LEVEL_CASTLE_GROUNDS && gCurrAreaIndex == 2;
+    return gCurrLevelNum == OMM_SPARKLY_BOWSER_4_LEVEL && gCurrAreaIndex == OMM_SPARKLY_BOWSER_4_AREA;
 #else
     return false;
 #endif
@@ -258,8 +258,14 @@ void omm_sparkly_collect_star(s32 sparklyMode, s32 starIndex) {
 void omm_sparkly_collect_grand_star(s32 sparklyMode) {
     CHECK_MODE();
     sOmmSparklySave->grandStar = true;
-    sOmmSparklySave->completed = true;
+    omm_sparkly_set_completed(sparklyMode);
     omm_save_file_set_last_course(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
+    omm_save_file_do_save();
+}
+
+void omm_sparkly_set_completed(s32 sparklyMode) {
+    CHECK_MODE();
+    sOmmSparklySave->completed = true;
     omm_save_file_do_save();
 }
 

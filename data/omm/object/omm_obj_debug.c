@@ -346,7 +346,7 @@ OMM_ROUTINE_UPDATE(omm_debug_update) {
                 obj_mark_for_deletion(box);
             }
         }
-        
+
         // Create boxes for each object
         static const s32 sObjTypes[] = {
             OBJ_LIST_PLAYER,
@@ -362,7 +362,7 @@ OMM_ROUTINE_UPDATE(omm_debug_update) {
         };
         for (const s32 *i = sObjTypes; *i != -1; ++i) {
             struct Object *head = (struct Object *) &gObjectLists[*i];
-            struct Object *next = (struct Object *) head->header.next; 
+            struct Object *next = (struct Object *) head->header.next;
             while (next != head) {
                 if (next->oIntangibleTimer == 0) {
                     struct Object *obj = next;
@@ -386,7 +386,7 @@ OMM_ROUTINE_UPDATE(omm_debug_update) {
                         omm_obj_spawn_debug_box(obj, 2);
                     }
                 }
-                next = (struct Object *) next->header.next; 
+                next = (struct Object *) next->header.next;
             }
         }
     }
@@ -416,15 +416,17 @@ OMM_ROUTINE_UPDATE(omm_debug_update) {
 
     // Cappy info
     if (gOmmDebugCappy && gLoadedGraphNodes) {
+        s32 playerIndex = omm_player_get_selected_index_model_and_sounds();
         struct { char type; s32 index; } sCapModels[5] = {
-            { ',', omm_player_graphics_get_selected_model() },
-            { 'N', omm_player_graphics_get_selected_normal_cap() },
-            { 'W', omm_player_graphics_get_selected_wing_cap() },
-            { 'M', omm_player_graphics_get_selected_metal_cap() },
-            { '*', omm_player_graphics_get_selected_winged_metal_cap() },
+            { ',', omm_player_graphics_get_model(playerIndex) },
+            { 'N', omm_player_graphics_get_normal_cap(playerIndex) },
+            { 'W', omm_player_graphics_get_wing_cap(playerIndex) },
+            { 'M', omm_player_graphics_get_metal_cap(playerIndex) },
+            { '*', omm_player_graphics_get_winged_metal_cap(playerIndex) },
         };
         for (s32 i = 0; i != 5; ++i) {
             static struct Object dummy[1];
+            dummy->activeFlags = ACTIVE_FLAG_ACTIVE;
             dummy->oGraphNode = gLoadedGraphNodes[sCapModels[i].index];
             omm_models_update_object(dummy);
             u32 id = omm_cappy_gfx_get_graph_node_identifier(dummy->oGraphNode);

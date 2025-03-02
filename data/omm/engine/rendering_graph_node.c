@@ -235,114 +235,164 @@ void gfx_clear_frame_mtx() {
 // Preprocessing
 //
 
-enum MarioRootFlag { MRF_NOT_ROOT, MRF_ROOT, MRF_ROOT_ANIM_Y_FIXED, MRF_ROOT_POS_SAVED };
-enum MarioArmsFlag { MAF_NOT_ARMS, MAF_ARMS };
-enum MarioHandFlag { MHF_NOT_HAND, MHF_RIGHT_HAND, MHF_LEFT_HAND };
+typedef struct {
+    Vec3f pos;
+    Mat4 mtx;
+} GeoAnimPart;
 
 static struct {
-    struct {
-        struct {
-            Vec3f pos;
-            s32 flag;
-            OmmMap_(struct GraphNode *, f32) heights;
-            f32 height;
-        } root[1];
-        struct {
-            Mat4 mtx;
-            Vec3s rot; // local rotation
-            OmmMap_(struct GraphNode *, f32) heights;
-            f32 height;
-        } head[1];
-        struct {
-            Vec3f pos;
-            s32 flag;
-            OmmMap_(struct GraphNode *, f32) heights;
-            f32 height;
-        } arms[1];
-        struct {
-            Vec3f pos[2];
-        } forearm[1];
-        struct {
-            Vec3f pos[2];
-            s32 flag;
-        } hand[1];
-    } mario[1];
-    struct {
-        s32 animParts;
-        Mat4 transform;
-    } cappy[1];
-} sPreprocessing[1];
+    s32 animPart;
+    OmmMap_(struct GraphNode *, GeoAnimPart *) animParts;
+    OmmArray_(struct GraphNode *) delayedPreprocessMarioGraphNodes;
+    Vec3s headRot;
+} sGeoMario[1];
+
+#define sGeoMarioAnimPart(animPart) \
+    geo_get_marios_anim_part(NULL, animPart)
+
+static struct {
+    s32 animParts;
+    Mat4 transform;
+} sGeoCappy[1];
 
 //
 // Mario
 //
 
-void geo_get_marios_forearm_pos(Vec3f dest, bool isLeft) {
-    vec3f_copy(dest, sPreprocessing->mario->forearm->pos[isLeft]);
+#pragma GCC push_options
+#pragma GCC diagnostic ignored "-Wmissing-braces"
+
+static const u16 anim_0E_indices[];
+static const s16 anim_0E_values[];
+#undef ANIMINDEX_NUMPARTS
+#define ANIMINDEX_NUMPARTS(...) 0
+#include "assets/anims/anim_0E.inc.c"
+
+#pragma GCC pop_options
+
+static void __geo_preprocess_object_graph_node(struct Object *obj);
+
+static void geo_preprocess_mario_graph_node(struct GraphNode *node) {
+    static const struct Animation sGeoMarioPreprocessAnim = { // A-Pose animation
+        1, 0, 0, 0, 1, 0,
+        anim_0E_values,
+        anim_0E_indices,
+        ANIM_LENGTH(array_length(anim_0E_indices), array_length(anim_0E_values)),
+    };
+    static const struct Animation *sGeoMarioPreprocessAnims[] = {
+        &sGeoMarioPreprocessAnim
+    };
+    struct Object o[1] = {0};
+
+    // Init object fields
+    vec3f_one(o->oGfxScale);
+    o->oGraphNode = node;
+    o->oAnimations = (struct Animation **) sGeoMarioPreprocessAnims;
+    obj_anim_play_with_sound(o, 0, 1.f, NO_SOUND, true);
+
+    // Preprocess
+    sGeoMario->animPart = MARIO_ANIM_PART_NONE;
+    __geo_preprocess_object_graph_node(o);
 }
 
-void geo_get_marios_hand_pos(Vec3f dest, bool isLeft) {
-    vec3f_copy(dest, sPreprocessing->mario->hand->pos[isLeft]);
+static GeoAnimPart *geo_get_marios_anim_part(struct GraphNode *node, s32 animPart) {
+    s32 i = omm_map_find_key(sGeoMario->animParts, ptr, node);
+    if (i != -1) {
+        return &((GeoAnimPart *) omm_map_get_val(sGeoMario->animParts, ptr, i))[animPart];
+    }
+    GeoAnimPart *geoAnimParts = mem_new(GeoAnimPart, MARIO_ANIM_PART_MAX);
+    omm_map_add(sGeoMario->animParts, ptr, node, ptr, geoAnimParts);
+    if (node != NULL) {
+        if (gCurGraphNodeRoot) { // Delay preprocessing if it happens during geo_process_root
+            omm_array_add(sGeoMario->delayedPreprocessMarioGraphNodes, ptr, node);
+        } else {
+            geo_preprocess_mario_graph_node(node);
+            mem_cpy(geoAnimParts, geo_get_marios_anim_part(NULL, 0), sizeof(GeoAnimPart) * MARIO_ANIM_PART_MAX);
+        }
+    }
+    return &geoAnimParts[animPart];
 }
 
-void geo_get_marios_head_mtx(Mat4 dest) {
-    mtxf_copy(dest, sPreprocessing->mario->head->mtx);
-}
-
-void geo_get_marios_root_pos(Vec3f dest) {
-    if (gMarioObject && (gMarioObject->oFlags & OBJ_FLAG_SHADOW_COPY_OBJ_POS)) {
+void geo_get_marios_anim_part_pos(struct GraphNode *node, Vec3f dest, s32 animPart) {
+    GeoAnimPart *geoAnimPart = geo_get_marios_anim_part(node, animPart);
+    if (node == NULL && animPart == MARIO_ANIM_PART_ROOT && gMarioObject && (gMarioObject->oFlags & OBJ_FLAG_SHADOW_COPY_OBJ_POS)) {
         vec3f_copy(dest, gMarioState->pos);
-        dest[1] += sPreprocessing->mario->root->height;
+        dest[1] += geo_get_marios_anim_part_height(gMarioObject->oGraphNode, MARIO_ANIM_PART_ROOT);
     } else {
-        vec3f_copy(dest, sPreprocessing->mario->root->pos);
+        vec3f_copy(dest, geoAnimPart->pos);
     }
 }
 
-void geo_get_marios_heights(f32 *rootHeight, f32 *headHeight, f32 *armsHeight) {
-    if (rootHeight) *rootHeight = sPreprocessing->mario->root->height;
-    if (headHeight) *headHeight = sPreprocessing->mario->head->height;
-    if (armsHeight) *armsHeight = sPreprocessing->mario->arms->height;
+void geo_get_marios_anim_part_mtx(struct GraphNode *node, Mat4 dest, s32 animPart) {
+    GeoAnimPart *geoAnimPart = geo_get_marios_anim_part(node, animPart);
+    mtxf_copy(dest, geoAnimPart->mtx);
+}
+
+f32 geo_get_marios_anim_part_height(struct GraphNode *node, s32 animPart) {
+    GeoAnimPart *geoAnimPart = geo_get_marios_anim_part(node, animPart);
+    return geoAnimPart->pos[1];
+}
+
+f32 geo_get_marios_anim_part_distance(struct GraphNode *node, s32 animPart1, s32 animPart2) {
+    GeoAnimPart *geoAnimPart1 = geo_get_marios_anim_part(node, animPart1);
+    GeoAnimPart *geoAnimPart2 = geo_get_marios_anim_part(node, animPart2);
+    return vec3f_dist(geoAnimPart1->pos, geoAnimPart2->pos);
 }
 
 static void geo_fix_marios_anim_translation_y(struct Object *o, f32 nodety, f32 *ty) {
-    if (o->behavior == bhvMario && sPreprocessing->mario->root->flag < MRF_ROOT_ANIM_Y_FIXED) {
-        sPreprocessing->mario->root->flag = MRF_ROOT;
-        if (o->oAnimID != MARIO_ANIM_A_POSE) {
+    if (o->behavior == bhvMario && sGeoMario->animPart == MARIO_ANIM_PART_ROOT && o->oAnimID != MARIO_ANIM_A_POSE) {
 
-            // Fix current animation y translation
-            if (nodety != 0) {
-                f32 dty;
-                if (o->oAnimID == MARIO_ANIM_DIVE) { // MARIO_ANIM_DIVE is weird: it has spikes in its y translation, so let's handle it separately
-                    f32 df = clamp_0_1_f(o->oAnimFrame / 19.f);
-                    dty = lerp_f(df, 265.f, 85.f);
-                } else {
-                    dty = *ty - nodety;
-                }
-                s32 dta = (invlerp_0_1_f(dty, 60.f, 150.f) * 0x8000) - 0x4000;
-                *ty -= ((f32) nodety) * (1.f - ((sins(dta) + 1.f) / 2.f));
+        // Fix current animation y translation
+        if (nodety != 0) {
+            f32 dty;
+            if (o->oAnimID == MARIO_ANIM_DIVE) { // MARIO_ANIM_DIVE is weird: it has spikes in its y translation, so let's handle it separately
+                f32 df = clamp_0_1_f(o->oAnimFrame / 19.f);
+                dty = lerp_f(df, 265.f, 85.f);
+            } else {
+                dty = *ty - nodety;
             }
+            s32 dta = (invlerp_0_1_f(dty, 60.f, 150.f) * 0x8000) - 0x4000;
+            *ty -= ((f32) nodety) * (1.f - ((sins(dta) + 1.f) / 2.f));
+        }
 
-            // Hanging action offset
-            if (omm_mario_is_hanging(gMarioState)) {
-                *ty += 4.f * (120.f - (sPreprocessing->mario->head->height * 0.8f + sPreprocessing->mario->arms->height * 0.9f) + 15.f * OMM_PLAYER_MODEL_IS_PEACH);
-            }
+        // Hanging action offset
+        if (omm_mario_is_hanging(gMarioState)) {
+            f32 distLeftHand = (
+                geo_get_marios_anim_part_distance(o->oGraphNode, MARIO_ANIM_PART_NONE, MARIO_ANIM_PART_LEFT_ARM) +
+                geo_get_marios_anim_part_distance(o->oGraphNode, MARIO_ANIM_PART_LEFT_ARM, MARIO_ANIM_PART_LEFT_HAND)
+            );
+            f32 distRightHand = (
+                geo_get_marios_anim_part_distance(o->oGraphNode, MARIO_ANIM_PART_NONE, MARIO_ANIM_PART_RIGHT_ARM) +
+                geo_get_marios_anim_part_distance(o->oGraphNode, MARIO_ANIM_PART_RIGHT_ARM, MARIO_ANIM_PART_RIGHT_HAND)
+            );
+            *ty += 4.f * (160.f - 1.1f * max_f(distLeftHand, distRightHand));
+        }
 
-            // Shell ride animation offset
-            if (OMM_MOVESET_ODYSSEY && (gMarioState->action & ACT_FLAG_RIDING_SHELL)) {
-                *ty += 168.f;
-            }
+        // Shell ride animation offset
+        if (OMM_MOVESET_ODYSSEY && (gMarioState->action & ACT_FLAG_RIDING_SHELL)) {
+            *ty += 168.f;
+        }
 
-            // Top of pole jump offset
-            if (o->oAnimID == MARIO_ANIM_HANDSTAND_JUMP) {
-                *ty -= 520.f;
-            }
+        // Top of pole jump offset
+        if (o->oAnimID == MARIO_ANIM_HANDSTAND_JUMP) {
+            *ty -= 520.f;
+        }
 
-            // Jumbo star cutscene animation offset
-            if (o->oAnimID == MARIO_ANIM_FINAL_BOWSER_RAISE_HAND_SPIN) {
-                *ty += 4.f * (sPreprocessing->mario->root->height - 45.f * (gMarioState->action == ACT_JUMBO_STAR_CUTSCENE));
-            }
+        // Jumbo star cutscene animation offset
+        if (o->oAnimID == MARIO_ANIM_FINAL_BOWSER_RAISE_HAND_SPIN) {
+            *ty += 4.f * (geo_get_marios_anim_part_height(o->oGraphNode, MARIO_ANIM_PART_ROOT) - 45.f * (gMarioState->action == ACT_JUMBO_STAR_CUTSCENE));
         }
     }
+}
+
+OMM_ROUTINE_UPDATE(geo_preprocess_delayed_mario_graph_nodes) {
+    omm_array_for_each(sGeoMario->delayedPreprocessMarioGraphNodes, p_node) {
+        struct GraphNode *node = p_node->as_ptr;
+        GeoAnimPart *geoAnimParts = geo_get_marios_anim_part(node, 0);
+        geo_preprocess_mario_graph_node(node);
+        mem_cpy(geoAnimParts, geo_get_marios_anim_part(NULL, 0), sizeof(GeoAnimPart) * MARIO_ANIM_PART_MAX);
+    }
+    omm_array_delete(sGeoMario->delayedPreprocessMarioGraphNodes);
 }
 
 //
@@ -387,12 +437,24 @@ static bool geo_apply_rotation_on_marios_right_hand(Gfx *displayList, s16 layer)
 //
 
 static s32 sYoshiAnimParts = 0;
+#if OMM_GAME_IS_SMSR
+static bool sYoshiHideLegs = false;
+#endif
 
 static void geo_init_animation_rotations_yoshi(struct Object *obj) {
-    if (obj == gOmmCapture && omm_capture_get_type(obj) == OMM_CAPTURE_YOSHI && gOmmObject->yoshi.tongueSine > 0.f) {
-        sYoshiAnimParts = 6; // Root, Body, Neck, Head, Mouth, Jaw
-    } else {
-        sYoshiAnimParts = 0;
+    sYoshiAnimParts = 0;
+#if OMM_GAME_IS_SMSR
+    sYoshiHideLegs = false;
+#endif
+    if (omm_obj_is_playable_yoshi(obj)) {
+        if (gOmmCapture && gOmmObject->yoshi.tongueSine > 0.f) {
+            sYoshiAnimParts = 6; // Root, Body, Neck, Head, Mouth, Jaw
+        }
+#if OMM_GAME_IS_SMSR
+        if (gOmmGlobals->yoshiMode && gOmmGlobals->booZeroLife) {
+            sYoshiHideLegs = true;
+        }
+#endif
     }
 }
 
@@ -588,7 +650,7 @@ static void geo_process_master_list(struct GraphNodeMasterList *node) {
         gCurGraphNodeMasterList = node;
         mem_zero(node->listHeads, sizeof(node->listHeads));
         geo_process_node_and_siblings(gChildren);
-        
+
         // Enable Z buffer
         bool zBuffer = (node->node.flags & GRAPH_RENDER_Z_BUFFER) != 0;
         if (zBuffer) {
@@ -808,14 +870,14 @@ static bool obj_is_in_view(struct Object *obj, Mat4 matrix) {
     }
 #endif
 
-    // Render the object regardless of its position if it's always rendered
-    if (obj_is_always_rendered(obj)) {
-        return true;
-    }
-
     // Do not render the object if it's invisible
     if (obj->oNodeFlags & GRAPH_RENDER_INVISIBLE) {
         return false;
+    }
+
+    // Render the object regardless of its position if it's always rendered
+    if (obj_is_always_rendered(obj)) {
+        return true;
     }
 
     // Retrieve the culling radius
@@ -1052,6 +1114,7 @@ static void geo_process_mirror(struct Object *obj) {
         struct GraphNodeObject *mirrorNode = &mirrorObj->header.gfx;
         mirrorNode->pos[0] = 2 * gOmmGlobals->mirrorX - mirrorNode->pos[0];
         mirrorNode->angle[1] *= -1;
+        mirrorNode->angle[2] *= -1;
         mirrorNode->scale[0] *= -1.f;
         vec3f_copy(&mirrorObj->oPosX, mirrorNode->pos);
         gOmmGlobals->isMirrorObj = true;
@@ -1132,16 +1195,10 @@ static void geo_process_switch(struct GraphNodeSwitchCase *node) {
     geo_exec_node_func(gFnNode, GEO_CONTEXT_RENDER, gCurrMat1);
 
 PREPROCESS {
-    // Mario forearm pos
-    if (gFnNode->func == (GraphNodeFunc) geo_switch_mario_hand) {
-        bool isLeftHand = (node->numCases != 0);
-        sPreprocessing->mario->hand->flag = MHF_RIGHT_HAND + isLeftHand;
-        vec3f_copy(sPreprocessing->mario->forearm->pos[isLeftHand], gCurrMat1[3]);
-    }
-
-    // Mario head matrix
+    // Mario head pos and matrix
     if (gFnNode->func == (GraphNodeFunc) geo_switch_mario_eyes) {
-        mtxf_copy(sPreprocessing->mario->head->mtx, gCurrMat1);
+        vec3f_copy(sGeoMarioAnimPart(MARIO_ANIM_PART_HEAD)->pos, gCurrMat1[3]);
+        mtxf_copy(sGeoMarioAnimPart(MARIO_ANIM_PART_HEAD)->mtx, gCurrMat1);
     }
 }
 
@@ -1186,6 +1243,14 @@ NOT_PREPROCESS {
     gSPMatrix(gDisplayListHead++, mtxRoll, G_MTX_PROJECTION | G_MTX_MUL | G_MTX_NOPUSH);
 NOT_PREPROCESS {
     sCameraRoll = node->roll;
+}
+
+NOT_PREPROCESS {
+    // Instant warp displacement
+    if (gOmmGlobals->instantWarp.warped) {
+        vec3f_add(node->_pos.v, gOmmGlobals->instantWarp.displacement);
+        vec3f_add(node->_focus.v, gOmmGlobals->instantWarp.displacement);
+    }
 }
 
     // Current frame
@@ -1417,8 +1482,7 @@ PREPROCESS {
     // Mario head rotation
     if (gFnNode->func == (GraphNodeFunc) geo_mario_head_rotation) {
         struct GraphNodeRotation *rot = (struct GraphNodeRotation *) gNode->next;
-        vec3s_add(sPreprocessing->mario->head->rot, rot->rotation);
-        sPreprocessing->mario->arms->flag = MAF_ARMS;
+        vec3s_add(sGeoMario->headRot, rot->rotation);
     }
 }
     // Process children
@@ -1432,6 +1496,13 @@ static void geo_process_background(struct GraphNodeBackground *node) {
     // Create a background from a function...
     if (gFnNode->func) {
 
+NOT_PREPROCESS {
+        // Instant warp displacement
+        if (gOmmGlobals->instantWarp.warped) {
+            vec3f_add(node->_cameraPos.v, gOmmGlobals->instantWarp.displacement);
+            vec3f_add(node->_cameraFocus.v, gOmmGlobals->instantWarp.displacement);
+        }
+}
         // Interpolation
         if (should_interpolate(node->_cameraPos)) {
             sBackgroundPoolEnd = gGfxPoolEnd;
@@ -1481,6 +1552,7 @@ NOT_PREPROCESS {
 }
 
 static void geo_process_animated_part(struct GraphNodeAnimatedPart *node) {
+    sGeoMario->animPart++;
 
     // Animation translations (previous, current)
     Vec3f t3f0; geo_get_animation_translation(t3f0, sCurAnimState->_frame, false);
@@ -1506,7 +1578,7 @@ static void geo_process_animated_part(struct GraphNodeAnimatedPart *node) {
     geo_fix_marios_anim_translation_y(gCurrGraphNodeObject, node->translation[1], &t3f[1]);
     Mat4 mat; mtxf_rotate_xyz_and_translate(mat, t3f, rot1);
     mtxf_mul(gNextMat1, mat, gCurrMat1);
-    
+
     // Previous frame
     if (should_interpolate_o(node->_translation)) {
         vec3s_to_vec3f(t3f, _o(node->_translation).v);
@@ -1516,47 +1588,42 @@ static void geo_process_animated_part(struct GraphNodeAnimatedPart *node) {
     }
     mtxf_mul(gNextMat0, mat, gCurrMat0);
 
-    // Mario's root
-    if (sPreprocessing->mario->root->flag == MRF_ROOT) {
-        sPreprocessing->mario->root->flag = MRF_ROOT_ANIM_Y_FIXED;
-    }
-
 NOT_PREPROCESS {
     // Update timestamps
     update_timestamp_vec3s_o(node->_translation, node->translation);
 }
 
 PREPROCESS {
-    // Mario root pos
-    if (sPreprocessing->mario->root->flag == MRF_ROOT_ANIM_Y_FIXED) {
-        vec3f_copy(sPreprocessing->mario->root->pos, gNextMat1[3]);
-        sPreprocessing->mario->root->flag = MRF_ROOT_POS_SAVED;
+    // Mario anim part pos and matrix
+    if (sGeoMario->animPart > MARIO_ANIM_PART_NONE && sGeoMario->animPart < MARIO_ANIM_PART_MAX) {
+        vec3f_copy(sGeoMarioAnimPart(sGeoMario->animPart)->pos, gNextMat1[3]);
+        mtxf_copy(sGeoMarioAnimPart(sGeoMario->animPart)->mtx, gNextMat1);
     }
 
-    // Mario arm pos
-    if (sPreprocessing->mario->arms->flag == MAF_ARMS) {
-        vec3f_copy(sPreprocessing->mario->arms->pos, gNextMat1[3]);
-        sPreprocessing->mario->arms->flag = MAF_NOT_ARMS;
-    }
-
-    // Mario hand pos
-    if (sPreprocessing->mario->hand->flag != MHF_NOT_HAND) {
-        vec3f_copy(sPreprocessing->mario->hand->pos[sPreprocessing->mario->hand->flag == MHF_LEFT_HAND], gNextMat1[3]);
-        if (sPreprocessing->mario->hand->flag == MHF_RIGHT_HAND && OMM_PERRY_SWORD_ACTION) { // Right hand
-            omm_perry_update_graphics(gMarioState, gCurrMat1, t3f, rot1);
-            sNextDLIsMariosRightHand = true;
-        }
-        sPreprocessing->mario->hand->flag = MHF_NOT_HAND;
+    // Mario right hand pos
+    if (sGeoMario->animPart == MARIO_ANIM_PART_RIGHT_HAND && OMM_PERRY_IS_AVAILABLE) {
+        omm_perry_update_graphics(gMarioState, gCurrMat1, t3f, rot1);
+        sNextDLIsMariosRightHand = true;
     }
 
     // Capture Cappy transform
-    if (--sPreprocessing->cappy->animParts == 0) {
-        mtxf_copy(sPreprocessing->cappy->transform, gNextMat1);
+    if (--sGeoCappy->animParts == 0) {
+        mtxf_copy(sGeoCappy->transform, gNextMat1);
     }
 }
     // Process children
     geo_update_mat_stack(
-        geo_append_display_list(gDisplayList, gNodeLayer);
+        Gfx *displayList = gDisplayList;
+#if OMM_GAME_IS_SMSR
+        s32 yoshiAnimPart = sGeoMario->animPart - MARIO_ANIM_PART_MAX;
+        if (sYoshiHideLegs && (
+            (15 <= yoshiAnimPart && yoshiAnimPart <= 18) || // Left leg
+            (21 <= yoshiAnimPart && yoshiAnimPart <= 24)    // Right leg
+        )) {
+            displayList = NULL;
+        }
+#endif
+        geo_append_display_list(displayList, gNodeLayer);
         geo_process_node_and_siblings(gChildren);
     )
 }
@@ -1698,8 +1765,24 @@ NOT_PREPROCESS {
 }
 #endif
 NOT_PREPROCESS {
-        // Enable matrix components interpolation only for objects with animations 
+        // Enable matrix components interpolation only for objects with animations
         sInterpMtxComponents = (node->mAnimInfo.curAnim != NULL);
+
+NOT_PREPROCESS {
+        // Instant warp displacement
+        if (obj->oFlags & OBJ_FLAG_INSTANT_WARP) {
+            if (gOmmGlobals->instantWarp.warped) {
+                vec3f_add(node->_pos.v, gOmmGlobals->instantWarp.displacement);
+                vec3f_add(node->_objPos.v, gOmmGlobals->instantWarp.displacement);
+                vec3f_add(node->_shadowPos.v, gOmmGlobals->instantWarp.displacement);
+                if (node->throwMatrix) {
+                    vec3f_add(*(node->throwMatrix)[3], gOmmGlobals->instantWarp.displacement);
+                    vec3f_add(node->_throwMatrix.v[3], gOmmGlobals->instantWarp.displacement);
+                }
+            }
+            obj->oFlags &= ~OBJ_FLAG_INSTANT_WARP;
+        }
+}
 
         // Don't interpolate the frame the object spawns
         // Force a gfx update to avoid weird (0, 0, 0) interpolations on later frames
@@ -1816,11 +1899,7 @@ NOT_PREPROCESS {
         if (obj_is_in_view(obj, gNextMat1)) {
             geo_update_mat_stack(
                 if (node->sharedChild && !dontRenderObjectThisFrame) {
-                    if (obj->behavior == bhvMario) {
-                        sPreprocessing->mario->root->flag = MRF_NOT_ROOT;
-                        sPreprocessing->mario->arms->flag = MAF_NOT_ARMS;
-                        sPreprocessing->mario->hand->flag = MHF_NOT_HAND;
-                    }
+                    sGeoMario->animPart = (obj->behavior == bhvMario ? MARIO_ANIM_PART_NONE : MARIO_ANIM_PART_MAX);
 #if OMM_GAME_IS_SM64
                     sCurrObjectSlot = (gOmmGlobals->isMirrorObj ? OBJECT_POOL_CAPACITY : obj_get_slot_index(obj));
 #else
@@ -1841,7 +1920,7 @@ NOT_PREPROCESS {
                 // Process children
                 geo_process_node_and_siblings(gChildren);
             )
-        } else if (obj->behavior != bhvMario && obj != gOmmMario->capture.obj) {
+        } else if (obj->behavior != bhvMario && obj != gOmmCapture) {
 NOT_PREPROCESS {
             reset_timestamp(node->_angle);
             reset_timestamp(node->_pos);
@@ -2176,9 +2255,9 @@ PREPROCESS {
         // Compute head rotation
         case GEO_PREPROCESS_PEACH_HEAD_ROT: {
             if (sCurAnimState->indices && sCurAnimState->values && sCurAnimState->type == ANIM_TYPE_ROTATION) {
-                geo_get_animation_data_as_vec3s(sPreprocessing->mario->head->rot, sCurAnimState->frame, 1, 1, 1, false);
+                geo_get_animation_data_as_vec3s(sGeoMario->headRot, sCurAnimState->frame, 1, 1, 1, false);
             } else {
-                vec3s_zero(sPreprocessing->mario->head->rot);
+                vec3s_zero(sGeoMario->headRot);
             }
         } break;
 
@@ -2186,8 +2265,8 @@ PREPROCESS {
         case GEO_PREPROCESS_PEACH_HAIR_ROT: {
             struct GraphNodeRotation *rot = (struct GraphNodeRotation *) node->node.next;
             rot->rotation[0] = 0;
-            rot->rotation[1] = -sPreprocessing->mario->head->rot[1] / 2;
-            rot->rotation[2] = -sPreprocessing->mario->head->rot[2] / (1 + (sPreprocessing->mario->head->rot[2] > 0));
+            rot->rotation[1] = -sGeoMario->headRot[1] / 2;
+            rot->rotation[2] = -sGeoMario->headRot[2] / (1 + (sGeoMario->headRot[2] > 0));
         } break;
 
         // Switch between Peach's crown and Tiara
@@ -2365,6 +2444,7 @@ void geo_process_root(struct GraphNodeRoot *node, Vp *viewport1, Vp *viewport2, 
         gCurGraphNodeRoot = node;
         geo_process_node_and_siblings(gChildren);
         gCurGraphNodeRoot = NULL;
+        gOmmGlobals->instantWarp.warped = false;
     }
 }
 
@@ -2375,9 +2455,6 @@ void geo_process_root(struct GraphNodeRoot *node, Vp *viewport1, Vp *viewport2, 
 static void __geo_preprocess_object_graph_node(struct Object *obj) {
     mem_zero(sCurAnimState, sizeof(sCurAnimState));
     sMatStackIndex = 0;
-    sPreprocessing->mario->root->flag = MRF_NOT_ROOT;
-    sPreprocessing->mario->arms->flag = MAF_NOT_ARMS;
-    sPreprocessing->mario->hand->flag = MHF_NOT_HAND;
 
     // Init globals
     Mat4 curGraphNodeCameraMatrix = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 1 } };
@@ -2401,7 +2478,7 @@ static void __geo_preprocess_object_graph_node(struct Object *obj) {
         omm_models_update_current_animation(obj);
         geo_set_animation_globals(&obj->header.gfx, (obj->oNodeFlags & GRAPH_RENDER_HAS_ANIMATION) != 0);
     }
-    
+
     // Preprocess
     sIsPreprocess = true;
     sCurrObjectSlot = obj_get_slot_index(obj);
@@ -2418,71 +2495,13 @@ static void __geo_preprocess_object_graph_node(struct Object *obj) {
     obj->oAnimInfo = animInfoBackUp;
 }
 
-void geo_compute_marios_heights(struct Object *o) {
-    if (o && o->oGraphNode) {
-        bool isMarioObj = (o == gMarioObject);
-
-        // Find graph node in cache
-        if (isMarioObj) {
-            s32 i = omm_map_find_key(sPreprocessing->mario->root->heights, ptr, o->oGraphNode);
-            if (i != -1) {
-                sPreprocessing->mario->root->height = omm_map_get_val(sPreprocessing->mario->root->heights, f32, i);
-                sPreprocessing->mario->head->height = omm_map_get_val(sPreprocessing->mario->head->heights, f32, i);
-                sPreprocessing->mario->arms->height = omm_map_get_val(sPreprocessing->mario->arms->heights, f32, i);
-                return;
-            }
-        }
-
-        // Preprocess with A-pose animation
-        // Back-up object fields
-        Vec3f gfxPos = { o->oGfxPos[0], o->oGfxPos[1], o->oGfxPos[2] };
-        Vec3s gfxAngle = { o->oGfxAngle[0], o->oGfxAngle[1], o->oGfxAngle[2] };
-        Vec3f gfxScale = { o->oGfxScale[0], o->oGfxScale[1], o->oGfxScale[2] };
-        Mat4 *objThrowMatrix = o->oThrowMatrix;
-        struct_AnimInfo objAnimInfo = o->oAnimInfo;
-
-        // Cleaning some fields
-        obj_pos_as_vec3f(o, o->oGfxPos);
-        vec3s_zero(o->oGfxAngle);
-        vec3f_one(o->oGfxScale);
-        o->oThrowMatrix = NULL;
-        gMarioCurrAnimAddr = NULL;
-        if (isMarioObj) {
-            obj_anim_play_with_sound(o, MARIO_ANIM_A_POSE, 1.f, NO_SOUND, true);
-        } else {
-            obj_anim_set_frame(o, 0);
-        }
-        __geo_preprocess_object_graph_node(o);
-
-        // Compute and insert heights for the object's graph node
-        f32 rootHeight = sPreprocessing->mario->root->pos[1] - o->oGfxPos[1];
-        f32 headHeight = sPreprocessing->mario->head->mtx[3][1] - o->oGfxPos[1];
-        f32 armsHeight = vec3f_dist(sPreprocessing->mario->hand->pos[1], sPreprocessing->mario->arms->pos);
-        if (isMarioObj) {
-            omm_map_add(sPreprocessing->mario->root->heights, ptr, o->oGraphNode, f32, rootHeight);
-            omm_map_add(sPreprocessing->mario->head->heights, ptr, o->oGraphNode, f32, headHeight);
-            omm_map_add(sPreprocessing->mario->arms->heights, ptr, o->oGraphNode, f32, armsHeight);
-        }
-        sPreprocessing->mario->root->height = rootHeight;
-        sPreprocessing->mario->head->height = headHeight;
-        sPreprocessing->mario->arms->height = armsHeight;
-
-        // Restore object fields
-        vec3f_copy(o->oGfxPos, gfxPos);
-        vec3s_copy(o->oGfxAngle, gfxAngle);
-        vec3f_copy(o->oGfxScale, gfxScale);
-        o->oThrowMatrix = objThrowMatrix;
-        o->oAnimInfo = objAnimInfo;
-        gMarioCurrAnimAddr = NULL;
-    }
-}
-
 bool geo_compute_capture_cappy_obj_transform(struct Object *o, s32 animParts, Mat4 transform) {
     if (o && o->oGraphNode && animParts > 0) {
-        sPreprocessing->cappy->animParts = animParts;
+        sGeoCappy->animParts = animParts;
+        sGeoMario->animPart = MARIO_ANIM_PART_MAX;
         __geo_preprocess_object_graph_node(o);
-        if (sPreprocessing->cappy->animParts <= 0) {
-            mtxf_copy(transform, sPreprocessing->cappy->transform);
+        if (sGeoCappy->animParts <= 0) {
+            mtxf_copy(transform, sGeoCappy->transform);
             return true;
         }
     }
@@ -2491,9 +2510,7 @@ bool geo_compute_capture_cappy_obj_transform(struct Object *o, s32 animParts, Ma
 
 void geo_preprocess_object_graph_node(struct Object *o) {
     if (o && o->oGraphNode) {
-        if (o == gMarioObject) {
-            geo_compute_marios_heights(o);
-        }
+        sGeoMario->animPart = (o->behavior == bhvMario ? MARIO_ANIM_PART_NONE : MARIO_ANIM_PART_MAX);
         __geo_preprocess_object_graph_node(o);
     }
 }

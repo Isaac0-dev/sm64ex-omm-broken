@@ -106,6 +106,7 @@ bool omm_mario_is_emerging_from_pipe            (struct MarioState *m);
 bool omm_mario_is_ready_for_dialog              (struct MarioState *m);
 bool omm_mario_is_ready_to_speak                (struct MarioState *m);
 bool omm_mario_is_capture                       (struct MarioState *m);
+bool omm_mario_is_invisible                     (struct MarioState *m);
 bool omm_mario_allow_first_person               (struct MarioState *m);
 bool omm_mario_should_walk                      (struct MarioState *m);
 bool omm_mario_should_run                       (struct MarioState *m);

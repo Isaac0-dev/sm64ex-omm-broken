@@ -7,50 +7,40 @@ static const Lights1 tt_ghost_mario_red_light   = gdSPDefLights1(0x80, 0x20, 0x2
 static const Lights1 tt_ghost_mario_green_light = gdSPDefLights1(0x20, 0x60, 0x20, 0x20, 0x60, 0x20, 0x28, 0x28, 0x28);
 static const Lights1 tt_ghost_mario_gold_light  = gdSPDefLights1(0xA0, 0x80, 0x00, 0xA0, 0x80, 0x00, 0x28, 0x28, 0x28);
 static const Lights1 tt_ghost_mario_pink_light  = gdSPDefLights1(0xC0, 0x40, 0xA0, 0xC0, 0x40, 0xA0, 0x28, 0x28, 0x28);
+static const Lights1 tt_ghost_mario_tex_light   = gdSPDefLights1(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x28, 0x28, 0x28);
 
 //
 // Ghost light display list
 //
 
-static const Gfx tt_ghost_mario_blue_light_dl[] = {
-    gsDPPipeSync(),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT, 0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT),
-    gsSPLight(&tt_ghost_mario_blue_light.l, 1),
-    gsSPLight(&tt_ghost_mario_blue_light.a, 2),
-    gsSPEndDisplayList(),
-};
+#define tt_ghost_mario_light_dl(color) \
+static const Gfx tt_ghost_mario_##color##_light_dl[] = { \
+    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT, 0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT), \
+    gsSPLight(&tt_ghost_mario_##color##_light.l, 1), \
+    gsSPLight(&tt_ghost_mario_##color##_light.a, 2), \
+    gsSPEndDisplayList(), \
+}
 
-static const Gfx tt_ghost_mario_red_light_dl[] = {
-    gsDPPipeSync(),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT, 0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT),
-    gsSPLight(&tt_ghost_mario_red_light.l, 1),
-    gsSPLight(&tt_ghost_mario_red_light.a, 2),
-    gsSPEndDisplayList(),
-};
+tt_ghost_mario_light_dl(blue);
+tt_ghost_mario_light_dl(red);
+tt_ghost_mario_light_dl(green);
+tt_ghost_mario_light_dl(gold);
+tt_ghost_mario_light_dl(pink);
 
-static const Gfx tt_ghost_mario_green_light_dl[] = {
-    gsDPPipeSync(),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT, 0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT),
-    gsSPLight(&tt_ghost_mario_green_light.l, 1),
-    gsSPLight(&tt_ghost_mario_green_light.a, 2),
-    gsSPEndDisplayList(),
-};
+#define tt_ghost_mario_texture_dl(color, tex) \
+static const Gfx tt_ghost_mario_##color##_light_dl[] = { \
+    gsSPSetGeometryMode(G_TEXTURE_GEN | G_LIGHTING), \
+    gsDPSetCombineMode(G_CC_MODULATERGBFADEA, G_CC_MODULATERGBFADEA), \
+    gsSPTexture(0x0F80, 0x0F80, 0, G_TX_RENDERTILE, G_ON), \
+    gsSPLight(&tt_ghost_mario_tex_light.l, 1), \
+    gsSPLight(&tt_ghost_mario_tex_light.a, 2), \
+    gsDPLoadTextureBlock(tex, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, 0, 0, 6, 6, 0, 0), \
+    gsSPEndDisplayList(), \
+}
 
-static const Gfx tt_ghost_mario_gold_light_dl[] = {
-    gsDPPipeSync(),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT, 0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT),
-    gsSPLight(&tt_ghost_mario_gold_light.l, 1),
-    gsSPLight(&tt_ghost_mario_gold_light.a, 2),
-    gsSPEndDisplayList(),
-};
-
-static const Gfx tt_ghost_mario_pink_light_dl[] = {
-    gsDPPipeSync(),
-    gsDPSetCombineLERP(0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT, 0, 0, 0, SHADE, 0, 0, 0, ENVIRONMENT),
-    gsSPLight(&tt_ghost_mario_pink_light.l, 1),
-    gsSPLight(&tt_ghost_mario_pink_light.a, 2),
-    gsSPEndDisplayList(),
-};
+tt_ghost_mario_texture_dl(pink_gold, OMM_TEXTURE_STAR_BODY_17);
+tt_ghost_mario_texture_dl(crystal, OMM_TEXTURE_STAR_BODY_18);
+tt_ghost_mario_texture_dl(nebula, OMM_TEXTURE_STAR_BODY_19);
 
 //
 // Mario's butt
@@ -238,7 +228,6 @@ static const Vtx tt_ghost_mario_butt_dl_vertex_group10[] = {
 };
 
 static const Gfx tt_ghost_mario_butt[] = {
-    gsDPPipeSync(),
     gsSPVertex(tt_ghost_mario_butt_dl_vertex_group1, 15, 0),
     gsSP2Triangles(0, 1, 2, 0x0, 3, 4, 5, 0x0),
     gsSP2Triangles(6, 7, 8, 0x0, 9, 5, 10, 0x0),
@@ -359,7 +348,7 @@ static const Vtx tt_ghost_mario_left_arm_shared_dl_vertex_group4[] = {
     {{{    -9,    -26,     -5}, 0, {     0,      0}, {0x96, 0xbd, 0x0e, 0x00}}},
 };
 
-static const Gfx tt_ghost_mario_left_arm_shared_dl[] = {
+static const Gfx tt_ghost_mario_left_arm_dl[] = {
     gsSPVertex(tt_ghost_mario_left_arm_shared_dl_vertex_group1, 15, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  1, 0x0),
     gsSP2Triangles( 5,  6,  4, 0x0,  7,  8,  6, 0x0),
@@ -405,7 +394,7 @@ static const Vtx tt_ghost_mario_left_forearm_shared_dl_vertex[] = {
     {{{    58,     -7,     -3}, 0, {     0,      0}, {0x7e, 0xfc, 0x00, 0x00}}},
 };
 
-static const Gfx tt_ghost_mario_left_forearm_shared_dl[] = {
+static const Gfx tt_ghost_mario_left_forearm_dl[] = {
     gsSPVertex(tt_ghost_mario_left_forearm_shared_dl_vertex, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  1, 0x0),
     gsSP2Triangles( 5,  6,  4, 0x0,  7,  8,  6, 0x0),
@@ -491,7 +480,7 @@ static const Vtx tt_ghost_mario_left_hand_closed_shared_dl_vertex_group4[] = {
     {{{    -1,     39,      5}, 0, {     0,      0}, {0xea, 0x6e, 0x3a, 0x00}}},
 };
 
-static const Gfx tt_ghost_mario_left_hand_closed_shared_dl[] = {
+static const Gfx tt_ghost_mario_left_hand_dl[] = {
     gsSPVertex(tt_ghost_mario_left_hand_closed_shared_dl_vertex_group1, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  5, 0x0),
     gsSP2Triangles( 6,  1,  0, 0x0,  2,  1,  7, 0x0),
@@ -596,7 +585,7 @@ static const Vtx tt_ghost_mario_right_arm_shared_dl_vertex_group4[] = {
     {{{    67,     10,     21}, 0, {     0,      0}, {0x71, 0x2a, 0x25, 0x00}}},
 };
 
-static const Gfx tt_ghost_mario_right_arm_shared_dl[] = {
+static const Gfx tt_ghost_mario_right_arm_dl[] = {
     gsSPVertex(tt_ghost_mario_right_arm_shared_dl_vertex_group1, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  1, 0x0),
     gsSP2Triangles( 5,  6,  4, 0x0,  7,  8,  6, 0x0),
@@ -642,7 +631,7 @@ static const Vtx tt_ghost_mario_right_forearm_shared_dl_vertex[] = {
     {{{    59,     -8,      7}, 0, {     0,      0}, {0x7f, 0xfd, 0x00, 0x00}}},
 };
 
-static const Gfx tt_ghost_mario_right_forearm_shared_dl[] = {
+static const Gfx tt_ghost_mario_right_forearm_dl[] = {
     gsSPVertex(tt_ghost_mario_right_forearm_shared_dl_vertex, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  1, 0x0),
     gsSP2Triangles( 5,  6,  4, 0x0,  7,  8,  6, 0x0),
@@ -715,7 +704,7 @@ static const Vtx tt_ghost_mario_right_hand_closed_dl_vertex_group3[] = {
     {{{    29,     62,     34}, 0, {     0,      0}, {0xce, 0x4c, 0x57, 0x00}}},
 };
 
-static const Gfx tt_ghost_mario_right_hand_closed[] = {
+static const Gfx tt_ghost_mario_right_hand_dl[] = {
     gsSPVertex(tt_ghost_mario_right_hand_closed_dl_vertex_group1, 16, 0),
     gsSP2Triangles(0, 1, 2, 0x0, 3, 0, 4, 0x0),
     gsSP2Triangles(2, 5, 6, 0x0, 6, 7, 4, 0x0),
@@ -789,7 +778,6 @@ static const Vtx tt_ghost_mario_left_thigh_dl_vertex_group2[] = {
 };
 
 static const Gfx tt_ghost_mario_left_thigh[] = {
-    gsDPPipeSync(),
     gsSPVertex(tt_ghost_mario_left_thigh_dl_vertex_group1, 16, 0),
     gsSP2Triangles(0, 1, 2, 0x0, 2, 1, 3, 0x0),
     gsSP2Triangles(3, 1, 4, 0x0, 4, 1, 5, 0x0),
@@ -825,7 +813,7 @@ static const Vtx tt_ghost_mario_left_leg_shared_dl_vertex[] = {
     {{{    81,      3,      9}, 0, {     0,      0}, {0x7e, 0xfa, 0x01, 0x00}}},
 };
 
-static const Gfx tt_ghost_mario_left_leg_shared_dl[] = {
+static const Gfx tt_ghost_mario_left_leg_dl[] = {
     gsSPVertex(tt_ghost_mario_left_leg_shared_dl_vertex, 12, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  2,  4, 0x0),
     gsSP2Triangles( 3,  4,  5, 0x0,  6,  5,  7, 0x0),
@@ -877,7 +865,7 @@ static const Vtx tt_ghost_mario_left_foot_shared_dl_vertex_group2[] = {
     {{{    27,    -35,     11}, 0, {     0,      0}, {0xdb, 0x87, 0xfc, 0x00}}},
 };
 
-static const Gfx tt_ghost_mario_left_foot_shared_dl[] = {
+static const Gfx tt_ghost_mario_left_foot_dl[] = {
     gsSPVertex(tt_ghost_mario_left_foot_shared_dl_vertex_group1, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  0,  2, 0x0),
     gsSP2Triangles( 3,  2,  4, 0x0,  5,  3,  4, 0x0),
@@ -937,7 +925,7 @@ static const Vtx tt_ghost_mario_right_thigh_shared_dl_vertex_group2[] = {
     {{{    96,     -5,     30}, 0, {     0,      0}, {0x51, 0xe7, 0x5d, 0x00}}},
 };
 
-static const Gfx tt_ghost_mario_right_thigh_shared_dl[] = {
+static const Gfx tt_ghost_mario_right_thigh_dl[] = {
     gsSPVertex(tt_ghost_mario_right_thigh_shared_dl_vertex_group1, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  1, 0x0),
     gsSP2Triangles( 3,  5,  4, 0x0,  6,  7,  5, 0x0),
@@ -996,7 +984,7 @@ static const Vtx tt_ghost_mario_right_leg_shared_dl_vertex_group2[] = {
     {{{    66,    -11,     34}, 0, {     0,      0}, {0xf2, 0x9b, 0x4a, 0x00}}},
 };
 
-static const Gfx tt_ghost_mario_right_leg_shared_dl[] = {
+static const Gfx tt_ghost_mario_right_leg_dl[] = {
     gsSPVertex(tt_ghost_mario_right_leg_shared_dl_vertex_group1, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  5, 0x0),
     gsSP2Triangles( 6,  7,  8, 0x0,  9, 10,  8, 0x0),
@@ -1057,6 +1045,14 @@ static const Gfx tt_ghost_mario_right_foot[] = {
     gsSP2Triangles(0, 1, 2, 0x0, 1, 3, 2, 0x0),
     gsSP2Triangles(3, 4, 2, 0x0, 3, 5, 4, 0x0),
     gsSP2Triangles(5, 6, 4, 0x0, 5, 7, 6, 0x0),
+    gsSPEndDisplayList(),
+};
+
+static const Gfx tt_ghost_mario_end[] = {
+    gsSPClearGeometryMode(G_TEXTURE_GEN | G_CULL_BOTH),
+    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
+    gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
+    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
     gsSPEndDisplayList(),
 };
 
@@ -1253,7 +1249,7 @@ static const Vtx tt_ghost_mario_pants_overalls_shared_dl_vertex_group7[] = {
     {{{    44,     51,     75}, 0, {     0,      0}, {0x3c, 0x34, 0x62, 0xff}}},
 };
 
-static const Gfx tt_ghost_mario_torso_shared_dl[] = {
+static const Gfx tt_ghost_mario_torso_dl[] = {
     gsSPVertex(tt_ghost_mario_gold_button_dl_vertex, 14, 0),
     gsSP2Triangles(0, 1, 2, 0x0, 2, 3, 0, 0x0),
     gsSP2Triangles(1, 4, 2, 0x0, 5, 6, 2, 0x0),
@@ -1619,7 +1615,7 @@ static const Vtx tt_ghost_mario_face_back_hair_cap_on_dl_vertex_group2[] = {
     {{{    31,    -85,     87}, 0, {     0,      0}, {0xdb, 0xfd, 0x79, 0xff}}},
 };
 
-static const Gfx tt_ghost_mario_cap_on_shared_dl[] = {
+static const Gfx tt_ghost_mario_cap_on_dl[] = {
     gsSPVertex(tt_ghost_mario_m_logo_dl_vertex, 7, 0),
     gsSP2Triangles(0, 1, 2, 0x0, 3, 4, 5, 0x0),
     gsSP2Triangles(2, 3, 0, 0x0, 3, 5, 0, 0x0),
@@ -1750,35 +1746,29 @@ static const GeoLayout tt_ghost_mario_geo_body[] = {
         GEO_ANIMATED_PART(LAYER_TRANSPARENT, 0, 0, 0, tt_ghost_mario_butt),
         GEO_OPEN_NODE(),
             GEO_OPEN_NODE(),
-                GEO_ANIMATED_PART(LAYER_TRANSPARENT, 68, 0, 0, tt_ghost_mario_torso_shared_dl),
+                GEO_ANIMATED_PART(LAYER_TRANSPARENT, 68, 0, 0, tt_ghost_mario_torso_dl),
                 GEO_OPEN_NODE(),
                     GEO_ANIMATED_PART(LAYER_TRANSPARENT, 87, 0, 0, NULL),
                     GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_cap_on_shared_dl),
+                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_cap_on_dl),
                     GEO_CLOSE_NODE(),
                     GEO_ANIMATED_PART(LAYER_TRANSPARENT, 67, -10, 79, NULL),
                     GEO_OPEN_NODE(),
-                        GEO_ANIMATED_PART(LAYER_TRANSPARENT, 0, 0, 0, tt_ghost_mario_left_arm_shared_dl),
+                        GEO_ANIMATED_PART(LAYER_TRANSPARENT, 0, 0, 0, tt_ghost_mario_left_arm_dl),
                         GEO_OPEN_NODE(),
-                            GEO_ANIMATED_PART(LAYER_TRANSPARENT, 65, 0, 0, tt_ghost_mario_left_forearm_shared_dl),
+                            GEO_ANIMATED_PART(LAYER_TRANSPARENT, 65, 0, 0, tt_ghost_mario_left_forearm_dl),
                             GEO_OPEN_NODE(),
-                                GEO_ANIMATED_PART(LAYER_TRANSPARENT, 60, 0, 0, NULL),
-                                GEO_OPEN_NODE(),
-                                    GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_left_hand_closed_shared_dl),
-                                GEO_CLOSE_NODE(),
+                                GEO_ANIMATED_PART(LAYER_TRANSPARENT, 60, 0, 0, tt_ghost_mario_left_hand_dl),
                             GEO_CLOSE_NODE(),
                         GEO_CLOSE_NODE(),
                     GEO_CLOSE_NODE(),
-                    GEO_ANIMATED_PART(LAYER_TRANSPARENT, 68, -10, -79, NULL),
+                    GEO_ANIMATED_PART(LAYER_TRANSPARENT, 67, -10, -79, NULL),
                     GEO_OPEN_NODE(),
-                        GEO_ANIMATED_PART(LAYER_TRANSPARENT, 0, 0, 0, tt_ghost_mario_right_arm_shared_dl),
+                        GEO_ANIMATED_PART(LAYER_TRANSPARENT, 0, 0, 0, tt_ghost_mario_right_arm_dl),
                         GEO_OPEN_NODE(),
-                            GEO_ANIMATED_PART(LAYER_TRANSPARENT, 65, 0, 0, tt_ghost_mario_right_forearm_shared_dl),
+                            GEO_ANIMATED_PART(LAYER_TRANSPARENT, 65, 0, 0, tt_ghost_mario_right_forearm_dl),
                             GEO_OPEN_NODE(),
-                                GEO_ANIMATED_PART(LAYER_TRANSPARENT, 60, 0, 0, NULL),
-                                GEO_OPEN_NODE(),
-                                    GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_right_hand_closed),
-                                GEO_CLOSE_NODE(),
+                                GEO_ANIMATED_PART(LAYER_TRANSPARENT, 60, 0, 0, tt_ghost_mario_right_hand_dl),
                             GEO_CLOSE_NODE(),
                         GEO_CLOSE_NODE(),
                     GEO_CLOSE_NODE(),
@@ -1788,143 +1778,57 @@ static const GeoLayout tt_ghost_mario_geo_body[] = {
             GEO_OPEN_NODE(),
                 GEO_ANIMATED_PART(LAYER_TRANSPARENT, 0, 0, 0, tt_ghost_mario_left_thigh),
                 GEO_OPEN_NODE(),
-                    GEO_ANIMATED_PART(LAYER_TRANSPARENT, 89, 0, 0, tt_ghost_mario_left_leg_shared_dl),
+                    GEO_ANIMATED_PART(LAYER_TRANSPARENT, 89, 0, 0, tt_ghost_mario_left_leg_dl),
                     GEO_OPEN_NODE(),
-                        GEO_ANIMATED_PART(LAYER_TRANSPARENT, 67, 0, 0, tt_ghost_mario_left_foot_shared_dl),
+                        GEO_ANIMATED_PART(LAYER_TRANSPARENT, 67, 0, 0, tt_ghost_mario_left_foot_dl),
                     GEO_CLOSE_NODE(),
                 GEO_CLOSE_NODE(),
             GEO_CLOSE_NODE(),
             GEO_ANIMATED_PART(LAYER_TRANSPARENT, 13, -8, -42, NULL),
             GEO_OPEN_NODE(),
-                GEO_ANIMATED_PART(LAYER_TRANSPARENT, 0, 0, 0, tt_ghost_mario_right_thigh_shared_dl),
+                GEO_ANIMATED_PART(LAYER_TRANSPARENT, 0, 0, 0, tt_ghost_mario_right_thigh_dl),
                 GEO_OPEN_NODE(),
-                    GEO_ANIMATED_PART(LAYER_TRANSPARENT, 89, 0, 0, tt_ghost_mario_right_leg_shared_dl),
+                    GEO_ANIMATED_PART(LAYER_TRANSPARENT, 89, 0, 0, tt_ghost_mario_right_leg_dl),
                     GEO_OPEN_NODE(),
-                        GEO_ANIMATED_PART(LAYER_TRANSPARENT, 67, 0, 0, NULL),
-                        GEO_OPEN_NODE(),
-                            GEO_OPEN_NODE(),
-                                GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_right_foot),
-                            GEO_CLOSE_NODE(),
-                        GEO_CLOSE_NODE(),
+                        GEO_ANIMATED_PART(LAYER_TRANSPARENT, 67, 0, 0, tt_ghost_mario_right_foot),
                     GEO_CLOSE_NODE(),
                 GEO_CLOSE_NODE(),
             GEO_CLOSE_NODE(),
+            GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_end),
         GEO_CLOSE_NODE(),
     GEO_CLOSE_NODE(),
     GEO_RETURN(),
 };
 
-static const GeoLayout tt_ghost_mario_blue_geo[] = {
-    GEO_NODE_START(),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0x00, 16384),
-        GEO_OPEN_NODE(),
-            GEO_ASM(10, geo_update_layer_transparency),
-            GEO_OPEN_NODE(),
-                GEO_NODE_START(),
-                GEO_OPEN_NODE(),
-                    GEO_RENDER_RANGE(-2048, 32767),
-                    GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_blue_light_dl),
-                        GEO_OPEN_NODE(),
-                            GEO_BRANCH(1, tt_ghost_mario_geo_body),
-                        GEO_CLOSE_NODE(),
-                    GEO_CLOSE_NODE(),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
+#define tt_ghost_mario_geo(color) \
+static const GeoLayout tt_ghost_mario_##color##_geo[] = { \
+    GEO_NODE_START(), \
+    GEO_OPEN_NODE(), \
+        GEO_SCALE(0x00, 16384), \
+        GEO_OPEN_NODE(), \
+            GEO_ASM(10, geo_update_layer_transparency), \
+            GEO_OPEN_NODE(), \
+                GEO_NODE_START(), \
+                GEO_OPEN_NODE(), \
+                    GEO_RENDER_RANGE(-2048, 32767), \
+                    GEO_OPEN_NODE(), \
+                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_##color##_light_dl), \
+                        GEO_OPEN_NODE(), \
+                            GEO_BRANCH(1, tt_ghost_mario_geo_body), \
+                        GEO_CLOSE_NODE(), \
+                    GEO_CLOSE_NODE(), \
+                GEO_CLOSE_NODE(), \
+            GEO_CLOSE_NODE(), \
+        GEO_CLOSE_NODE(), \
+    GEO_CLOSE_NODE(), \
+    GEO_END(), \
+}
 
-static const GeoLayout tt_ghost_mario_red_geo[] = {
-    GEO_NODE_START(),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0x00, 16384),
-        GEO_OPEN_NODE(),
-            GEO_ASM(10, geo_update_layer_transparency),
-            GEO_OPEN_NODE(),
-                GEO_NODE_START(),
-                GEO_OPEN_NODE(),
-                    GEO_RENDER_RANGE(-2048, 32767),
-                    GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_red_light_dl),
-                        GEO_OPEN_NODE(),
-                            GEO_BRANCH(1, tt_ghost_mario_geo_body),
-                        GEO_CLOSE_NODE(),
-                    GEO_CLOSE_NODE(),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-static const GeoLayout tt_ghost_mario_green_geo[] = {
-    GEO_NODE_START(),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0x00, 16384),
-        GEO_OPEN_NODE(),
-            GEO_ASM(10, geo_update_layer_transparency),
-            GEO_OPEN_NODE(),
-                GEO_NODE_START(),
-                GEO_OPEN_NODE(),
-                    GEO_RENDER_RANGE(-2048, 32767),
-                    GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_green_light_dl),
-                        GEO_OPEN_NODE(),
-                            GEO_BRANCH(1, tt_ghost_mario_geo_body),
-                        GEO_CLOSE_NODE(),
-                    GEO_CLOSE_NODE(),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-static const GeoLayout tt_ghost_mario_gold_geo[] = {
-    GEO_NODE_START(),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0x00, 16384),
-        GEO_OPEN_NODE(),
-            GEO_ASM(10, geo_update_layer_transparency),
-            GEO_OPEN_NODE(),
-                GEO_NODE_START(),
-                GEO_OPEN_NODE(),
-                    GEO_RENDER_RANGE(-2048, 32767),
-                    GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_gold_light_dl),
-                        GEO_OPEN_NODE(),
-                            GEO_BRANCH(1, tt_ghost_mario_geo_body),
-                        GEO_CLOSE_NODE(),
-                    GEO_CLOSE_NODE(),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
-
-static const GeoLayout tt_ghost_mario_pink_geo[] = {
-    GEO_NODE_START(),
-    GEO_OPEN_NODE(),
-        GEO_SCALE(0x00, 16384),
-        GEO_OPEN_NODE(),
-            GEO_ASM(10, geo_update_layer_transparency),
-            GEO_OPEN_NODE(),
-                GEO_NODE_START(),
-                GEO_OPEN_NODE(),
-                    GEO_RENDER_RANGE(-2048, 32767),
-                    GEO_OPEN_NODE(),
-                        GEO_DISPLAY_LIST(LAYER_TRANSPARENT, tt_ghost_mario_pink_light_dl),
-                        GEO_OPEN_NODE(),
-                            GEO_BRANCH(1, tt_ghost_mario_geo_body),
-                        GEO_CLOSE_NODE(),
-                    GEO_CLOSE_NODE(),
-                GEO_CLOSE_NODE(),
-            GEO_CLOSE_NODE(),
-        GEO_CLOSE_NODE(),
-    GEO_CLOSE_NODE(),
-    GEO_END(),
-};
+tt_ghost_mario_geo(blue);
+tt_ghost_mario_geo(red);
+tt_ghost_mario_geo(green);
+tt_ghost_mario_geo(gold);
+tt_ghost_mario_geo(pink);
+tt_ghost_mario_geo(pink_gold);
+tt_ghost_mario_geo(crystal);
+tt_ghost_mario_geo(nebula);

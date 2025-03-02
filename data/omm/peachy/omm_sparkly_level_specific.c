@@ -79,7 +79,7 @@ bool omm_sparkly_level_ddd__switch_and_boxes(struct MarioState *m, const s32 *pa
 }
 
 bool omm_sparkly_level_sl__snowmen_at_top(struct MarioState *m, const s32 *params) {
-    if (OMM_SPARKLY_STATE_IS_OK) {
+    if (OMM_SPARKLY_STATE_IS_OK && !gOmmSparklyContext->successful) {
         f32 topX = params[1];
         f32 topY = params[2];
         f32 topZ = params[3];
@@ -92,7 +92,10 @@ bool omm_sparkly_level_sl__snowmen_at_top(struct MarioState *m, const s32 *param
             f32 dr = sqrtf(sqr_f(dx) + sqr_f(dz));
             numSnowmenAtTop += (dy > 0 && dr < 512);
         }
-        gOmmSparklyContext->successful = (numSnowmenAtTop >= maxSnowmenAtTop);
+        if (numSnowmenAtTop >= maxSnowmenAtTop) {
+            gOmmSparklyContext->successful = true;
+            gOmmSparklyContext->spawner = obj_get_nearest_with_behavior(m->marioObj, bhvMrBlizzard);
+        }
     }
     return true;
 }
@@ -182,19 +185,30 @@ bool omm_sparkly_level_wdw__star_box_red_coins(struct MarioState *m, const s32 *
                 starBox->oInteractStatus = 0;
             }
 
-            // Explode star box if the Sparkly star is about to spawn
+            // Check if the Sparkly star is about to spawn
             struct Object *star = gOmmSparklyContext->star;
-            if (starBox && gOmmSparklyContext->starSpawned && star && (star->oAction > 0 || star->oTimer >= 55)) {
-                if (gOmmObject->state.heldObj == starBox) {
-                    pobj_release_held_object();
+            if (starBox && gOmmSparklyContext->starSpawned && star) {
+
+                // Spawn a dummy object to move the star spawn point to the center of the star box
+                struct Object *dummy = obj_get_first_with_behavior(bhvStaticObject);
+                if (!dummy) { dummy = spawn_object(m->marioObj, MODEL_NONE, bhvStaticObject); }
+                obj_copy_pos(dummy, starBox);
+                obj_reset_hitbox(dummy, 0, starBox->hitboxHeight / 2.f - 150.f, 0, 0, 0, 0);
+                star->parentObj = dummy;
+
+                // Explode star box if the Sparkly star is about to spawn
+                if (star->oAction != 0 || star->oTimer >= 59) {
+                    if (gOmmObject->state.heldObj == starBox) {
+                        pobj_release_held_object();
+                    }
+                    switch (gOmmSparklyMode) {
+                        case OMM_SPARKLY_MODE_NORMAL: obj_spawn_triangle_break_particles(starBox, OBJ_SPAWN_TRI_BREAK_PRESET_SWITCH_YELLOW); break;
+                        case OMM_SPARKLY_MODE_HARD: obj_spawn_triangle_break_particles(starBox, OBJ_SPAWN_TRI_BREAK_PRESET_SWITCH_BLUE); break;
+                        case OMM_SPARKLY_MODE_LUNATIC: obj_spawn_triangle_break_particles(starBox, OBJ_SPAWN_TRI_BREAK_PRESET_SWITCH_RED); break;
+                    }
+                    obj_create_sound_spawner(starBox, SOUND_GENERAL_BREAK_BOX);
+                    obj_mark_for_deletion(starBox);
                 }
-                switch (gOmmSparklyMode) {
-                    case OMM_SPARKLY_MODE_NORMAL: obj_spawn_triangle_break_particles(starBox, OBJ_SPAWN_TRI_BREAK_PRESET_SWITCH_YELLOW); break;
-                    case OMM_SPARKLY_MODE_HARD: obj_spawn_triangle_break_particles(starBox, OBJ_SPAWN_TRI_BREAK_PRESET_SWITCH_BLUE); break;
-                    case OMM_SPARKLY_MODE_LUNATIC: obj_spawn_triangle_break_particles(starBox, OBJ_SPAWN_TRI_BREAK_PRESET_SWITCH_RED); break;
-                }
-                obj_create_sound_spawner(starBox, SOUND_GENERAL_BREAK_BOX);
-                obj_mark_for_deletion(starBox);
             }
 
             // Invalidate if star box is missing
@@ -430,8 +444,14 @@ bool omm_sparkly_level_basement__catch_mips(struct MarioState *m, const s32 *par
 
     // Mips must be caught 3 times
     struct Object *mips = obj_get_first_with_behavior(bhvOmmMips);
-    if (mips && OMM_SPARKLY_STATE_IS_OK) {
-        gOmmSparklyContext->successful |= (mips->oMipsGrabbedCounter >= 3);
+    if (mips && OMM_SPARKLY_STATE_IS_OK && !gOmmSparklyContext->successful && mips->oMipsGrabbedCounter >= 3) {
+        gOmmSparklyContext->successful = true;
+        gOmmSparklyContext->spawner = mips;
+    }
+
+    // Make Mips leave the basement after the star spawned
+    if (mips && mips->oAction == 2 && (!gOmmSparklyContext->star || gOmmSparklyContext->star->oAction != 0)) {
+        mips->oAction = 0;
     }
     return true;
 }

@@ -151,7 +151,7 @@ static bool omm_object_check_move_through_walls(struct Object *o, Vec3f target) 
         vec3f_sum(target, &o->oPosX, dir);
         vec3f_mul(dir, -1.f);
         target[1] += (height - offset) / 2.f;
-        
+
         // Do a raycast from the target to the object's current pos (after the wall collision)
         RayCollisionData hits;
         if (find_collisions_on_ray(target, dir, &hits, 1.f, RAYCAST_FLAG_WALLS)) {
@@ -558,7 +558,7 @@ static s32 omm_mario_perform_air_sub_step(struct MarioState *m, Vec3f intendedPo
             return STEP_HIT_FLOOR;
         } else {
             m->pos[1] = nextPos[1];
-            return (OMM_STEP_FIX_OUT_OF_BOUNDS_BONK ? STEP_NONE : STEP_OUT_OF_BOUNDS);
+            return STEP_OUT_OF_BOUNDS;
         }
     }
 
@@ -811,6 +811,7 @@ s32 perform_air_step(struct MarioState *m, u32 stepArg) {
     s32 hStepMul = speed_modifier(m);
     s32 yStepMul = (m->vel[1] > 0.f ? jump_modifier(m) : 1);
     s32 subSteps = numSteps * hStepMul * yStepMul;
+    s32 stepsOoB = 0;
 
     // Perform steps
     m->wall = NULL;
@@ -825,6 +826,12 @@ s32 perform_air_step(struct MarioState *m, u32 stepArg) {
         if (wall) {
             m->wall = wall;
         }
+        if (subStepResult == STEP_OUT_OF_BOUNDS) {
+            stepsOoB++;
+            if (OMM_STEP_FIX_OUT_OF_BOUNDS_BONK) {
+                subStepResult = STEP_NONE;
+            }
+        }
         if (subStepResult != STEP_NONE) {
             stepResult = subStepResult;
         }
@@ -834,6 +841,11 @@ s32 perform_air_step(struct MarioState *m, u32 stepArg) {
             subStepResult == STEP_GRABBED_CEIL) {
             break;
         }
+    }
+
+    // Cancel forward acceleration for each out-of-bounds step
+    if (stepsOoB > 0 && m->forwardVel > m->marioObj->oForwardVel) {
+        m->forwardVel = relerp_0_1_f(stepsOoB, 0, subSteps, m->forwardVel, m->marioObj->oForwardVel);
     }
 
     // Don't bonk into walls if ground pounding

@@ -5,7 +5,7 @@
 bool omm_sparkly_interact_star(struct MarioState *m, struct Object *o) {
     if (o->behavior == bhvOmmSparklyStar) {
         if (!omm_mario_is_capture(m)) {
-            omm_sparkly_collect_star(gOmmSparklyMode, omm_sparkly_get_index(gOmmSparklyMode, gCurrLevelNum, gCurrAreaIndex));
+            omm_sparkly_collect_star(gOmmSparklyMode, omm_sparkly_get_star_index(gOmmSparklyMode, gCurrLevelNum, gCurrAreaIndex));
             mario_stop_riding_and_holding(m);
             update_mario_sound_and_camera(m);
             SFX(SOUND_MENU_STAR_SOUND);

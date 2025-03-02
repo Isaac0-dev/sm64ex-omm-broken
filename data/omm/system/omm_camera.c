@@ -90,19 +90,14 @@ s32 omm_camera_get_relative_dist_mode() {
     return sOmmCamDistMode - OMM_CAM_DIST_MODE_MEDIUM;
 }
 
-void omm_camera_warp(struct Camera *c, f32 dx, f32 dy, f32 dz) {
-    s16 cyaw = c->yaw;
-    warp_camera(dx, dy, dz);
-    c->yaw = cyaw;
-    c->nextYaw = cyaw;
-    gLakituState.pos[0] += dx;
-    gLakituState.pos[1] += dy;
-    gLakituState.pos[2] += dz;
-    gLakituState.focus[0] += dx;
-    gLakituState.focus[1] += dy;
-    gLakituState.focus[2] += dz;
-    gLakituState.yaw = cyaw;
-    gLakituState.nextYaw = cyaw;
+void omm_camera_warp(struct Camera *c, Vec3f displacement) {
+    warp_camera(displacement[0], displacement[1], displacement[2]);
+    vec3f_add(c->pos, displacement);
+    vec3f_add(c->focus, displacement);
+    vec3f_add(gLakituState.pos, displacement);
+    vec3f_add(gLakituState.focus, displacement);
+    gLakituState.yaw = c->yaw;
+    gLakituState.nextYaw = c->nextYaw;
 }
 
 //
@@ -786,6 +781,14 @@ static void omm_camera_update_transform(struct MarioState *m) {
         camFocHeight -= 50.f;
     }
 
+#if OMM_GAME_IS_SM64
+    // Endless stairs
+    if (gCurrLevelNum == LEVEL_CASTLE && gCurrAreaIndex == 2 && m->numStars < 70 && m->floor != NULL && m->floor->room == 6 && m->pos[2] < 2540.f) {
+        s16 newPitchTarget = relerp_0_1_f(coss(sOmmCamYaw + gLakituState.shakeMagnitude[1] + 0x8000), -1, 1, 0x400, 0x1400);
+        camPitchTarget = relerp_0_1_f(m->pos[2], 2540, 2140, camPitchTarget, newPitchTarget);
+    }
+#endif
+
     // Angles
     bool isFlyingOrSwimming = omm_camera_update_angles_from_state(m, camPitchTarget);
 
@@ -843,7 +846,7 @@ bool omm_camera_update(struct Camera *c, struct MarioState *m) {
         return false;
     }
 
-    // If Mario is in ACT_FIRST_PERSON when he shouldn't, 
+    // If Mario is in ACT_FIRST_PERSON when he shouldn't,
     // disable the first person mode and reset the camera
     if (!sOmmCamFpMode && (m->action == ACT_FIRST_PERSON || gOmmMario->capture.firstPerson)) {
         omm_camera_exit_first_person(c, m, true, true);

@@ -178,7 +178,7 @@ static void bhv_omm_chain_chomp_free_wander(struct Object* o) {
             o->oChainChompFreeState = 1;
             obj_play_sound(o, SOUND_GENERAL_CHAIN_CHOMP2);
         }
-        
+
         // Make a small hop
         else {
             s16 nextAngle = (s16)(o->oChainChompFreeAngle + (random_u16() & 0x3FFF) - 0x2000);
@@ -204,7 +204,7 @@ static void bhv_omm_chain_chomp_free_chase(struct Object *o) {
             o->oChainChompFreeTimer = 30;
             o->oChainChompFreeState = 0;
         }
-        
+
         // Make a fast hop
         else {
             obj_set_forward_vel(o, o->oAngleToMario, 1.f, 28.f);

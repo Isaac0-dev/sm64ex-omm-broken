@@ -104,6 +104,9 @@ extern const Gfx omm_level_peachy_room_gfx_disable[];
 static const BehaviorScript bhvOmmLevelPeachyRoom[];
 extern struct Cutscene sCutsceneEnterPainting[];
 
+f32 omm_level_peachy_room_prev_z = 0;
+f32 omm_level_peachy_room_curr_z = 0;
+
 //
 // Textures
 //
@@ -475,21 +478,6 @@ static void bhv_omm_level_peachy_room_update_paintings(struct Object *o) {
     bhv_omm_level_peachy_room_update_painting_tri(omm_level_peachy_room_painting_2_tri, omm_level_peachy_room_painting_2_vtx, true);
 }
 
-static void bhv_omm_level_peachy_room_update_obj_coords(f32 dz) {
-    for_each_object_in_all_lists(obj) {
-        if (obj->activeFlags &&
-            obj->behavior != bhvOmmLevelPeachyRoom &&
-            obj->behavior != bhvOmmPerryTrail &&
-            obj->behavior != bhvOmmPeachVibeGloomTearSmall) {
-            obj->oPosZ += dz;
-            obj->oGfxPos[2] += dz;
-            obj_set_dormant(obj, !((N * (ROOM_LENGTH + 2)) < obj->oPosZ && obj->oPosZ < (P * (ROOM_LENGTH + 2))));
-        }
-    }
-}
-
-f32 omm_level_peachy_room_prev_z = 0;
-f32 omm_level_peachy_room_curr_z = 0;
 static void bhv_omm_level_peachy_room_update() {
     omm_secrets_unlock(OMM_GAME_IS_SM74 ? OMM_SECRET_SM74_SECRET : OMM_SECRET_PEACHY_ROOM);
 
@@ -506,6 +494,33 @@ static void bhv_omm_level_peachy_room_update() {
     if (o->oAction > 0) {
         o->oAction++;
         return;
+    }
+
+    // "Infinite" corridor
+    if (!OMM_GAME_IS_SM64 || true /* not all nebulas */) {
+        f32 dz = (m->pos[2] < 0 || o->oPosZ > 0) * -min_f(m->pos[2], o->oPosZ);
+        if (dz != 0) {
+            o->oPosZ += dz;
+            m->pos[2] += dz;
+            m->marioObj->oPosZ += dz;
+            m->marioObj->oGfxPos[2] += dz;
+            geo_preprocess_object_graph_node(m->marioObj);
+            for_each_object_in_all_lists(obj) {
+                if (obj->activeFlags &&
+                    obj != m->marioObj &&
+                    obj->behavior != bhvOmmLevelPeachyRoom &&
+                    obj->behavior != bhvOmmPerryTrail
+                ) {
+                    obj->oPosZ += dz;
+                    obj->oGfxPos[2] += dz;
+                    if (obj->behavior != bhvOmmCappy) {
+                        s32 zLimit = P * (ROOM_LENGTH + 1);
+                        obj_set_dormant(obj, !(-zLimit < obj->oPosZ && obj->oPosZ < +zLimit));
+                    }
+                }
+            }
+        }
+        omm_level_peachy_room_curr_z = o->oPosZ;
     }
 
     // If Mario enters a painting, start the cutscene
@@ -528,22 +543,6 @@ static void bhv_omm_level_peachy_room_update() {
         m->marioObj->oNodeFlags &= ~GRAPH_RENDER_ACTIVE;
         play_sound(SOUND_MENU_STAR_SOUND, gGlobalSoundArgs);
         return;
-    }
-
-    // "Infinite" corridor
-    if (!OMM_GAME_IS_SM64 || true /* not all nebulas */) {
-        omm_level_peachy_room_prev_z = o->oPosZ;
-        if (m->pos[2] < 0 || o->oPosZ > 0) {
-            f32 dz = -min_f(m->pos[2], o->oPosZ);
-            if (dz != 0) {
-                o->oPosZ += dz;
-                m->pos[2] += dz;
-                m->marioObj->oPosZ += dz;
-                m->marioObj->oGfxPos[2] += dz;
-                bhv_omm_level_peachy_room_update_obj_coords(dz);
-            }
-        }
-        omm_level_peachy_room_curr_z = o->oPosZ;
     }
 
     // Update the signpost text
@@ -586,6 +585,10 @@ static const BehaviorScript bhvOmmLevelPeachyRoom[] = {
         BHV_CALL_NATIVE(bhv_omm_level_peachy_room_update),
     BHV_END_LOOP(),
 };
+
+OMM_ROUTINE_UPDATE(bhv_omm_level_peachy_room_update_prev_z) {
+    omm_level_peachy_room_prev_z = omm_level_peachy_room_curr_z;
+}
 
 //
 // Sign on wall
@@ -632,14 +635,14 @@ static const GeoLayout sign_on_wall_geo[] = {
 //
 
 const LevelScript omm_level_peachy_room_objects[] = {
-    LOAD_MODEL_FROM_GEO(MODEL_LEVEL_GEOMETRY_03, sign_on_wall_geo),
+    LOAD_MODEL_FROM_GEO(MODEL_LEVEL_GEOMETRY_04, sign_on_wall_geo),
     OBJECT(MODEL_NONE, 0, 0, 0, 0, 0, 0, 0, bhvOmmLevelPeachyRoom),
     OBJECT(MODEL_NONE, 0, N / 2, (s16) (P * (ROOM_LENGTH - 1.f)), 0, 0, 0, 0x000A0000, bhvFadingWarp),
 #if OMM_GAME_IS_SM64
     OBJECT(MODEL_NONE, 0, N / 2, (s16) (P * (ROOM_LENGTH - 2.f)), 0, 180, 0, 0x000B0000, bhvFadingWarp),
 #endif
     OBJECT(MODEL_WOODEN_SIGNPOST, 0, N, (s16) (P * (ROOM_LENGTH - 0.5f)), 0, 180, 0, 0, bhvMessagePanel),
-    OBJECT(MODEL_LEVEL_GEOMETRY_03, 0, N, (s16) (P * ROOM_LENGTH), 0, 180, 0, 0, bhvSignOnWall),
+    OBJECT(MODEL_LEVEL_GEOMETRY_04, 0, N, (s16) (P * ROOM_LENGTH), 0, 180, 0, 0, bhvSignOnWall),
     RETURN(),
 };
 

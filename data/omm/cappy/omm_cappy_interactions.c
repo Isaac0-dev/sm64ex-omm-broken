@@ -22,14 +22,29 @@ static bool omm_cappy_is_obj_targetable(struct Object *o, struct MarioState *m) 
           (omm_behavior_data_get_capture(o->behavior) && OMM_CAP_CAPPY_CAPTURE)));
 }
 
-struct Object *omm_cappy_find_target(f32 *origin, struct Object *cappy, struct MarioState *m, f32 distanceMax) {
+struct Object *omm_cappy_find_target(f32 *origin, struct Object *cappy, struct MarioState *m, Vec3f direction, f32 distanceMax) {
     struct Object *target = NULL;
     struct Object *targetCoin = NULL;
     f32 distanceMin = distanceMax;
     f32 distanceCoinMin = distanceMax;
     for_each_object_in_cappy_lists(obj) {
         if (obj != cappy && omm_cappy_is_obj_targetable(obj, m)) {
-            f32 distToCappy = vec3f_dist(origin, &obj->oPosX) - (cappy->hitboxRadius + obj->hitboxRadius);
+
+            // Cappy's homing attack range is greater if the targeted object is in
+            // the same direction as Cappy's displacement (D-pad or Cappy's velocity)
+            Vec3f dirToObj = {
+                obj->oPosX - origin[0],
+                obj->oPosY - origin[1],
+                obj->oPosZ - origin[2]
+            };
+            f32 distToObj = vec3f_length(dirToObj);
+            f32 dotObjDirCappyDir = vec3f_dot(vec3f_normalize(dirToObj), direction);
+            f32 distToCappy = (
+                (distToObj - (cappy->hitboxRadius + obj->hitboxRadius)) /
+                relerp_0_1_f(dotObjDirCappyDir, 0.f, 1.f, 1.f, OMM_CAPPY_HOMING_ATTACK_RANGE_MULT)
+            );
+
+            // Compare distances
             if (omm_obj_is_coin(obj)) {
                 if (distToCappy < distanceCoinMin) {
                     distanceCoinMin = distToCappy;
@@ -92,7 +107,9 @@ void omm_cappy_try_to_target_next_object(struct Object *cappy, struct MarioState
     if (cappy->oCappyFlags & OMM_CAPPY_FLAG_HOMING_ATTACK) {
         f32 velocity = OMM_CAPPY_HOMING_ATTACK_VELOCITY;
         s32 duration = OMM_CAPPY_HOMING_ATTACK_DURATION;
-        struct Object *target = omm_cappy_find_target(&cappy->oPosX, cappy, m, velocity * duration);
+        Vec3f direction = { cappy->oVelX, cappy->oVelY, cappy->oVelZ };
+        vec3f_normalize(direction);
+        struct Object *target = omm_cappy_find_target(&cappy->oPosX, cappy, m, direction, velocity * duration);
         if (target) {
             f32 dx = target->oPosX - cappy->oPosX;
             f32 dy = target->oPosY - cappy->oPosY;

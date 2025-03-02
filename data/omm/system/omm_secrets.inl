@@ -154,3 +154,20 @@ OMM_TEXT_SECRET_(R96_SECRET,
 "Drinking milk gives Mario enough strength to change\n"
 "the landscape with a punch, kick or ground pound."
 )
+
+// TODO: YOSHIMODE
+// OMM_TEXT_SECRET_(YOSHI_ENDING,
+// "PLACEHOLDER",
+
+// "PLACEHOLDER",
+
+// "PLACEHOLDER"
+// )
+
+// OMM_TEXT_SECRET_(SMSR_YOSHI_ENDING,
+// "PLACEHOLDER",
+
+// "PLACEHOLDER",
+
+// "PLACEHOLDER"
+// )

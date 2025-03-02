@@ -113,7 +113,7 @@ static void bhv_omm_peach_vibe_rage_shockwave_update() {
                 }
                 g0 = i;
             }
-                
+
             // Airborne, skip until at least one ground point is processed
             else if (g0 != -1) {
 

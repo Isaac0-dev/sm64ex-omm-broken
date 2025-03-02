@@ -1,6 +1,7 @@
 #ifdef AAPI_SDL2
 
 #include <SDL2/SDL.h>
+#include <stdio.h>
 
 #include "audio_api.h"
 

@@ -14,6 +14,7 @@ extern const OmmSparklyData gOmmSparklyData[4][OMM_SPARKLY_STARS_MAX];
 
 typedef struct OmmSparklyContext {
     const OmmSparklyData *data;
+    struct Object *spawner;
     struct Object *star;
     s32 state;
     bool inited;

@@ -97,11 +97,11 @@ static s32 omm_act_hang_moving(struct MarioState *m) {
         action_a_pressed(1, ACT_FREEFALL, 0, RETURN_CANCEL);
         action_b_pressed(1, ACT_FREEFALL, 0, RETURN_CANCEL);
         action_condition(!m->ceil || m->ceil->type != SURFACE_HANGABLE, ACT_FREEFALL, 0, RETURN_CANCEL);
-        
+
         omm_mario_update_hanging_speed(m);
         mario_set_forward_vel(m, m->forwardVel);
         action_condition(perform_hang_step(m) == HANG_STEP_LEFT_CEIL, ACT_FREEFALL, 0, RETURN_BREAK);
-        
+
         f32 animSpeed = relerp_0_1_f(m->forwardVel, 0.f, OMM_MARIO_HANG_MAX_SPEED, 1.f, 2.f);
         ANM((m->actionArg ? MARIO_ANIM_MOVE_ON_WIRE_NET_RIGHT : MARIO_ANIM_MOVE_ON_WIRE_NET_LEFT), animSpeed);
         if (obj_anim_is_past_frame(m->marioObj, 12)) {
@@ -205,7 +205,7 @@ static s32 omm_act_hold_bowser(struct MarioState *m) {
 
     // Prepare release
     if (!m->actionState && (m->controller->buttonPressed & B_BUTTON) && (abs_s(m->angleVel[1]) >= 0x0E00)) {
-        
+
         // Target the nearest mine to throw Bowser into
         // Takes the current rotation into account
         struct Object *targetMine = NULL;
@@ -237,7 +237,7 @@ static s32 omm_act_hold_bowser(struct MarioState *m) {
     if (m->actionState) {
         u16 angleDiff = (u16) abs_s(m->faceAngle[1] - sOmmBowserTargetMine->yawAngle);
         if (angleDiff < (u16) abs_s((s16) sOmmBowserTargetMine->yawVel)) {
-        
+
             // Set Bowser's starting point and direction
             m->faceAngle[1] = sOmmBowserTargetMine->yawAngle;
             struct Object *bowser = obj_get_first_with_behavior(bhvOmmBowser);
@@ -253,9 +253,9 @@ static s32 omm_act_hold_bowser(struct MarioState *m) {
             return OMM_MARIO_ACTION_RESULT_CANCEL;
         }
         m->angleVel[1] = sOmmBowserTargetMine->yawVel;
-    
+
     } else {
-    
+
         // Spin accel
         if (m->intendedMag > 20.f) {
             if (m->actionArg == 0) {

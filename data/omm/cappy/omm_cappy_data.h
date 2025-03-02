@@ -53,6 +53,7 @@
 #define OMM_CAPPY_BHV_FLYING_ANGLE_VEL              (0x1000)
 #define OMM_CAPPY_BHV_FLYING_CALL_BACK_START        (16)
 #define OMM_CAPPY_HOMING_ATTACK_ORIGIN              (cappy->oCappyBehavior >= OMM_CAPPY_BHV_SPIN_GROUND ? m->pos : &cappy->oPosX)
+#define OMM_CAPPY_HOMING_ATTACK_RANGE_MULT          (1.2f)
 #define OMM_CAPPY_HOMING_ATTACK_VELOCITY            (80.f * OMM_CAPPY_MILK_MULTIPLIER(2))
 #define OMM_CAPPY_HOMING_ATTACK_VELOCITY_MULT       (cappy->oCappyBehavior >= OMM_CAPPY_BHV_SPIN_GROUND ? 1.5f : 1.f)
 #define OMM_CAPPY_HOMING_ATTACK_DURATION            (OMM_CHEAT_HOMING_ATTACK_GLOBAL_RANGE ? (OMM_CAPPY_LIFETIME - 20) : (cappy->oCappyBehavior == OMM_CAPPY_BHV_FLYING ? 6 : 5)) // Performs better with CSF cheat

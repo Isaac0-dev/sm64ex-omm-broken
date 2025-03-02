@@ -101,7 +101,7 @@ struct OmmData {
             bool bounced;
             struct Object *cappy;
         } cappy;
-    
+
         // Capture data
         struct {
             struct Object *obj;
@@ -276,6 +276,7 @@ struct OmmData {
                 s32 tongueTimer;
                 f32 tongueSine;
                 struct Object *tongued;
+                bool lavaBoost;
             } yoshi;
         };
     } object[1];
@@ -302,6 +303,7 @@ struct OmmData {
 
     // Globals
     struct {
+        bool yoshiMode;
 #if OMM_GAME_IS_SMSR
         bool booZeroLife;
 #endif
@@ -326,6 +328,10 @@ struct OmmData {
         s32 mouseDeltaY;
         s32 mouseWheelX;
         s32 mouseWheelY;
+        struct {
+            Vec3f displacement;
+            bool warped;
+        } instantWarp;
     } globals[1];
 };
 extern struct OmmData gOmmData[1];

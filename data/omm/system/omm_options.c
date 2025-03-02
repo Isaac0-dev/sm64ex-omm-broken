@@ -115,12 +115,13 @@ DEFINE_TOGGLE(gOmmShowFPS, false);                                              
 DEFINE_CHOICE(gOmmTextureCaching, OMM_TEXTURE_CACHING_PERMANENT, 3);            // Permanent
 DEFINE_TOGGLE(gOmmModelPackCaching, true);                                      // Enabled
 DEFINE_CHOICE(gOmmHudMode, OMM_HUD_MODE_VANISHING, 4);                          // Vanishing
+DEFINE_SCROLL(gOmmHudSize, OMM_RENDER_GLYPH_SIZE_DEFAULT);                      // 10
 DEFINE_CHOICE(gOmmCameraInvert1stPerson, OMM_CAMERA_INVERT_NONE, 4);            // Disabled
 DEFINE_CHOICE(gOmmCameraInvert3rdPerson, OMM_CAMERA_INVERT_NONE, 4);            // Disabled
 DEFINE_TOGGLE(gOmmCsPalettePreset, true);                                       // Enabled
 DEFINE_TOGGLE(gOmmCsAnimations, true);                                          // Enabled
 DEFINE_TOGGLE(gOmmCsVoices, true);                                              // Enabled
-DEFINE_SCROLL(gOmmCsVoiceVolumeFactor, 90);                                     // 90%
+DEFINE_SCROLL(gOmmCsVoiceVolumeFactor, 100);                                    // 100%
 DEFINE_TOGGLE(gOmmTimeTrialsEnabled, false);                                    // Disabled
 DEFINE_TOGGLE(gOmmTimeTrialsShowStarGhosts, true);                              // Enabled
 DEFINE_TOGGLE(gOmmTimeTrialsShowBowserGhosts, true);                            // Enabled
@@ -1152,7 +1153,7 @@ OMM_ROUTINE_PRE_RENDER(omm_opt_update_shortcuts) {
                 case 3: r = 0x20, g = 0xE0, b = 0x20; break;
             }
             omm_render_string(x + 1, 22, r / 4, g / 4, b / 4, 0xFF, sOmmOptShortcutDisplay->text[i], 0);
-            omm_render_string(x, 23, r, g, b, 0xFF, sOmmOptShortcutDisplay->text[i], 0); 
+            omm_render_string(x, 23, r, g, b, 0xFF, sOmmOptShortcutDisplay->text[i], 0);
             x += omm_render_get_string_width(sOmmOptShortcutDisplay->text[i]);
         }
         gSPEndDisplayList(gDisplayListHead++);

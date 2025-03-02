@@ -98,9 +98,7 @@ static void omm_act_walking_anim_and_audio(struct MarioState *m) {
 }
 
 void omm_act_roll_update_gfx(struct MarioState *m) {
-    f32 headHeight;
-    geo_compute_marios_heights(m->marioObj);
-    geo_get_marios_heights(NULL, &headHeight, NULL);
+    f32 headHeight = geo_get_marios_anim_part_height(m->marioObj->oGraphNode, MARIO_ANIM_PART_HEAD);
     f32 rollOffsetMult = (1.f + 0.5f * ((headHeight - 85.f) / 85.f)) * m->marioObj->oScaleY;
     Vec3f v = { 0.f, -60.f * rollOffsetMult, -20.f };
     vec3f_rotate_zxy(v, v, m->faceAngle[0], m->faceAngle[1], 0);
@@ -243,7 +241,7 @@ static s32 omm_act_riding_shell_ground(struct MarioState *m) {
         if (abs_s(currTilt) == 0x400) cTiltDir = 0;
     }
     m->actionTimer = (u16) ((((u16) currTilt) & 0xFFFC) | (((u16) cTiltDir) & 0x0003));
-    
+
     // Perform step
     s32 step = perform_ground_step(m);
     action_condition(step == GROUND_STEP_LEFT_GROUND, ACT_RIDING_SHELL_FALL, 0, RETURN_BREAK, play_mario_sound(m, SOUND_ACTION_TERRAIN_JUMP, 0););
@@ -284,7 +282,6 @@ static s32 omm_act_crouching_crawling(struct MarioState *m) {
 
 static s32 omm_act_burning_ground(struct MarioState *m) {
     if (OMM_MOVESET_ODYSSEY) {
-        m->hurtCounter += (m->marioObj->oMarioBurnTimer == 0);
         action_condition(m->marioObj->oMarioBurnTimer > 160, ACT_WALKING, 0, RETURN_CANCEL);
     }
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
@@ -307,7 +304,7 @@ static s32 omm_act_slide(struct MarioState *m) {
 }
 
 static s32 omm_act_move_punching(struct MarioState *m) {
-    action_condition(OMM_MOVESET_ODYSSEY && OMM_PERRY_SWORD_ACTION, ACT_OMM_PEACH_ATTACK_GROUND, ((m->prevAction == ACT_OMM_SPIN_GROUND) ? 4 : 0), RETURN_CANCEL);
+    action_condition(OMM_MOVESET_ODYSSEY && OMM_PERRY_IS_AVAILABLE, ACT_OMM_PEACH_ATTACK_GROUND, ((m->prevAction == ACT_OMM_SPIN_GROUND) ? 4 : 0), RETURN_CANCEL);
     action_zb_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_ROLL, 0, RETURN_CANCEL);
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }

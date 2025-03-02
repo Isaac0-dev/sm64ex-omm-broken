@@ -9,11 +9,13 @@
 #define OMM_SPARKLY_MODE_IS_HARD        (gOmmSparklyMode == OMM_SPARKLY_MODE_HARD)
 #define OMM_SPARKLY_MODE_IS_LUNATIC     (gOmmSparklyMode == OMM_SPARKLY_MODE_LUNATIC)
 
-s32  omm_sparkly_get_index(s32 sparklyMode, s32 levelNum, s32 areaIndex);
+s32  omm_sparkly_get_star_index(s32 sparklyMode, s32 levelNum, s32 areaIndex);
+s32  omm_sparkly_get_star_index_in_level(s32 sparklyMode, s32 levelNum, s32 firstAreaIndex);
 u8  *omm_sparkly_get_level_name(ustr_t dst, s32 sparklyMode, s32 starIndex);
 u8  *omm_sparkly_get_star_name(ustr_t dst, s32 sparklyMode, s32 starIndex);
 s32  omm_sparkly_get_collected_count(s32 sparklyMode);
 s32  omm_sparkly_get_bowser_4_index(s32 sparklyMode);
+s32  omm_sparkly_get_num_stars(s32 sparklyMode);
 
 bool omm_sparkly_is_available(s32 sparklyMode);
 bool omm_sparkly_is_unlocked(s32 sparklyMode);
@@ -33,6 +35,7 @@ void omm_sparkly_unlock_mode(s32 sparklyMode);
 void omm_sparkly_start_timer(s32 sparklyMode);
 void omm_sparkly_collect_star(s32 sparklyMode, s32 starIndex);
 void omm_sparkly_collect_grand_star(s32 sparklyMode);
+void omm_sparkly_set_completed(s32 sparklyMode);
 void omm_sparkly_unlock_bowser_4(s32 sparklyMode);
 void omm_sparkly_clear_mode(s32 sparklyMode);
 void omm_sparkly_clear_all();
@@ -70,7 +73,7 @@ bool omm_sparkly_level__eight_shards(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level__eight_shards_and_lava(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level__secrets_in_order(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level__ten_goombas_stack(struct MarioState *m, const s32 *params);
-bool omm_sparkly_level__launch_cappy_to_target(struct MarioState *m, const s32 *params);
+bool omm_sparkly_level__launch_cappy_at_target(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level__dont_touch_floor(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level__toads_on_pillars(struct MarioState *m, const s32 *params);
 bool omm_sparkly_level__toads_hide_and_seek(struct MarioState *m, const s32 *params);
@@ -103,6 +106,5 @@ void omm_sparkly_interact_grand_star(struct MarioState *m, struct Object *o);
 
 void omm_sparkly_ending_dialog();
 void omm_sparkly_ending_cutscene();
-void omm_sparkly_ending_screen();
 
 #endif

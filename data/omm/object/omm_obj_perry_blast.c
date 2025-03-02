@@ -94,7 +94,7 @@ static void bhv_omm_perry_blast_update() {
     }
 
     // Update gfx
-    OmmPerryBlastGeoData *data = geo_get_geo_data(o, 
+    OmmPerryBlastGeoData *data = geo_get_geo_data(o,
         sizeof(OmmPerryBlastGeoData),
         sOmmPerryBlastGeoDataDisplayListsOffsets,
         array_length(sOmmPerryBlastGeoDataDisplayListsOffsets)
@@ -103,7 +103,7 @@ static void bhv_omm_perry_blast_update() {
     f32 alpha = relerp_0_1_f(o->oTimer, 5, OMM_PERRY_BLAST_DURATION, 1.f, 0.f);
     obj_set_angle(o, 0, 0, 0);
     obj_set_scale(o, 1, 1, 1);
-    
+
     // Vertices and triangles
     Vtx *vtx = data->vtx;
     Gfx *tri = data->tri;

@@ -114,7 +114,7 @@
 #define OMM_PE_COLOR_MAP_DEFAULT_H      (80)
 #define OMM_PE_COLOR_MAP_DEFAULT_X      (OMM_PE_TEXT_X)
 #define OMM_PE_COLOR_MAP_1_DEFAULT_Y    (OMM_PE_TEXT_COLOR_1_Y - 2 - OMM_PE_COLOR_MAP_DEFAULT_H)
-#define OMM_PE_COLOR_MAP_2_DEFAULT_Y    (OMM_PE_TEXT_COLOR_2_Y - 2 - OMM_PE_COLOR_MAP_DEFAULT_H) 
+#define OMM_PE_COLOR_MAP_2_DEFAULT_Y    (OMM_PE_TEXT_COLOR_2_Y - 2 - OMM_PE_COLOR_MAP_DEFAULT_H)
 
 #define OMM_PE_COLOR_PICKER_X(_x_)      (pe->colormaps[k]->x + 1.5f + (pe->colormaps[k]->w - 2) * (_x_))
 #define OMM_PE_COLOR_PICKER_Y(_y_)      (pe->colormaps[k]->y + 1 + (pe->colormaps[k]->h - 2) * (_y_))

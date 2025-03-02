@@ -47,14 +47,13 @@ const GeoLayout omm_geo_peach_vibe_calm_sparkle[] = {
 static void bhv_omm_peach_vibe_calm_sparkle_update() {
     struct Object *o = gCurrentObject;
     if (o->oTimer < 30) {
-        Vec3f marioRootPos; geo_get_marios_root_pos(marioRootPos);
+        Vec3f marioRootPos; geo_get_marios_anim_part_pos(NULL, marioRootPos, MARIO_ANIM_PART_ROOT);
         o->oPosX = marioRootPos[0] + o->oHomeX + o->oVelX * o->oTimer;
         o->oPosY = marioRootPos[1] + o->oHomeY + o->oVelY * o->oTimer;
         o->oPosZ = marioRootPos[2] + o->oHomeZ + o->oVelZ * o->oTimer;
         o->oAnimState++;
     } else {
         obj_mark_for_deletion(o);
-    
     }
 }
 

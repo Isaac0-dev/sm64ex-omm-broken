@@ -45,6 +45,7 @@ static const struct ConfigOption OMM_CONFIG_OPTIONS[] = {
     CONFIG_CHOICE("omm_texture_caching", gOmmTextureCaching),
     CONFIG_TOGGLE("omm_model_pack_caching", gOmmModelPackCaching),
     CONFIG_CHOICE("omm_hud_mode", gOmmHudMode),
+    CONFIG_SCROLL("omm_hud_size", gOmmHudSize),
     CONFIG_CHOICE("omm_camera_invert_1st_person", gOmmCameraInvert1stPerson),
     CONFIG_CHOICE("omm_camera_invert_3rd_person", gOmmCameraInvert3rdPerson),
     CONFIG_CHOICE_SC("omm_character", gOmmCharacter),

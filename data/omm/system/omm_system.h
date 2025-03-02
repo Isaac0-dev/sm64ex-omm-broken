@@ -21,6 +21,7 @@ bool omm_is_game_paused();
 bool omm_is_transition_active();
 bool omm_is_ending_cutscene();
 bool omm_is_ending_cake_screen();
+bool omm_is_warping_to_last_course();
 
 //
 // Profiling
@@ -156,7 +157,7 @@ bool omm_camera_is_available(struct MarioState *m);
 bool omm_camera_is_bowser_fight();
 s16  omm_camera_get_intended_yaw(struct MarioState *m);
 s32  omm_camera_get_relative_dist_mode();
-void omm_camera_warp(struct Camera *c, f32 dx, f32 dy, f32 dz);
+void omm_camera_warp(struct Camera *c, Vec3f displacement);
 bool omm_camera_snapshot_mode_init();
 void omm_camera_snapshot_mode_update();
 
@@ -223,6 +224,8 @@ bool omm_restart_area();
 bool omm_exit_level(s32 levelNum, s32 areaIndex, bool instant);
 bool omm_return_to_castle(bool fadeOut, bool force);
 bool omm_is_warping();
+void omm_process_instant_warp(struct MarioState *m, Vec3f displacement, s16 areaIndex);
+void omm_check_instant_warp();
 void *omm_update_warp(void *cmd, bool inited);
 
 //
@@ -306,14 +309,14 @@ void omm_stats_reset(OmmStats *stats);
 // Rewards
 //
 
-#define OMM_REWARD_INSTANT_CAPS     (0x00)
-#define OMM_REWARD_UNLIMITED_CAPS   (0x01)
-#define OMM_REWARD_SUMMON_YOSHI     (0x02)
-#define OMM_REWARD_SPARKLY_STARS    (0x03)
-#define OMM_REWARD_SPARKLY_SPARKLES (0x04)
-#define OMM_REWARD_PLAYABLE_PEACH   (0x05)
-#define OMM_REWARD_PERRY_CHARGE     (0x06)
-#define OMM_REWARD__REDACTED_       (0x07)
+#define OMM_REWARD_INSTANT_CAPS         (0x00)
+#define OMM_REWARD_UNLIMITED_CAPS       (0x01)
+#define OMM_REWARD_SUMMON_YOSHI         (0x02)
+#define OMM_REWARD_SPARKLY_STARS        (0x03)
+#define OMM_REWARD_SPARKLY_SPARKLES     (0x04)
+#define OMM_REWARD_PLAYABLE_PEACH       (0x05)
+#define OMM_REWARD_PERRY_CHARGE         (0x06)
+#define OMM_REWARD__REDACTED_           (0x07)
 
 #define OMM_REWARD_IS_INSTANT_CAPS_UNLOCKED         omm_rewards_is_unlocked(OMM_REWARD_INSTANT_CAPS, true)
 #define OMM_REWARD_IS_UNLIMITED_CAPS_UNLOCKED       omm_rewards_is_unlocked(OMM_REWARD_UNLIMITED_CAPS, true)
@@ -333,20 +336,23 @@ bool omm_rewards_get(u32 reward, const char **name, const char **cond, const cha
 // Secrets
 //
 
-#define OMM_SECRET_BOWSER_THROW     (0x00)
-#define OMM_SECRET_DARK_BASEMENT    (0x01)
-#define OMM_SECRET_PEACHY_ROOM      (0x02)
-#define OMM_SECRET_FLYING_DORRIE    (0x03)
-#define OMM_SECRET_TOAD_CHEAT_CODE  (0x04)
-#define OMM_SECRET_CHEATER_FISH     (0x05)
-#define OMM_SECRET_PEACH_SECRET_1   (0x06)
-#define OMM_SECRET_PEACH_SECRET_2   (0x07)
-#define OMM_SECRET_YOSHI_SECRET     (0x08)
-#define OMM_SECRET_SMMS_SECRET      (0x09)
-#define OMM_SECRET_SM74_SECRET      (0x0A)
-#define OMM_SECRET_SMSR_SECRET      (0x0B)
-#define OMM_SECRET_SMGS_SECRET      (0x0C)
-#define OMM_SECRET_R96_SECRET       (0x0D)
+#define OMM_SECRET_BOWSER_THROW         (0x00)
+#define OMM_SECRET_DARK_BASEMENT        (0x01)
+#define OMM_SECRET_PEACHY_ROOM          (0x02)
+#define OMM_SECRET_FLYING_DORRIE        (0x03)
+#define OMM_SECRET_TOAD_CHEAT_CODE      (0x04)
+#define OMM_SECRET_CHEATER_FISH         (0x05)
+#define OMM_SECRET_PEACH_SECRET_1       (0x06)
+#define OMM_SECRET_PEACH_SECRET_2       (0x07)
+#define OMM_SECRET_YOSHI_SECRET         (0x08)
+#define OMM_SECRET_SMMS_SECRET          (0x09)
+#define OMM_SECRET_SM74_SECRET          (0x0A)
+#define OMM_SECRET_SMSR_SECRET          (0x0B)
+#define OMM_SECRET_SMGS_SECRET          (0x0C)
+#define OMM_SECRET_R96_SECRET           (0x0D)
+// TODO: YOSHIMODE
+// #define OMM_SECRET_YOSHI_ENDING         (0x0E)
+// #define OMM_SECRET_SMSR_YOSHI_ENDING    (0x0F)
 
 u32  omm_secrets_get_count();
 u32  omm_secrets_get_unlocked_count();

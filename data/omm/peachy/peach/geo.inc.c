@@ -250,21 +250,21 @@ static const GeoLayout omm_geo_peach_normal_legs[] = {
             GEO_BRANCH(1, omm_geo_peach_normal_left_leg),
             GEO_BRANCH(1, omm_geo_peach_normal_right_leg),
         GEO_CLOSE_NODE(),
-        
+
         // Show the left leg, hide the right leg
         GEO_TRANSLATE_NODE(LAYER_OPAQUE, 0, 0, 0),
         GEO_OPEN_NODE(),
             GEO_BRANCH(1, omm_geo_peach_normal_left_leg),
             GEO_BRANCH(1, omm_geo_peach_normal_right_leg_hidden),
         GEO_CLOSE_NODE(),
-        
+
         // Show the right leg, hide the left leg
         GEO_TRANSLATE_NODE(LAYER_OPAQUE, 0, 0, 0),
         GEO_OPEN_NODE(),
             GEO_BRANCH(1, omm_geo_peach_normal_left_leg_hidden),
             GEO_BRANCH(1, omm_geo_peach_normal_right_leg),
         GEO_CLOSE_NODE(),
-        
+
         // Hide both legs
         GEO_TRANSLATE_NODE(LAYER_OPAQUE, 0, 0, 0),
         GEO_OPEN_NODE(),

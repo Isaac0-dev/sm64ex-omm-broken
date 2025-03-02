@@ -124,6 +124,14 @@ OMM_TEXTURE_(HUD_ICON_CAP_W_EMPTY,                      "hud/omm_texture_hud_ico
 OMM_TEXTURE_(HUD_ICON_CAP_M_EMPTY,                      "hud/omm_texture_hud_icon_cap_m.rgba32" OMM_TEXTURE_WHITEN)
 OMM_TEXTURE_(HUD_ICON_CAP_V_EMPTY,                      "hud/omm_texture_hud_icon_cap_v.rgba32" OMM_TEXTURE_WHITEN)
 OMM_TEXTURE_(HUD_ICON_KEY_EMPTY,                        "hud/omm_texture_hud_icon_key.rgba32" OMM_TEXTURE_WHITEN)
+OMM_TEXTURE_(HUD_1_HEALTH,                              "hud/omm_texture_hud_health_1.rgba32")
+OMM_TEXTURE_(HUD_3_HEALTH,                              "hud/omm_texture_hud_health_3.rgba32")
+OMM_TEXTURE_(HUD_NO_GROUND,                             "hud/omm_texture_hud_no_ground.rgba32")
+OMM_TEXTURE_(HUD_NO_BUTTON,                             "hud/omm_texture_hud_no_button.rgba32")
+OMM_TEXTURE_(HUD_NO_X_BUTTON,                           "hud/omm_texture_hud_no_x_button.rgba32")
+OMM_TEXTURE_(HUD_NO_MUSHROOM,                           "hud/omm_texture_hud_no_mushroom.rgba32")
+OMM_TEXTURE_(HUD_NO_CAPTURE,                            "hud/omm_texture_hud_no_capture.rgba32")
+OMM_TEXTURE_(HUD_NO_VIBE,                               "hud/omm_texture_hud_no_vibe.rgba32")
 
 OMM_TEXTURE_(FONT_DISPLAY,                              "font/omm_texture_font_display.rgba32")
 OMM_TEXTURE_(FONT_PALETTE_EDITOR,                       "font/omm_texture_font_palette_editor.rgba32")
@@ -181,6 +189,7 @@ OMM_TEXTURE_(BOWSER_5_3,                                "bowser/omm_texture_bows
 OMM_TEXTURE_(BOWSER_5_4,                                "bowser/omm_texture_bowser_5_4.rgba32")
 OMM_TEXTURE_(BOWSER_5_5,                                "bowser/omm_texture_bowser_5_5.rgba32")
 
+OMM_TEXTURE_(ENDING_YOSHI,                              "ending/omm_texture_ending_yoshi.rgba32")
 OMM_TEXTURE_(ENDING_0_MARIO,                            "ending/omm_texture_ending_0_mario.rgba32")
 OMM_TEXTURE_(ENDING_0_LUIGI,                            "ending/omm_texture_ending_0_luigi.rgba32")
 OMM_TEXTURE_(ENDING_0_WARIO,                            "ending/omm_texture_ending_0_wario.rgba32")

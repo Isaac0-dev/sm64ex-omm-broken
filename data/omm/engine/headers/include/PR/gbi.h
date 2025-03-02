@@ -3,6 +3,7 @@
 #pragma GCC push_options
 #pragma GCC diagnostic ignored "-Wcomment"
 
+#include <stdio.h>
 #include <PR/ultratypes.h>
 #define GBI_FLOATS
 
@@ -105,7 +106,7 @@
 #define G_INVERTCULL                        0xcf
 
 // G_MTX: parameter flags
-#define G_MTX_MODELVIEW                     0x00 
+#define G_MTX_MODELVIEW                     0x00
 #define G_MTX_PROJECTION                    0x04
 #define G_MTX_MUL                           0x00
 #define G_MTX_LOAD                          0x02
@@ -562,27 +563,27 @@
     Z_CMP | Z_UPD | CVG_DST_FULL | ALPHA_CVG_SEL | \
     ZMODE_OPA | \
     GBL_c##clk(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM)
-    
+
 #define RM_ZB_XLU_SURF(clk) \
     Z_CMP | IM_RD | CVG_DST_FULL | FORCE_BL | ZMODE_XLU | \
     GBL_c##clk(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA)
-    
+
 #define RM_ZB_OPA_DECAL(clk) \
     Z_CMP | CVG_DST_FULL | ALPHA_CVG_SEL | ZMODE_DEC | \
     GBL_c##clk(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM)
-    
+
 #define RM_ZB_XLU_DECAL(clk) \
     Z_CMP | IM_RD | CVG_DST_FULL | FORCE_BL | ZMODE_DEC | \
     GBL_c##clk(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA)
-    
+
 #define RM_ZB_CLD_SURF(clk) \
     Z_CMP | IM_RD | CVG_DST_SAVE | FORCE_BL | ZMODE_XLU | \
     GBL_c##clk(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA)
-    
+
 #define RM_ZB_OVL_SURF(clk) \
     Z_CMP | IM_RD | CVG_DST_SAVE | FORCE_BL | ZMODE_DEC | \
     GBL_c##clk(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA)
-    
+
 #define RM_ZB_PCL_SURF(clk) \
     Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | \
     G_AC_DITHER | \
@@ -785,10 +786,10 @@ typedef struct {
     s8 SourceImageBitSize;
     s16 SourceImageOffsetS;
     s16 SourceImageOffsetT;
-    s8 dummy[4]; 
+    s8 dummy[4];
 } uSprite_t;
 
-typedef union {    
+typedef union {
     uSprite_t s;
     u64 force_structure_allignment[3];
 } uSprite;
@@ -1443,7 +1444,7 @@ typedef union {
 #define LIGHT_2         2
 #define LIGHT_3         3
 #define LIGHT_4         4
-#define LIGHT_5         5    
+#define LIGHT_5         5
 #define LIGHT_6         6
 #define LIGHT_7         7
 #define LIGHT_8         8

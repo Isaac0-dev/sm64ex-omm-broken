@@ -30,7 +30,7 @@
 
 #define OMM_COLLISION_CHECK_PUS                         (OMM_MOVESET_ODYSSEY)
 #define OMM_COLLISION_CHECK_NEIGHBOR_CELLS              (OMM_MOVESET_ODYSSEY)
-#define OMM_COLLISION_SELECT_NEAREST_WALL               (OMM_MOVESET_ODYSSEY)
+#define OMM_COLLISION_FIX_WALL_COLLISIONS               0 // TODO: Disable that for now
 #define OMM_COLLISION_FIX_UNREFERENCED_WALLS            (OMM_MOVESET_ODYSSEY)
 #define OMM_COLLISION_FIX_OUT_OF_BOUNDS_SLANTED_WALLS   (OMM_MOVESET_ODYSSEY)
 #define OMM_STEP_NUM_SUB_STEPS                          (OMM_MOVESET_ODYSSEY ? 16 : 4)
@@ -101,6 +101,7 @@
 #define OMM_HUD_VANISHING                               (gOmmHudMode == OMM_HUD_MODE_VANISHING)
 #define OMM_HUD_PRO                                     (gOmmHudMode == OMM_HUD_MODE_PRO)
 #define OMM_HUD_NONE                                    (gOmmHudMode == OMM_HUD_MODE_NONE)
+#define OMM_HUD_SHOW_NON_ESSENTIAL                      (!OMM_HUD_NONE && (!OMM_HUD_PRO || omm_is_game_paused()))
 #define OMM_CHEAT_UNLIMITED_CAPPY_BOUNCES               (gOmmCheatUnlimitedCappyBounces == 1)
 #define OMM_CHEAT_CAPPY_STAYS_FOREVER                   (gOmmCheatCappyStaysForever == 1)
 #define OMM_CHEAT_HOMING_ATTACK_GLOBAL_RANGE            (gOmmCheatHomingAttackGlobalRange == 1)
@@ -217,12 +218,13 @@
 // NPCs
 #define OMM_DIALOG_YOSHI_CAPTURE                        (OMM_DIALOG_START_INDEX + 0x020)
 #define OMM_DIALOG_TOAD_SECRET                          (OMM_DIALOG_START_INDEX + 0x021)
-#define OMM_DIALOG_SPARKLY_MIPS_1                       (OMM_DIALOG_START_INDEX + 0x022)
-#define OMM_DIALOG_SPARKLY_MIPS_2                       (OMM_DIALOG_START_INDEX + 0x023)
-#define OMM_DIALOG_SPARKLY_MIPS_3                       (OMM_DIALOG_START_INDEX + 0x024)
-#define OMM_DIALOG_SPARKLY_TOAD_1                       (OMM_DIALOG_START_INDEX + 0x025)
-#define OMM_DIALOG_SPARKLY_TOAD_2                       (OMM_DIALOG_START_INDEX + 0x026)
-#define OMM_DIALOG_SPARKLY_TOAD_3                       (OMM_DIALOG_START_INDEX + 0x027)
+#define OMM_DIALOG_TOAD_YOSHI                           (OMM_DIALOG_START_INDEX + 0x022)
+#define OMM_DIALOG_SPARKLY_MIPS_1                       (OMM_DIALOG_START_INDEX + 0x023)
+#define OMM_DIALOG_SPARKLY_MIPS_2                       (OMM_DIALOG_START_INDEX + 0x024)
+#define OMM_DIALOG_SPARKLY_MIPS_3                       (OMM_DIALOG_START_INDEX + 0x025)
+#define OMM_DIALOG_SPARKLY_TOAD_1                       (OMM_DIALOG_START_INDEX + 0x026)
+#define OMM_DIALOG_SPARKLY_TOAD_2                       (OMM_DIALOG_START_INDEX + 0x027)
+#define OMM_DIALOG_SPARKLY_TOAD_3                       (OMM_DIALOG_START_INDEX + 0x028)
 
 // Bowser
 #define OMM_DIALOG_BOWSER_1_INTRO                       (OMM_DIALOG_START_INDEX + 0x080)
@@ -406,6 +408,7 @@ extern int OMM_STAR_COLOR_[OMM_STAR_COLOR_COUNT];
 #define OMM_PLAYER_PEACH                                (1)
 #define OMM_PLAYER_LUIGI                                (2)
 #define OMM_PLAYER_WARIO                                (3)
+#define OMM_PLAYER_YOSHI                                (4) // Used for text replacement and some sounds
 #define OMM_PLAYER_IS_MARIO                             (omm_player_get_selected_index() == OMM_PLAYER_MARIO)
 #define OMM_PLAYER_IS_PEACH                             (omm_player_get_selected_index() == OMM_PLAYER_PEACH)
 #define OMM_PLAYER_IS_LUIGI                             (omm_player_get_selected_index() == OMM_PLAYER_LUIGI)

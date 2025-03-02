@@ -153,6 +153,72 @@ static const OmmCappyGfxParams *omm_cappy_get_gfx_params(struct Object *o) {
     return params;
 }
 
+void omm_mario_capture_update_cap_object(struct Object *o, struct Object *obj, struct Object *cap) {
+    const OmmCappyGfxParams *params = omm_cappy_get_gfx_params(obj);
+#if OMM_CODE_DEV
+#define OMM_DEV_EXTERN_0
+#include "data/omm/dev/omm_dev_extern.inl"
+#undef OMM_DEV_EXTERN_0
+#endif
+
+    // Final transform
+    Vec3f translation = { 0, 0, 0 };
+    Vec3s rotation = { 0, 0, 0 };
+    Vec3f scale = { 0, 0, 0 };
+    Vec3f shear;
+
+    // Dynamic transform
+    if (params) {
+        Mat4 objTransform, gfxTransform;
+        if (geo_compute_capture_cappy_obj_transform(obj, params->animParts, objTransform)) {
+            vec3f_sub(objTransform[3], obj->oGfxPos);
+            mtxf_transform(gfxTransform, (f32 *) params->translation, (s16 *) params->rotation, gVec3fZero, (Vec3f) { params->scale, params->scale, params->scale });
+            mtxf_mul(gfxTransform, gfxTransform, objTransform);
+            mtxf_get_components(gfxTransform, translation, rotation, shear, scale);
+            vec3f_add(translation, obj->oGfxPos);
+        }
+    }
+
+    // Static transform
+    else {
+        if (!obj) { obj = o; }
+        Vec3f dv = {
+            -gOmmObject->cappy.tra_x * obj->oGfxScale[0],
+            +gOmmObject->cappy.tra_y * obj->oGfxScale[1],
+            +gOmmObject->cappy.tra_z * obj->oGfxScale[2]
+        };
+
+        // Object graph pos and angle
+        if (gOmmObject->cappy.o_gfx) {
+            vec3f_rotate_zxy(dv, dv, obj->oGfxAngle[0], obj->oGfxAngle[1], obj->oGfxAngle[2]);
+            vec3f_sum(translation, obj->oGfxPos, dv);
+            vec3s_sum(rotation, obj->oGfxAngle, gOmmObject->cappy.rot);
+        }
+
+        // Object pos and angle
+        else {
+            vec3f_rotate_zxy(dv, dv, obj->oFaceAnglePitch, obj->oFaceAngleYaw, obj->oFaceAngleRoll);
+            vec3f_sum(translation, &obj->oPosX, dv);
+            vec3s_set(rotation, obj->oFaceAnglePitch, obj->oFaceAngleYaw, obj->oFaceAngleRoll);
+            vec3s_add(rotation, gOmmObject->cappy.rot);
+        }
+
+        // Object scale
+        vec3f_copy(scale, obj->oGfxScale);
+        vec3f_mul(scale, gOmmObject->cappy.scale);
+    }
+
+    // Update cap object and gfx
+    obj_set_pos_vec3f(cap, translation);
+    obj_set_angle_vec3s(cap, rotation);
+    obj_set_scale_vec3f(cap, scale);
+    obj_update_gfx(cap);
+    cap->oFlags |= OBJ_FLAG_NO_SHADOW;
+    cap->oOpacity = (0xFF - o->oTransparency) * !(o->oNodeFlags & GRAPH_RENDER_INVISIBLE);
+    cap->oNodeFlags = GRAPH_RENDER_ACTIVE | (o->oNodeFlags & GRAPH_RENDER_INVISIBLE);
+    cap->activeFlags = (cap->activeFlags & ~ACTIVE_FLAG_DITHERED_ALPHA) | (o->activeFlags & ACTIVE_FLAG_DITHERED_ALPHA);
+}
+
 static void omm_mario_capture_update_mario(struct MarioState *m, struct Object *o) {
     if (gOmmMario->capture.timer >= 20) {
         obj_pos_as_vec3f(o, m->pos);
@@ -172,70 +238,7 @@ static void omm_mario_capture_update_mario(struct MarioState *m, struct Object *
 static void omm_mario_capture_update_cappy(struct Object *o) {
     struct Object *cap = obj_get_first_with_behavior(bhvOmmPossessedObjectCap);
     if (cap) {
-        struct Object *obj = gOmmObject->cappy.object;
-        const OmmCappyGfxParams *params = omm_cappy_get_gfx_params(obj);
-#if OMM_CODE_DEV
-#define OMM_DEV_EXTERN_0
-#include "data/omm/dev/omm_dev_extern.inl"
-#undef OMM_DEV_EXTERN_0
-#endif
-
-        // Final transform
-        Vec3f translation = { 0, 0, 0 };
-        Vec3s rotation = { 0, 0, 0 };
-        Vec3f scale = { 0, 0, 0 };
-        Vec3f shear;
-
-        // Dynamic transform
-        if (params) {
-            Mat4 objTransform, gfxTransform;
-            if (geo_compute_capture_cappy_obj_transform(obj, params->animParts, objTransform)) {
-                vec3f_sub(objTransform[3], obj->oGfxPos);
-                mtxf_transform(gfxTransform, (f32 *) params->translation, (s16 *) params->rotation, gVec3fZero, (Vec3f) { params->scale, params->scale, params->scale });
-                mtxf_mul(gfxTransform, gfxTransform, objTransform);
-                mtxf_get_components(gfxTransform, translation, rotation, shear, scale);
-                vec3f_add(translation, obj->oGfxPos);
-            }
-        }
-
-        // Static transform
-        else {
-            if (!obj) { obj = o; }
-            Vec3f dv = {
-                -gOmmObject->cappy.tra_x * obj->oGfxScale[0],
-                +gOmmObject->cappy.tra_y * obj->oGfxScale[1],
-                +gOmmObject->cappy.tra_z * obj->oGfxScale[2]
-            };
-
-            // Object graph pos and angle
-            if (gOmmObject->cappy.o_gfx) {
-                vec3f_rotate_zxy(dv, dv, obj->oGfxAngle[0], obj->oGfxAngle[1], obj->oGfxAngle[2]);
-                vec3f_sum(translation, obj->oGfxPos, dv);
-                vec3s_sum(rotation, obj->oGfxAngle, gOmmObject->cappy.rot);
-            }
-
-            // Object pos and angle
-            else {
-                vec3f_rotate_zxy(dv, dv, obj->oFaceAnglePitch, obj->oFaceAngleYaw, obj->oFaceAngleRoll);
-                vec3f_sum(translation, &obj->oPosX, dv);
-                vec3s_set(rotation, obj->oFaceAnglePitch, obj->oFaceAngleYaw, obj->oFaceAngleRoll);
-                vec3s_add(rotation, gOmmObject->cappy.rot);
-            }
-
-            // Object scale
-            vec3f_copy(scale, obj->oGfxScale);
-            vec3f_mul(scale, gOmmObject->cappy.scale);
-        }
-
-        // Update cap object and gfx
-        obj_set_pos_vec3f(cap, translation);
-        obj_set_angle_vec3s(cap, rotation);
-        obj_set_scale_vec3f(cap, scale);
-        obj_update_gfx(cap);
-        cap->oFlags |= OBJ_FLAG_NO_SHADOW;
-        cap->oOpacity = (0xFF - o->oTransparency) * !(o->oNodeFlags & GRAPH_RENDER_INVISIBLE);
-        cap->oNodeFlags = GRAPH_RENDER_ACTIVE | (o->oNodeFlags & GRAPH_RENDER_INVISIBLE);
-        cap->activeFlags = (cap->activeFlags & ~ACTIVE_FLAG_DITHERED_ALPHA) | (o->activeFlags & ACTIVE_FLAG_DITHERED_ALPHA);
+        omm_mario_capture_update_cap_object(o, gOmmObject->cappy.object, cap);
     }
 }
 
@@ -333,12 +336,12 @@ static void omm_act_possession_update_star_dance(struct MarioState *m, struct Ob
             omm_level_get_act_name(actName, gCurrLevelNum, gLastCompletedStarNum, OMM_GAME_MODE, false, false)
         );
     }
-    
+
     // Here we go!
     else if (m->actionTimer == 40) {
         set_camera_shake_from_hit(SHAKE_GROUND_POUND);
     }
-    
+
     // Resume action
     else if (m->actionTimer == 80) {
         obj_deactivate_all_with_behavior(bhvOmmStarCelebration);
@@ -574,7 +577,7 @@ s32 omm_act_possession(struct MarioState *m) {
         } else {
 
             // Press [Z] to leave the object
-            if (m->controller->buttonPressed & Z_TRIG) {
+            if (!gOmmGlobals->yoshiMode && (m->controller->buttonPressed & Z_TRIG) != 0) {
                 omm_mario_unpossess_object(m, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, 6);
                 return OMM_MARIO_ACTION_RESULT_CANCEL;
             }
@@ -597,6 +600,11 @@ s32 omm_act_possession(struct MarioState *m) {
         // If Mario loses his cap, unpossess object
         if (!(m->flags & MARIO_CAP_ON_HEAD) && !POBJ_IS_TALKING) {
             omm_mario_unpossess_object(m, OMM_MARIO_UNPOSSESS_ACT_BACKWARD_KB, 15);
+            if (gOmmGlobals->yoshiMode) {
+                m->health = OMM_HEALTH_DEAD;
+                level_trigger_warp(m, WARP_OP_DEATH);
+                obj_destroy(o);
+            }
             return OMM_MARIO_ACTION_RESULT_CANCEL;
         }
 
@@ -659,6 +667,9 @@ s32 omm_act_possession(struct MarioState *m) {
     // Unpossess if Mario is dead
     if (omm_mario_is_dead(m)) {
         omm_mario_unpossess_object(m, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
+        if (gOmmGlobals->yoshiMode) {
+            obj_destroy(o);
+        }
         return OMM_MARIO_ACTION_RESULT_CANCEL;
     }
 
@@ -838,6 +849,11 @@ bool omm_mario_possess_object(struct MarioState *m, struct Object *o, u32 posses
 
 bool omm_mario_possess_object_after_warp(struct MarioState *m) {
     if (gOmmWarp->state != POBJ_WARP_STATE_WARPING) {
+        return false;
+    }
+
+    // Don't capture things
+    if (!gOmmGlobals->yoshiMode && !OMM_CAP_CAPPY_CAPTURE) {
         return false;
     }
 

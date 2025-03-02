@@ -15,6 +15,14 @@ const GeoLayout omm_geo_vanish_mist[] = {
 // Behavior
 //
 
+static void bhv_omm_vanish_mist_init() {
+    struct MarioState *m = gMarioState;
+    struct Object *o = gCurrentObject;
+    if (omm_mario_is_invisible(m)) {
+        obj_mark_for_deletion(o);
+    }
+}
+
 static void bhv_omm_vanish_mist_update() {
     struct Object *o = gCurrentObject;
     struct Object *p = o->parentObj;
@@ -40,6 +48,7 @@ static void bhv_omm_vanish_mist_update() {
 const BehaviorScript bhvOmmVanishMist[] = {
     OBJ_TYPE_UNIMPORTANT,
     BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
+    BHV_CALL_NATIVE(bhv_omm_vanish_mist_init),
     BHV_BEGIN_LOOP(),
         BHV_CALL_NATIVE(bhv_omm_vanish_mist_update),
     BHV_END_LOOP()

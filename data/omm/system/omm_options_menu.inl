@@ -111,7 +111,7 @@ void omm_opt_init_main_menu() {
 
         // Display sub-menu
         if (menuMain.opts[i].type == OPT_SUBMENU && menuMain.opts[i].nextMenu == &menuVideo) {
-            s32 numNewOpts = 4 + OMM_GAME_IS_RF14;
+            s32 numNewOpts = 5 + OMM_GAME_IS_RF14;
             struct SubMenu *subMenu = menuMain.opts[i].nextMenu;
             struct Option *newOpts = mem_new(struct Option, subMenu->numOpts + numNewOpts);
 
@@ -180,6 +180,15 @@ void omm_opt_init_main_menu() {
                     newOpts[k].choices[1] = omm_opt_text(OMM_TEXT_OPT_HUD_MODE_VANISHING);
                     newOpts[k].choices[2] = omm_opt_text(OMM_TEXT_OPT_HUD_MODE_PRO);
                     newOpts[k].choices[3] = omm_opt_text(OMM_TEXT_OPT_HUD_MODE_NONE);
+                    k++;
+
+                    // HUD size
+                    newOpts[k].type = OPT_SCROLL;
+                    newOpts[k].scrMin = 8;
+                    newOpts[k].scrMax = 20;
+                    newOpts[k].scrStep = 1;
+                    newOpts[k].uval = &gOmmHudSize;
+                    newOpts[k].label = omm_opt_text(OMM_TEXT_OPT_HUD_SIZE);
                     k++;
 #if !OMM_GAME_IS_RF14
                     continue;
@@ -598,7 +607,7 @@ static void omm_opt_draw_menu(struct SubMenu *subMenu) {
         // Background box
         omm_opt_print_box(
             OMM_OPT_OFFSET_FROM_LEFT_EDGE - OMM_OPT_BACKGROUND_BOX_MARGIN,
-            OMM_OPT_Y - (OMM_OPT_BACKGROUND_BOX_MARGIN + OMM_OPT_OFFSET_Y * (OMM_OPT_COUNT - 1)), 
+            OMM_OPT_Y - (OMM_OPT_BACKGROUND_BOX_MARGIN + OMM_OPT_OFFSET_Y * (OMM_OPT_COUNT - 1)),
             GFX_DIMENSIONS_FROM_RIGHT_EDGE(OMM_OPT_OFFSET_FROM_RIGHT_EDGE) - GFX_DIMENSIONS_FROM_LEFT_EDGE(OMM_OPT_OFFSET_FROM_LEFT_EDGE) + 2 * OMM_OPT_BACKGROUND_BOX_MARGIN,
             2 * OMM_OPT_BACKGROUND_BOX_MARGIN + 8 + OMM_OPT_OFFSET_Y * (OMM_OPT_COUNT - 1),
             OMM_OPT_COLOR_BACKGROUND, 1

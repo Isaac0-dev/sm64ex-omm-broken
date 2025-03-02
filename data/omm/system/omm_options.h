@@ -72,6 +72,7 @@ DECLARE_TOGGLE(gOmmShowFPS);
 DECLARE_CHOICE(gOmmTextureCaching);
 DECLARE_TOGGLE(gOmmModelPackCaching);
 DECLARE_CHOICE(gOmmHudMode);
+DECLARE_SCROLL(gOmmHudSize);
 DECLARE_CHOICE(gOmmCameraInvert1stPerson);
 DECLARE_CHOICE(gOmmCameraInvert3rdPerson);
 DECLARE_KBINDS(gOmmControlsButtonA);

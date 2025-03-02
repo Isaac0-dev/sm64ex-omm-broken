@@ -199,7 +199,7 @@ static const s32 params_1_27[] = {
 
 static const s32 params_1_28[] = {
 // targetPos
-    9, 433, -1735
+    9, 433, -1735, 310
 };
 
 //
@@ -273,7 +273,7 @@ static const OmmSparklyLevel sOmmSparklyLevels[4][OMM_SPARKLY_STARS_MAX] = {
 [25] = { omm_sparkly_level__toads_hide_and_seek, params_1_25 },
 [26] = { omm_sparkly_level_basement__catch_mips, NULL },
 [27] = { omm_sparkly_level_upstairs__toads_hide_and_seek, params_1_27 },
-[28] = { omm_sparkly_level__launch_cappy_to_target, params_1_28 },
+[28] = { omm_sparkly_level__launch_cappy_at_target, params_1_28 },
 [29] = { NULL, NULL },
 },
 // Lunatic mode: Nebula Stars
@@ -331,8 +331,9 @@ void omm_sparkly_context_update_level(struct MarioState *m, const OmmSparklyData
             }
 
             // ...and grab the star before it runs out
+            bool starSpawnedNormalMode = (OMM_SPARKLY_MODE_IS_NORMAL && gOmmSparklyContext->starSpawned);
             if (gOmmSparkly->marioUpdated && !gOmmSparkly->gamePaused && !gOmmSparkly->transition && !gOmmSparkly->timeStop &&
-                (!OMM_SPARKLY_MODE_IS_NORMAL || !gOmmSparklyContext->starSpawned) && !omm_mario_is_reading(m)) {
+                !starSpawnedNormalMode && !omm_mario_is_reading(m)) {
                 if (gHudDisplay.timer > 0) {
                     gHudDisplay.timer -= updateTimer;
                     gHudDisplay.flags |= HUD_DISPLAY_FLAG_TIMER;
@@ -342,7 +343,7 @@ void omm_sparkly_context_update_level(struct MarioState *m, const OmmSparklyData
             }
 
             // Sync the cap timer with the countdown timer during Cap races
-            if ((data->flags & OMM_SPARKLY_DATA_CAPS) && gHudDisplay.timer > 0) {
+            if ((data->flags & OMM_SPARKLY_DATA_CAPS) && gHudDisplay.timer > 0 && !starSpawnedNormalMode && !omm_peach_vibe_is_active()) {
                 m->capTimer = gHudDisplay.timer;
             }
         } else {

@@ -367,7 +367,7 @@ static s32 omm_act_metal_water_triple_jump_land(struct MarioState *m) {
     action_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_GROUND, 0, RETURN_CANCEL);
     action_off_floor(1, ACT_OMM_METAL_WATER_FREEFALL, 0, RETURN_CANCEL);
     action_moving(1, ACT_OMM_METAL_WATER_WALKING, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_stationary_step(m, ACT_OMM_METAL_WATER_IDLE, MARIO_ANIM_TRIPLE_JUMP_LAND);
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
@@ -378,7 +378,7 @@ static s32 omm_act_metal_water_backflip(struct MarioState *m) {
     action_z_pressed(1, ACT_OMM_METAL_WATER_GROUND_POUND, 0, RETURN_CANCEL);
     action_b_pressed(1, ACT_OMM_METAL_WATER_JUMP_KICK, 0, RETURN_CANCEL);
     action_air_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_AIR, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_air_action_step(m, ACT_OMM_METAL_WATER_JUMP_LAND, MARIO_ANIM_BACKFLIP);
     play_flip_sounds(m, 2, 3, 17);
     return OMM_MARIO_ACTION_RESULT_BREAK;
@@ -392,7 +392,7 @@ static s32 omm_act_metal_water_backflip_land(struct MarioState *m) {
     action_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_GROUND, 0, RETURN_CANCEL);
     action_off_floor(1, ACT_OMM_METAL_WATER_FREEFALL, 0, RETURN_CANCEL);
     action_moving(1, ACT_OMM_METAL_WATER_WALKING, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_stationary_step(m, ACT_OMM_METAL_WATER_IDLE, MARIO_ANIM_TRIPLE_JUMP_LAND);
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
@@ -403,7 +403,7 @@ static s32 omm_act_metal_water_side_flip(struct MarioState *m) {
     action_z_pressed(1, ACT_OMM_METAL_WATER_GROUND_POUND, 0, RETURN_CANCEL);
     action_b_pressed(1, ACT_OMM_METAL_WATER_JUMP_KICK, 0, RETURN_CANCEL);
     action_air_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_AIR, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_air_action_step(m, ACT_OMM_METAL_WATER_JUMP_LAND, MARIO_ANIM_SLIDEFLIP);
     if (obj_anim_is_past_frame(m->marioObj, 6)) SFX(SOUND_ACTION_SIDE_FLIP_UNK);
     m->marioObj->oGfxAngle[1] = m->faceAngle[1] + 0x8000;
@@ -418,7 +418,7 @@ static s32 omm_act_metal_water_side_flip_land(struct MarioState *m) {
     action_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_GROUND, 0, RETURN_CANCEL);
     action_off_floor(1, ACT_OMM_METAL_WATER_FREEFALL, 0, RETURN_CANCEL);
     action_moving(1, ACT_OMM_METAL_WATER_WALKING, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_stationary_step(m, ACT_OMM_METAL_WATER_IDLE, MARIO_ANIM_SLIDEFLIP_LAND);
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
@@ -433,7 +433,7 @@ static s32 omm_act_metal_water_long_jump(struct MarioState *m) {
     action_cappy(1, ACT_OMM_METAL_WATER_CAPPY_THROW_AIRBORNE, 0, RETURN_CANCEL);
     action_b_pressed(1, ACT_OMM_METAL_WATER_JUMP_KICK, 0, RETURN_CANCEL);
     action_air_spin(OMM_MOVESET_ODYSSEY && !OMM_CHEAT_BLJ_ANYWHERE_REQ, ACT_OMM_METAL_WATER_SPIN_AIR, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_air_action_step(m, ACT_OMM_METAL_WATER_LONG_JUMP_LAND, MARIO_ANIM_SLOW_LONGJUMP);
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
@@ -474,7 +474,7 @@ static s32 omm_act_metal_water_freefall(struct MarioState *m) {
     action_z_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_GROUND_POUND, 0, RETURN_CANCEL);
     action_b_pressed(1, ACT_OMM_METAL_WATER_JUMP_KICK, 0, RETURN_CANCEL);
     action_air_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_AIR, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_air_action_step(m, ACT_OMM_METAL_WATER_FREEFALL_LAND, MARIO_ANIM_GENERAL_FALL);
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
@@ -487,7 +487,7 @@ static s32 omm_act_metal_water_freefall_land(struct MarioState *m) {
     action_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_GROUND, 0, RETURN_CANCEL);
     action_off_floor(1, ACT_OMM_METAL_WATER_FREEFALL, 0, RETURN_CANCEL);
     action_moving(1, ACT_OMM_METAL_WATER_WALKING, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_stationary_step(m, ACT_OMM_METAL_WATER_IDLE, MARIO_ANIM_GENERAL_LAND);
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
@@ -537,7 +537,7 @@ static s32 omm_act_metal_water_wall_kick_air(struct MarioState *m) {
     action_z_pressed(1, ACT_OMM_METAL_WATER_GROUND_POUND, 0, RETURN_CANCEL);
     action_b_pressed(1, ACT_OMM_METAL_WATER_JUMP_KICK, 0, RETURN_CANCEL);
     action_air_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_AIR, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_air_action_step(m, ACT_OMM_METAL_WATER_JUMP_LAND, MARIO_ANIM_SLIDEJUMP);
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
@@ -657,7 +657,7 @@ static s32 omm_act_metal_water_ground_pound_land(struct MarioState *m) {
     action_a_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_GROUND_POUND_JUMP, 0, RETURN_CANCEL);
     action_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_GROUND, 0, RETURN_CANCEL);
     action_off_floor(1, ACT_OMM_METAL_WATER_FREEFALL, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_stationary_step(m, ACT_OMM_METAL_WATER_GROUND_POUND_LAND_STOP, MARIO_ANIM_GROUND_POUND_LANDING);
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
@@ -668,7 +668,7 @@ static s32 omm_act_metal_water_ground_pound_land_stop(struct MarioState *m) {
     action_b_pressed(1, ACT_OMM_METAL_WATER_PUNCHING, 0, RETURN_CANCEL);
     action_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_GROUND, 0, RETURN_CANCEL);
     action_off_floor(1, ACT_OMM_METAL_WATER_FREEFALL, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_stationary_step(m, ACT_OMM_METAL_WATER_IDLE, MARIO_ANIM_STOP_SLIDE);
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
@@ -823,7 +823,7 @@ static s32 omm_act_metal_water_spin_jump(struct MarioState *m) {
     action_z_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_POUND, 0, RETURN_CANCEL);
     action_b_pressed(1, ACT_OMM_METAL_WATER_JUMP_KICK, 0, RETURN_CANCEL);
     action_condition(m->vel[1] <= 0.f, ACT_OMM_METAL_WATER_FREEFALL, 0, RETURN_CANCEL);
-    
+
     bool shouldBreak = omm_metal_water_common_air_action_step(m, ACT_OMM_METAL_WATER_JUMP_LAND, MARIO_ANIM_TWIRL);
     if (shouldBreak) RETURN_BREAK;
 
@@ -864,7 +864,7 @@ static s32 omm_act_metal_water_spin_pound_land(struct MarioState *m) {
     action_a_pressed(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_GROUND_POUND_JUMP, 0, RETURN_CANCEL);
     action_spin(OMM_MOVESET_ODYSSEY, ACT_OMM_METAL_WATER_SPIN_GROUND, 0, RETURN_CANCEL);
     action_off_floor(1, ACT_OMM_METAL_WATER_FREEFALL, 0, RETURN_CANCEL);
-    
+
     omm_metal_water_common_stationary_step(m, ACT_OMM_METAL_WATER_IDLE, MARIO_ANIM_GENERAL_LAND);
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
@@ -1006,7 +1006,7 @@ static s32 omm_act_metal_water_wario_triple_jump(struct MarioState *m) {
     action_cappy(1, ACT_OMM_METAL_WATER_CAPPY_THROW_AIRBORNE, 0, RETURN_CANCEL);
     action_b_pressed(1, ACT_OMM_METAL_WATER_DIVE, 0, RETURN_CANCEL);
     action_z_pressed(1, ACT_OMM_METAL_WATER_GROUND_POUND, 0, RETURN_CANCEL);
-    
+
     update_air_without_turn(m);
     mario_set_forward_vel(m, MIN(m->forwardVel, 20.f));
     switch (perform_air_step(m, 0)) {
@@ -1033,7 +1033,7 @@ static s32 omm_act_metal_water_wario_triple_jump(struct MarioState *m) {
     } else {
         ANM(MARIO_ANIM_GENERAL_FALL, 1.f);
     }
-    
+
     return OMM_MARIO_ACTION_RESULT_BREAK;
 }
 

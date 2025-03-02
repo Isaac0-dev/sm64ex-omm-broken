@@ -5,10 +5,10 @@
 
 #define OMM_PEACH_VIBE_RAGE_AURA_POINTS_PER_SEGMENT   30
 #define OMM_PEACH_VIBE_RAGE_AURA_NUM_SEGMENTS         30
-#define OMM_PEACH_VIBE_RAGE_AURA_RADIUS              120,  5, 0xA59
-#define OMM_PEACH_VIBE_RAGE_AURA_Y_MIN               lerp_f(height, -80, -100),  8, 0x1E3
-#define OMM_PEACH_VIBE_RAGE_AURA_Y_MID               lerp_f(height,  30,   20), 12, 0x814
-#define OMM_PEACH_VIBE_RAGE_AURA_Y_MAX               200, 10, 0x3F7
+#define OMM_PEACH_VIBE_RAGE_AURA_RADIUS              120 * sqrtf(topHeight / 85.f),  5, 0xA59
+#define OMM_PEACH_VIBE_RAGE_AURA_Y_MIN               lerp_f(height, -(rootHeight + 30), -(rootHeight + 50)),  8, 0x1E3
+#define OMM_PEACH_VIBE_RAGE_AURA_Y_MID               lerp_f(height, +(midHeight / 2.f), +(midHeight / 3.f)), 12, 0x814
+#define OMM_PEACH_VIBE_RAGE_AURA_Y_MAX               (topHeight + 100), 10, 0x3F7
 #define OMM_PEACH_VIBE_RAGE_AURA_Y_MIN_OPACITY        10,  0, 0x000
 #define OMM_PEACH_VIBE_RAGE_AURA_Y_MID_OPACITY         6,  1, 0x152
 #define OMM_PEACH_VIBE_RAGE_AURA_Y_MAX_OPACITY         0,  0, 0x000
@@ -74,6 +74,20 @@ static f32 oscillate_min_mid_max(f32 t,
         lerp_f(0.f - coss(t * 0x8000), oscillate(baseMid, gapMid, freqMid), oscillate(baseMax, gapMax, freqMax));
 }
 
+static void bhv_omm_peach_vibe_rage_aura_update_gfx(Vec3f rootPos, f32 rootHeight, f32 height) {
+    struct MarioState *m = gMarioState;
+    struct Object *o = gCurrentObject;
+    Vec3f pos = {
+        lerp_f(height, m->pos[0], rootPos[0]),
+        lerp_f(height, m->pos[1] + rootHeight, rootPos[1] + 25.f * (m->action == ACT_GROUND_POUND && m->actionState != 0)),
+        lerp_f(height, m->pos[2], rootPos[2])
+    };
+    obj_set_xyz(o, pos[0], pos[1], pos[2]);
+    obj_set_home(o, pos[0], pos[1], pos[2]);
+    obj_set_angle(o, 0, 0, 0);
+    obj_set_scale_vec3f(o, m->marioObj->oGfxScale);
+}
+
 static void bhv_omm_peach_vibe_rage_aura_update() {
     struct MarioState *m = gMarioState;
     struct Object *o = gCurrentObject;
@@ -90,13 +104,19 @@ static void bhv_omm_peach_vibe_rage_aura_update() {
     f32 alpha  = invlerp_0_1_s(o->oTimer, 15 * !isRage, 15 * isRage);
     f32 height = clamp_0_1_f((m->pos[1] - m->floorHeight) / 100.f);
 
+    // Model values
+    f32 rootHeight = geo_get_marios_anim_part_height(m->marioObj->oGraphNode, MARIO_ANIM_PART_ROOT);
+    f32 headHeight = geo_get_marios_anim_part_height(m->marioObj->oGraphNode, MARIO_ANIM_PART_HEAD);
+    f32 midHeight = 47.f + (rootHeight - 47.f) * 0.5f;
+    f32 topHeight = 85.f + (headHeight - 85.f) * 0.5f;
+
     // Vertices and triangles
     Vtx *vtx = data->vtx;
     Gfx *tri = data->tri;
     for (s32 i = 0; i <= OMM_PEACH_VIBE_RAGE_AURA_NUM_SEGMENTS; ++i) {
         f32 t = (f32) i / (f32) OMM_PEACH_VIBE_RAGE_AURA_NUM_SEGMENTS;
-        f32 r = oscillate(OMM_PEACH_VIBE_RAGE_AURA_RADIUS) * sins(t * 0x8000) * gMarioObject->oScaleX;
-        f32 y = oscillate_min_mid_max(t, OMM_PEACH_VIBE_RAGE_AURA_Y_MIN, OMM_PEACH_VIBE_RAGE_AURA_Y_MID, OMM_PEACH_VIBE_RAGE_AURA_Y_MAX) * gMarioObject->oScaleY;
+        f32 r = oscillate(OMM_PEACH_VIBE_RAGE_AURA_RADIUS) * sins(t * 0x8000);
+        f32 y = oscillate_min_mid_max(t, OMM_PEACH_VIBE_RAGE_AURA_Y_MIN, OMM_PEACH_VIBE_RAGE_AURA_Y_MID, OMM_PEACH_VIBE_RAGE_AURA_Y_MAX);
         f32 op = sqr_f(oscillate_min_mid_max(t, OMM_PEACH_VIBE_RAGE_AURA_Y_MIN_OPACITY, OMM_PEACH_VIBE_RAGE_AURA_Y_MID_OPACITY, OMM_PEACH_VIBE_RAGE_AURA_Y_MAX_OPACITY) / 10.f);
         f32 tu = relerp_0_1_f(o->parentObj->oTimer % 60, 0, 60, 1.f, 0.f);
         f32 tv = relerp_0_1_f(o->parentObj->oTimer % 60, 0, 60, 1.f, 0.f) + t;
@@ -143,23 +163,17 @@ static void bhv_omm_peach_vibe_rage_aura_update() {
         return;
     }
 
-    // Update object
-    if (omm_mario_is_ledge_climbing(m)) { height = 1.f; }
-    f32 rootHeight; geo_get_marios_heights(&rootHeight, NULL, NULL);
-    f32 gpHeight = 25.f * (m->action == ACT_GROUND_POUND && m->actionState != 0);
-    Vec3f pos; geo_get_marios_root_pos(pos);
-    pos[0] = lerp_f(height, m->pos[0], pos[0]);
-    pos[1] = lerp_f(height, m->pos[1] + rootHeight, pos[1] + gpHeight);
-    pos[2] = lerp_f(height, m->pos[2], pos[2]);
-    obj_set_xyz(o, pos[0], pos[1], pos[2]);
-    obj_set_home(o, pos[0], pos[1], pos[2]);
-    obj_set_angle(o, 0, 0, 0);
-    obj_set_scale(o, 1.f, 1.f, 1.f);
-
     // Process interactions
+    // To be consistent between different player models, position for collision is computed from Mario pos
+    bhv_omm_peach_vibe_rage_aura_update_gfx(m->pos, 0, 0);
     obj_set_params(o, 0, 0, 0, 0, true);
-    obj_reset_hitbox(o, 100, 200, 0, 0, 0, 80);
+    obj_reset_hitbox(o, 100, 200, 0, 0, 0, 40);
     omm_obj_process_interactions(o, OBJ_INT_PRESET_PEACH_VIBE_RAGE_AURA);
+
+    // Gfx
+    if (omm_mario_is_ledge_climbing(m)) { height = 1.f; }
+    Vec3f rootPos; geo_get_marios_anim_part_pos(NULL, rootPos, MARIO_ANIM_PART_ROOT);
+    bhv_omm_peach_vibe_rage_aura_update_gfx(rootPos, rootHeight, height);
 }
 
 const BehaviorScript bhvOmmPeachVibeRageAura[] = {

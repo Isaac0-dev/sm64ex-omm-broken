@@ -287,7 +287,7 @@ static void bhv_omm_mips_act_idle(struct Object *o) {
                 }
             }
         } break;
-        
+
         // Idle
         case 1: {
             bhv_omm_mips_step(o, 0.f, true);
@@ -335,11 +335,12 @@ static void bhv_omm_mips_held(struct Object *o) {
 //
 
 static void bhv_omm_mips_dropped(struct Object *o) {
-    o->oAction = OMM_MIPS_ACT_WAIT;
+    o->oAction = o->oMipsGrabbedCounter >= 3 ? OMM_MIPS_ACT_IDLE : OMM_MIPS_ACT_WAIT;
     o->oSubAction = 0;
     o->oNodeFlags |= GRAPH_RENDER_ACTIVE;
     o->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
-    o->oInteractionSubtype &= ~(INT_SUBTYPE_DROP_IMMEDIATELY | (INT_SUBTYPE_HOLDABLE_NPC * (o->oMipsGrabbedCounter >= 3)));
+    o->oInteractionSubtype &= ~INT_SUBTYPE_DROP_IMMEDIATELY;
+    o->oInteractType &= ~(INTERACT_GRABBABLE * (o->oMipsGrabbedCounter >= 3));
     o->oIntangibleTimer = 0;
     o->oHeldState = HELD_FREE;
     o->oVelY = 0.f;

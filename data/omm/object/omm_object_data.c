@@ -197,6 +197,7 @@ OMM_AT_STARTUP void omm_data_init() {
         gOmmData->reset_mario = omm_data_reset_mario;
         gOmmData->reset_object = omm_data_reset_object;
         gOmmData->reset();
+        gOmmData->globals->yoshiMode = false;
 #if OMM_GAME_IS_SMSR
         gOmmData->globals->booZeroLife = false;
 #endif
@@ -221,6 +222,7 @@ OMM_AT_STARTUP void omm_data_init() {
         gOmmData->globals->mouseDeltaY = 0;
         gOmmData->globals->mouseWheelX = 0;
         gOmmData->globals->mouseWheelY = 0;
+        gOmmData->globals->instantWarp.warped = false;
     }
 }
 
@@ -255,7 +257,7 @@ static void omm_data_update_mario() {
     }
 
     // Perry data
-    if (OMM_PERRY_SWORD_ACTION) {
+    if (OMM_PERRY_IS_AVAILABLE) {
         if (!omm_perry_get_object()) {
             gOmmData->mario->peach.perry = NULL;
         }
@@ -335,7 +337,7 @@ static void omm_data_update_stats() {
             omm_stats_increase(timeVanishCap[1],  (m->flags & MARIO_VANISH_CAP) != 0);
         } else {
             bool underwater = (m->action & (ACT_FLAG_SWIMMING | ACT_FLAG_METAL_WATER)) != 0;
-            bool airborne = (m->action & ACT_FLAG_AIR) != 0;
+            bool airborne   = (m->action & ACT_FLAG_AIR) != 0;
             omm_stats_increase(timeTotal[0],      1);
             omm_stats_increase(timeOnGround[0],   !underwater && !airborne);
             omm_stats_increase(timeAirborne[0],   !underwater && airborne);

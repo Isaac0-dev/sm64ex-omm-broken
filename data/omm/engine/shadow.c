@@ -165,7 +165,7 @@ static Gfx *create_shadow_player() {
         Vtx *vtx = alloc_display_list(4 * sizeof(Vtx));
         Gfx *gfx = alloc_display_list(5 * sizeof(Gfx));
         if (vtx && gfx) {
-            
+
 #if OMM_GAME_IS_SM64
             // Flying carpet in RR
             if (gCurrLevelNum == LEVEL_RR) {
@@ -181,8 +181,8 @@ static Gfx *create_shadow_player() {
                 }
             }
 #endif
-            s16 animFrame = gMarioObject->oAnimInfo.animFrame;
-            switch (gMarioObject->oAnimInfo.animID) {
+            s16 animFrame = gMarioObject->oAnimFrame;
+            switch (gMarioObject->oAnimID) {
                 case MARIO_ANIM_IDLE_ON_LEDGE:    return NULL;
                 case MARIO_ANIM_FAST_LEDGE_GRAB:  sShadow->solidity *= invlerp_0_1_f(animFrame,  5, 14); break;
                 case MARIO_ANIM_SLOW_LEDGE_GRAB:  sShadow->solidity *= invlerp_0_1_f(animFrame, 21, 33); break;

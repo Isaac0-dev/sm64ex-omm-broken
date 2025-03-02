@@ -50,6 +50,7 @@ void           obj_unload_all_with_behavior(const BehaviorScript *behavior);
 
 f32  obj_get_horizontal_distance(struct Object *o1, struct Object *o2);
 f32  obj_get_distance(struct Object *o1, struct Object *o2);
+f32  obj_get_distance_vec3f(struct Object *o, Vec3f pos);
 bool obj_has_model(struct Object *o, s32 modelId);
 bool obj_has_geo_layout(struct Object *o, const GeoLayout *georef);
 bool obj_has_graph_node(struct Object *o, struct GraphNode *node);
@@ -170,6 +171,8 @@ bool omm_obj_is_metal_destructible(struct Object *o);
 bool omm_obj_is_enemy(struct Object *o);
 bool omm_obj_is_enemy_defeated(struct Object *o);
 bool omm_obj_is_goomba_stack(struct Object *o);
+bool omm_obj_is_playable_yoshi(struct Object *o);
+bool omm_obj_is_yoshi_tongue(struct Object *o);
 bool omm_obj_check_interaction(struct Object *o, struct MarioState *m, bool ignoreTangibility);
 bool omm_obj_interact_treasure_chest(struct Object *o, struct Object *chest);
 s32  omm_obj_process_one_surface_interaction(struct Object *o, struct Object *target, u32 interactionFlags);
@@ -245,6 +248,7 @@ struct Object *omm_obj_spawn_yoshi_fireball(struct Object *o);
 struct Object *omm_obj_spawn_yoshi_egg(struct Object *o, s32 index);
 struct Object *omm_obj_spawn_yoshi_tongue(struct Object *o);
 struct Object *omm_obj_spawn_yoshi_wings(struct Object *o);
+struct Object *omm_obj_spawn_yoshi_mode_yoshi(struct Object *o);
 
 // Bowser
 struct Object *omm_obj_spawn_bowser_mine(struct Object *o, f32 x, f32 y, f32 z, s16 yaw);
@@ -258,6 +262,7 @@ struct Object *omm_obj_spawn_sparkly_star(struct Object *o, s32 sparklyMode, f32
 struct Object *omm_obj_spawn_sparkly_star_hint(struct Object *o, s32 sparklyMode, f32 x, f32 y, f32 z, s16 yaw, s32 dialogId);
 struct Object *omm_obj_spawn_sparkly_star_block(struct Object *o, s32 sparklyMode, f32 x, f32 y, f32 z);
 struct Object *omm_obj_spawn_sparkly_star_sparkle(struct Object *o, s32 sparklyMode, f32 yOffset, f32 vel, f32 scale, f32 offset);
+struct Object *omm_obj_spawn_sparkly_star_sparkle_star_spawn(struct Object *o, s32 sparklyMode, s32 duration, f32 scale, f32 offset);
 struct Object *omm_obj_spawn_sparkly_star_sparkle_mario(struct Object *o, s32 sparklyMode, f32 yOffset, f32 vel, f32 scale, f32 offset);
 struct Object *omm_obj_spawn_sparkly_star_celebration(struct Object *o, s32 sparklyMode);
 struct Object *omm_obj_spawn_sparkly_star_box(struct Object *o, s32 sparklyMode, f32 x, f32 y, f32 z, f32 maxHeight);

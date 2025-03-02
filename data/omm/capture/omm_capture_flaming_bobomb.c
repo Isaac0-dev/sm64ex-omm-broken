@@ -102,7 +102,7 @@ s32 omm_cappy_flaming_bobomb_update(struct Object *o) {
     if (gOmmObject->flaming_bobomb.interactedTimer != 0) {
         break;
     }
-    
+
     // The flaming bob-omb can withstand one fire attack before exploding and releasing Mario
     if ((obj->oInteractType & INTERACT_FLAME) &&
         !gOmmObject->flaming_bobomb.interactedFire &&

@@ -9,7 +9,7 @@ u8 gInterpolatingSurfaces;
 // Adds several fixes and increases accuracy:
 // - Treats PUs as out of bounds
 // - Fixes unreferenced wall glitch, and returns the closest wall in the direction of Mario
-// - Select the nearest wall before applying wall collision
+// - Fixes collision from stacked or already referenced walls
 // - Checks floor on a square instead of a point, to prevent objects to fall inside small gaps
 // - Increases number of cells checked for more precise wall collisions
 
@@ -54,9 +54,16 @@ static bool should_ignore_vanish_cap_walls() {
 }
 
 static bool is_wall_already_referenced(const struct WallCollisionData *data, struct Surface *surf) {
-    if (!OMM_COLLISION_SELECT_NEAREST_WALL) return false;
     for (s32 i = 0; i != data->numWalls; ++i) {
-        if (data->walls[i] == surf) {
+        struct Surface *wall = data->walls[i];
+
+        // The wall is already referenced
+        if (wall == surf) {
+            return true;
+        }
+
+        // A wall with the same normal is already referenced
+        if (vec3f_dot((f32 *) &surf->normal, (f32 *) &wall->normal) > 0.94f /* ~20 degrees */) {
             return true;
         }
     }
@@ -114,7 +121,7 @@ static void find_wall_collisions_from_list(OmmArray surfaces, s32 count, struct 
                 continue;
             }
         }
-        
+
         // Project on Z axis
         else {
             f32 w1 = surf->vertex1[0];
@@ -136,13 +143,9 @@ static void find_wall_collisions_from_list(OmmArray surfaces, s32 count, struct 
         }
 
         // Apply collision
-        if (!OMM_COLLISION_SELECT_NEAREST_WALL) {
+        if (!OMM_COLLISION_FIX_WALL_COLLISIONS || !is_wall_already_referenced(data, surf)) {
             data->x += surf->normal.x * (data->radius - offset);
             data->z += surf->normal.z * (data->radius - offset);
-        }
-
-        // Reference wall
-        if (!is_wall_already_referenced(data, surf)) {
             data->walls[data->numWalls++] = surf;
         }
     }
@@ -174,49 +177,18 @@ s32 find_wall_collisions(struct WallCollisionData *data) {
     }
 
     // Check cells
-    for (s32 i = 0, numWalls = 0; i != (OMM_COLLISION_SELECT_NEAREST_WALL ? MAX_REFERENCED_WALLS : 1); ++i) {
-        s16 cx0 = ((s16) ((data->x + LEVEL_BOUNDARY_MAX) / CELL_SIZE)) & NUM_CELLS_INDEX;
-        s16 cz0 = ((s16) ((data->z + LEVEL_BOUNDARY_MAX) / CELL_SIZE)) & NUM_CELLS_INDEX;
-        for (s16 dz = -(s16) OMM_COLLISION_CHECK_NEIGHBOR_CELLS; dz <= +(s16) OMM_COLLISION_CHECK_NEIGHBOR_CELLS; ++dz)
-        for (s16 dx = -(s16) OMM_COLLISION_CHECK_NEIGHBOR_CELLS; dx <= +(s16) OMM_COLLISION_CHECK_NEIGHBOR_CELLS; ++dx) {
-            s16 cx = cx0 + dx;
-            s16 cz = cz0 + dz;
-            if (cx < 0 || cx >= NUM_CELLS ||
-                cz < 0 || cz >= NUM_CELLS) {
-                continue;
-            }
-            find_wall_collisions_from_list(gOmmWalls(1, cx, cz)->data, gOmmWalls(1, cx, cz)->count, data);
-            find_wall_collisions_from_list(gOmmWalls(0, cx, cz)->data, gOmmWalls(0, cx, cz)->count, data);
+    s16 cx0 = ((s16) ((data->x + LEVEL_BOUNDARY_MAX) / CELL_SIZE)) & NUM_CELLS_INDEX;
+    s16 cz0 = ((s16) ((data->z + LEVEL_BOUNDARY_MAX) / CELL_SIZE)) & NUM_CELLS_INDEX;
+    for (s16 dz = -(s16) OMM_COLLISION_CHECK_NEIGHBOR_CELLS; dz <= +(s16) OMM_COLLISION_CHECK_NEIGHBOR_CELLS; ++dz)
+    for (s16 dx = -(s16) OMM_COLLISION_CHECK_NEIGHBOR_CELLS; dx <= +(s16) OMM_COLLISION_CHECK_NEIGHBOR_CELLS; ++dx) {
+        s16 cx = cx0 + dx;
+        s16 cz = cz0 + dz;
+        if (cx < 0 || cx >= NUM_CELLS ||
+            cz < 0 || cz >= NUM_CELLS) {
+            continue;
         }
-
-        // Break if there was no wall collision
-        if (!OMM_COLLISION_SELECT_NEAREST_WALL || data->numWalls <= numWalls) {
-            break;
-        }
-
-        // Find the nearest wall
-        f32 x = data->x;
-        f32 y = data->y + data->offsetY;
-        f32 z = data->z;
-        f32 offsetMin = LEVEL_BOUNDARY_MAX;
-        struct Surface *wall = NULL;
-        for (s32 k = numWalls; k != data->numWalls; ++k) {
-            struct Surface *surf = data->walls[k];
-            f32 offset = abs_f(surf->normal.x * x + surf->normal.y * y + surf->normal.z * z + surf->originOffset);
-            if (offset < offsetMin) {
-                offsetMin = offset;
-                wall = surf;
-            }
-        }
-
-        // Apply displacement
-        if (wall) {
-            f32 offset = wall->normal.x * x + wall->normal.y * y + wall->normal.z * z + wall->originOffset;
-            data->x += wall->normal.x * (data->radius - offset);
-            data->z += wall->normal.z * (data->radius - offset);
-            data->walls[numWalls++] = wall;
-            data->numWalls = numWalls;
-        }
+        find_wall_collisions_from_list(gOmmWalls(1, cx, cz)->data, gOmmWalls(1, cx, cz)->count, data);
+        find_wall_collisions_from_list(gOmmWalls(0, cx, cz)->data, gOmmWalls(0, cx, cz)->count, data);
     }
     return data->numWalls;
 }
@@ -524,7 +496,7 @@ f32 find_floor_height_and_data(f32 x, f32 y, f32 z, struct FloorGeometry **floor
         sFloorGeo.normalX = 0.f;
         sFloorGeo.normalY = 1.f;
         sFloorGeo.normalZ = 0.f;
-        sFloorGeo.originOffset = +11000.f;    
+        sFloorGeo.originOffset = +11000.f;
     }
     *floorGeo = &sFloorGeo;
     return floorHeight;
@@ -557,7 +529,7 @@ f32 find_floor(f32 x, f32 y, f32 z, struct Surface **pFloor) {
             f32 floorY = find_floor(
                 gCutsceneFocus->oPosX,
                 gCutsceneFocus->oPosY + 100.f,
-                gCutsceneFocus->oPosZ, 
+                gCutsceneFocus->oPosZ,
                 pFloor
             );
             if (*pFloor) {
@@ -793,13 +765,13 @@ static void find_ray_hits_from_surface_list(OmmArray surfaces, s32 count, Vec3f 
         if (v < 0.f || (u + v) > 1.f) {
             continue;
         }
-        
+
         // Compute dist
         f32 dist = invdot * vec3f_dot(e2, voe1);
         if (dist < 0.01f || dist > maxDist) {
             continue;
         }
-        
+
         // Successful hit
         RayHit hit;
         vec3f_copy(hit.pos, ndir);
@@ -834,7 +806,7 @@ static void find_ray_hits_on_cell(s16 cx, s16 cz, Vec3f orig, Vec3f ndir, f32 ma
             find_ray_hits_from_surface_list(gOmmWalls(1, cx, cz)->data, gOmmWalls(1, cx, cz)->count, orig, ndir, maxDist, surfaceScale, hits, flags & RAYCAST_FLAG_NO_CAM_COL);
             find_ray_hits_from_surface_list(gOmmWalls(0, cx, cz)->data, gOmmWalls(0, cx, cz)->count, orig, ndir, maxDist, surfaceScale, hits, flags & RAYCAST_FLAG_NO_CAM_COL);
         }
-        
+
         // Floors
         if ((flags & RAYCAST_FLAG_FLOORS) && ndir[1] < +0.99f) {
             find_ray_hits_from_surface_list(gOmmFloors(1, cx, cz)->data, gOmmFloors(1, cx, cz)->count, orig, ndir, maxDist, surfaceScale, hits, flags & RAYCAST_FLAG_NO_CAM_COL);

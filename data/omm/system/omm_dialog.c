@@ -100,10 +100,10 @@ struct DialogEntry *omm_dialog_get_entry(void **dialogTable, s16 dialogId) {
 static s16 omm_dialog_get_bowser_dialog_id(bool isIntro, s16 defaultDialog) {
     if (omm_bowser_is_active()) {
         switch (gCurrLevelNum) {
-            case LEVEL_BOWSER_1:       return (isIntro ? OMM_DIALOG_BOWSER_1_INTRO : defaultDialog);
-            case LEVEL_BOWSER_2:       return (isIntro ? OMM_DIALOG_BOWSER_2_INTRO : defaultDialog);
-            case LEVEL_BOWSER_3:       return (isIntro ? OMM_DIALOG_BOWSER_3_INTRO : OMM_DIALOG_BOWSER_3_DEFEAT);
-            case LEVEL_CASTLE_GROUNDS: return (isIntro ? OMM_DIALOG_SPARKLY_BOWSER_4_INTRO(gOmmSparklyMode) : OMM_DIALOG_SPARKLY_BOWSER_4_DEFEAT(gOmmSparklyMode));
+            case LEVEL_BOWSER_1: return (isIntro ? OMM_DIALOG_BOWSER_1_INTRO : defaultDialog);
+            case LEVEL_BOWSER_2: return (isIntro ? OMM_DIALOG_BOWSER_2_INTRO : defaultDialog);
+            case LEVEL_BOWSER_3: return (isIntro ? OMM_DIALOG_BOWSER_3_INTRO : OMM_DIALOG_BOWSER_3_DEFEAT);
+            case OMM_SPARKLY_BOWSER_4_LEVEL: return (isIntro ? OMM_DIALOG_SPARKLY_BOWSER_4_INTRO(gOmmSparklyMode) : OMM_DIALOG_SPARKLY_BOWSER_4_DEFEAT(gOmmSparklyMode));
         }
     }
     return defaultDialog;
@@ -111,7 +111,7 @@ static s16 omm_dialog_get_bowser_dialog_id(bool isIntro, s16 defaultDialog) {
 
 OMM_ROUTINE_PRE_RENDER(omm_dialog_update) {
     static s16 sDialogID = -1;
-    
+
     // Dialog entry
     // Retrieve it, replace names and set it to a valid slot
     if (sDialogID != gDialogID) {

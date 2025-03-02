@@ -14,6 +14,10 @@ f32 obj_get_distance(struct Object *o1, struct Object *o2) {
     return sqrtf(sqr_f(o1->oPosX - o2->oPosX) + sqr_f(o1->oPosY - o2->oPosY) + sqr_f(o1->oPosZ - o2->oPosZ));
 }
 
+f32 obj_get_distance_vec3f(struct Object *o, Vec3f pos) {
+    return sqrtf(sqr_f(o->oPosX - pos[0]) + sqr_f(o->oPosY - pos[1]) + sqr_f(o->oPosZ - pos[2]));
+}
+
 bool obj_has_model(struct Object *o, s32 modelId) {
     if (!o || !o->oGraphNode) {
         return false;
@@ -48,7 +52,7 @@ bool obj_is_on_ground(struct Object *o) {
 bool obj_is_underwater(struct Object *o, f32 waterLevel) {
     if (omm_obj_is_goomba(o)) {
         if (omm_mario_is_capture(gMarioState) && gOmmCapture == o) {
-            return (o->oPosY + omm_capture_get_hitbox_height(o)) < waterLevel;        
+            return (o->oPosY + omm_capture_get_hitbox_height(o)) < waterLevel;
         }
         return (o->oPosY + o->hitboxHeight - o->hitboxDownOffset) < waterLevel;
     }
@@ -1161,7 +1165,7 @@ void obj_destroy(struct Object *o) {
     }
 
     // Default (white puff with death sound)
-    obj_destroy_white_puff(o, o->oNumLootCoins, o->oDeathSound ? o->oDeathSound : (s32) SOUND_OBJ_DEFAULT_DEATH);
+    obj_destroy_white_puff(o, o->oNumLootCoins, o->oDeathSound != NO_SOUND ? o->oDeathSound : (s32) SOUND_OBJ_DEFAULT_DEATH);
     o->oFlags |= OBJ_FLAG_DESTROYED;
 }
 

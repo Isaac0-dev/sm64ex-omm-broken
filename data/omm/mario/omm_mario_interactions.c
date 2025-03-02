@@ -219,7 +219,7 @@ bool omm_mario_interact_cap(struct MarioState *m, struct Object *o) {
         switch (cap) {
             case MARIO_NORMAL_CAP: {
                 audio_stop_cap_music();
-                m->capTimer = 1;
+                omm_mario_unset_cap(m);
             } break;
 
             case MARIO_WING_CAP: {
@@ -319,6 +319,9 @@ bool omm_mario_interact_star_or_key(struct MarioState *m, struct Object *o) {
         // Grand star
         if (o->oInteractionSubtype & INT_SUBTYPE_GRAND_STAR) {
             omm_mario_unpossess_object(m, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
+            if (gOmmGlobals->yoshiMode) {
+                omm_obj_spawn_yoshi_mode_yoshi(m->marioObj);
+            }
             omm_mario_set_action(m, ACT_JUMBO_STAR_CUTSCENE, 0, 0xFFFF);
             return true;
         }
@@ -334,7 +337,7 @@ bool omm_mario_interact_star_or_key(struct MarioState *m, struct Object *o) {
             drop_queued_background_music();
             fadeout_level_music(126);
             omm_render_course_complete_init();
-        } else if (omm_mario_is_capture(m)) {
+        } else if (OMM_STARS_NON_STOP && omm_mario_is_capture(m)) {
             gOmmMario->capture.starDance = true;
             m->actionTimer = 0;
             return true;
@@ -347,6 +350,9 @@ bool omm_mario_interact_star_or_key(struct MarioState *m, struct Object *o) {
         if (m->action & ACT_FLAG_SWIMMING) starGrabAction = ACT_STAR_DANCE_WATER;
         if (m->action & ACT_FLAG_METAL_WATER) starGrabAction = ACT_STAR_DANCE_WATER;
         if (m->action & ACT_FLAG_AIR) starGrabAction = ACT_FALL_AFTER_STAR_GRAB;
+        if (gOmmGlobals->yoshiMode) {
+            omm_obj_spawn_yoshi_mode_yoshi(m->marioObj);
+        }
         omm_mario_set_action(m, starGrabAction, noExit, 0);
         vec3f_copy(&m->marioObj->oPosX, m->pos);
         return true;
@@ -361,6 +367,8 @@ bool omm_mario_interact_warp(struct MarioState *m, struct Object *o) {
         m->interactObj = o;
         m->usedObj = o;
         mario_stop_riding_and_holding(m);
+        // TODO: YOSHIMODE
+        // Try to find a way to keep the capture while changing the character
         omm_mario_unpossess_object(m, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
         SFX(SOUND_MENU_ENTER_PIPE);
         play_transition(WARP_TRANSITION_FADE_INTO_MARIO, 0x15, 0x00, 0x00, 0x00);

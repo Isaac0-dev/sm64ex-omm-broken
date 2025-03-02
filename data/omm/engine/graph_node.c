@@ -150,6 +150,7 @@ struct GraphNodeObject *init_graph_node_object(struct AllocOnlyPool *pool, struc
     node->throwMatrix = NULL;
     node->mAnimInfo.animID = 0;
     node->mAnimInfo.curAnim = NULL;
+    node->mAnimInfo.curAnimRef = NULL;
     node->mAnimInfo.animFrame = 0;
     node->mAnimInfo.animFrameAccelAssist = 0;
     node->mAnimInfo.animAccel = ANIM_ACCEL_ONE;
@@ -296,9 +297,9 @@ static Gfx *__geo_move_from_camera(s32 callContext, struct GraphNode *node, UNUS
             struct GraphNodeGenerated *asGenerated = (struct GraphNodeGenerated *) node;
             struct GraphNodeTranslation *translationNode = (struct GraphNodeTranslation *) node->next;
             f32 offset = offsetScale * (s16) asGenerated->parameter;
-            translationNode->translation[0] = (s16) ((offset * gCurGraphNodeObject->cameraToObject[0]) / (dist * gCurGraphNodeObject->scale[0])); 
-            translationNode->translation[1] = (s16) ((offset * gCurGraphNodeObject->cameraToObject[1]) / (dist * gCurGraphNodeObject->scale[1])); 
-            translationNode->translation[2] = (s16) ((offset * gCurGraphNodeObject->cameraToObject[2]) / (dist * gCurGraphNodeObject->scale[2])); 
+            translationNode->translation[0] = (s16) ((offset * gCurGraphNodeObject->cameraToObject[0]) / (dist * gCurGraphNodeObject->scale[0]));
+            translationNode->translation[1] = (s16) ((offset * gCurGraphNodeObject->cameraToObject[1]) / (dist * gCurGraphNodeObject->scale[1]));
+            translationNode->translation[2] = (s16) ((offset * gCurGraphNodeObject->cameraToObject[2]) / (dist * gCurGraphNodeObject->scale[2]));
         }
     }
     return NULL;
@@ -358,6 +359,7 @@ void geo_obj_init(struct GraphNodeObject *node, void *sharedChild, Vec3f pos, Ve
     node->unk4C = NULL;
     node->throwMatrix = NULL;
     node->mAnimInfo.curAnim = NULL;
+    node->mAnimInfo.curAnimRef = NULL;
     gNode->flags |= GRAPH_RENDER_ACTIVE;
     gNode->flags &= ~GRAPH_RENDER_INVISIBLE;
     gNode->flags |= GRAPH_RENDER_HAS_ANIMATION;
@@ -373,7 +375,8 @@ void geo_obj_init_spawninfo(struct GraphNodeObject *node, struct SpawnInfo *spaw
     node->sharedChild = spawn->mModel;
     node->unk4C = spawn;
     node->throwMatrix = NULL;
-    node->mAnimInfo.curAnim = 0;
+    node->mAnimInfo.curAnim = NULL;
+    node->mAnimInfo.curAnimRef = NULL;
     gNode->flags |= GRAPH_RENDER_ACTIVE;
     gNode->flags &= ~GRAPH_RENDER_INVISIBLE;
     gNode->flags |= GRAPH_RENDER_HAS_ANIMATION;

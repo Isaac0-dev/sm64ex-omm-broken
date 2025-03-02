@@ -355,7 +355,7 @@ static void omm_surface_process_data(s16 areaIndex, s16 *data, struct Object *o,
 
         // Advance data pointer
         static const s32 COL_CMD_SIZE[] = { 1, 2, 4, 3, 4, 5, 1, 1, 0, 2, 4, 2 };
-        data += COL_CMD_SIZE[cmd]; 
+        data += COL_CMD_SIZE[cmd];
     }
 }
 

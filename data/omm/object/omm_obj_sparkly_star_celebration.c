@@ -19,7 +19,7 @@ static void bhv_omm_sparkly_star_celebration_update() {
             omm_obj_spawn_sparkly_star_sparkle(o, o->oSparklyStarMode, 0, 8.f, 0.4f, 40.f);
         }
     }
-    
+
     // Sparkles
     else if (o->oTimer == 29) {
         o->oFaceAngleYaw = m->faceAngle[1];
@@ -27,7 +27,7 @@ static void bhv_omm_sparkly_star_celebration_update() {
             omm_obj_spawn_sparkly_star_sparkle(o, o->oSparklyStarMode, 0, 32.f, 0.75f, 80.f);
         }
     }
-    
+
     // Small sparkles
     else {
         if ((o->oTimer % 4) == 0) {

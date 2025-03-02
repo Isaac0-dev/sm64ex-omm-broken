@@ -927,7 +927,7 @@ static bool bhv_recovery_heart__heal_mario_for_1_segment(NativeBhvFunc func) {
 
 // Disable respawner during "defeat x enemies" challenges
 static bool bhv_respawner__sparkly_stars_disable(NativeBhvFunc func) {
-    if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_ENEMIES)) {
+    if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_OBJECT_TYPE) == OMM_SPARKLY_DATA_OBJECT_TYPE_ENEMIES) {
         obj_mark_for_deletion(o);
         return true;
     }

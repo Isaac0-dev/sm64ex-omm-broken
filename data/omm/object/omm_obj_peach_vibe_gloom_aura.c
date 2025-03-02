@@ -126,7 +126,7 @@ const GeoLayout omm_geo_peach_vibe_gloom_aura[] = {
 static void bhv_omm_peach_vibe_gloom_aura_update() {
     struct Object *o = gCurrentObject;
     if (omm_peach_vibe_is_gloom()) {
-        Vec3f marioRootPos; geo_get_marios_root_pos(marioRootPos);
+        Vec3f marioRootPos; geo_get_marios_anim_part_pos(NULL, marioRootPos, MARIO_ANIM_PART_ROOT);
         f32 t = (o->oTimer % 31) / 30.f;
 
         // Hitbox

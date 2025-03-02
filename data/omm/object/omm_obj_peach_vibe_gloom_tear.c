@@ -112,7 +112,7 @@ static void bhv_omm_peach_vibe_gloom_tear_update() {
                 f32 yf = find_floor(
                     mp[0] + pt->pos[0],
                     mp[1] + pt->pos[1],
-                    mp[2] + pt->pos[2], 
+                    mp[2] + pt->pos[2],
                     &f
                 );
 
@@ -122,14 +122,14 @@ static void bhv_omm_peach_vibe_gloom_tear_update() {
                     pt->pos[2] -= pt->vel[2];
                     pt->vel[0] = 0.f;
                     pt->vel[2] = 0.f;
-                } 
-            
+                }
+
                 // Floor collision
                 else if (yf > mp[1] + pt->pos[1]) {
                     pt->pos[1] = yf - mp[1];
                     data->pts[side][i + 1].active = false;
                 }
-            
+
                 // Ceiling
                 else {
                     f32 yc = find_ceil(
@@ -161,7 +161,7 @@ static void bhv_omm_peach_vibe_gloom_tear_update() {
 
     // If Gloom is active, add new point, and spawn a small tear
     if (omm_peach_vibe_is_gloom()) {
-        Mat4 rot; geo_get_marios_head_mtx(rot);
+        Mat4 rot; geo_get_marios_anim_part_mtx(NULL, rot, MARIO_ANIM_PART_HEAD);
         Vec3f p; vec3f_copy(p, rot[3]);
         vec3f_zero(rot[3]);
         vec3f_sub(p, mp);
@@ -208,7 +208,7 @@ static void bhv_omm_peach_vibe_gloom_tear_update() {
             mp[2] + p[2] + 30.f * u[2]
         );
     }
-    
+
     // otherwise, cut the flow
     else {
         for (s32 side = 0; side != 2; ++side) {

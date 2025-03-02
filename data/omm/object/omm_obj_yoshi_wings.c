@@ -117,7 +117,7 @@ static void bhv_omm_yoshi_wings_update() {
     struct Object *o = gCurrentObject;
     struct Object *p = o->parentObj;
     struct MarioState *m = gMarioState;
-    if (!p || p != gOmmCapture || omm_capture_get_type(p) != OMM_CAPTURE_YOSHI || !omm_mario_has_wing_cap(m)) {
+    if (!p || !p->activeFlags || !omm_mario_has_wing_cap(m) || !omm_obj_is_playable_yoshi(p)) {
         obj_mark_for_deletion(o);
         return;
     }

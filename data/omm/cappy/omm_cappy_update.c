@@ -237,6 +237,16 @@ bool omm_cappy_perform_step_return_to_mario(struct Object *cappy, struct MarioSt
 // Callback
 //
 
+static void omm_cappy_get_dpad_direction(Vec3f dest, s16 yaw, u32 udlrx) {
+    switch (udlrx) {
+        case U_JPAD: { vec3f_set(dest, 0, +1, 0); } break;
+        case D_JPAD: { vec3f_set(dest, 0, -1, 0); } break;
+        case L_JPAD: { vec3f_set(dest, sins(yaw + 0x4000), 0, coss(yaw + 0x4000)); } break;
+        case R_JPAD: { vec3f_set(dest, sins(yaw - 0x4000), 0, coss(yaw - 0x4000)); } break;
+        default:     { vec3f_zero(dest); } break;
+    }
+}
+
 // Press one of the D-Pad buttons or press X again to call Cappy back
 // Cappy does a quick homing attack before returning if the D-Pad is pressed
 static void omm_cappy_call_back(struct Object *cappy, struct MarioState *m, s32 frameStart) {
@@ -253,7 +263,8 @@ static void omm_cappy_call_back(struct Object *cappy, struct MarioState *m, s32 
                 // Targets the nearest interactable object
                 f32 *origin = OMM_CAPPY_HOMING_ATTACK_ORIGIN;
                 f32 velocity = OMM_CAPPY_HOMING_ATTACK_VELOCITY * OMM_CAPPY_HOMING_ATTACK_VELOCITY_MULT;
-                struct Object *target = omm_cappy_find_target(origin, cappy, m, velocity * duration);
+                Vec3f direction; omm_cappy_get_dpad_direction(direction, cappy->oCappyYaw, udlrx);
+                struct Object *target = omm_cappy_find_target(origin, cappy, m, direction, velocity * duration);
                 if (target) {
                     f32 dx = target->oPosX - cappy->oPosX;
                     f32 dy = target->oPosY - cappy->oPosY;
@@ -271,7 +282,7 @@ static void omm_cappy_call_back(struct Object *cappy, struct MarioState *m, s32 
                         omm_cappy_return_to_mario(cappy);
                     }
                 }
-                
+
                 // If no target, just move Cappy in a fixed direction
                 else {
                     switch (cappy->oCappyBehavior) {
@@ -282,34 +293,11 @@ static void omm_cappy_call_back(struct Object *cappy, struct MarioState *m, s32 
                         case OMM_CAPPY_BHV_UPWARDS_AIR:
                         case OMM_CAPPY_BHV_DOWNWARDS_GROUND:
                         case OMM_CAPPY_BHV_DOWNWARDS_AIR: {
-                            switch (udlrx) {
-                                case U_JPAD: {
-                                    cappy->oVelX = 0.f;
-                                    cappy->oVelY = velocity;
-                                    cappy->oVelZ = 0.f;
-                                } break;
-
-                                case D_JPAD: {
-                                    cappy->oVelX = 0.f;
-                                    cappy->oVelY = -velocity;
-                                    cappy->oVelZ = 0.f;
-                                } break;
-
-                                case L_JPAD: {
-                                    cappy->oVelX = velocity * sins(cappy->oCappyYaw + 0x4000);
-                                    cappy->oVelY = 0.f;
-                                    cappy->oVelZ = velocity * coss(cappy->oCappyYaw + 0x4000);
-                                } break;
-
-                                case R_JPAD: {
-                                    cappy->oVelX = velocity * sins(cappy->oCappyYaw - 0x4000);
-                                    cappy->oVelY = 0.f;
-                                    cappy->oVelZ = velocity * coss(cappy->oCappyYaw - 0x4000);
-                                } break;
-
-                                default: { // if two or more D-pads buttons are pressed simultaneously and no target was found, cancel the homing attack
-                                    omm_cappy_return_to_mario(cappy);
-                                } break;
+                            if (!vec3f_eq(direction, gVec3fZero)) {
+                                vec3f_mul(direction, velocity);
+                                vec3f_copy(&cappy->oVelX, direction);
+                            } else { // if two or more D-pads buttons are pressed simultaneously and no target was found, cancel the homing attack
+                                omm_cappy_return_to_mario(cappy);
                             }
                         } break;
 
@@ -322,7 +310,7 @@ static void omm_cappy_call_back(struct Object *cappy, struct MarioState *m, s32 
                     }
                 }
             }
-            
+
             // X Button
             else {
                 omm_cappy_return_to_mario(cappy);
@@ -440,7 +428,7 @@ OMM_ROUTINE_UPDATE(omm_cappy_update_play_as) {
             cappy->oCappyLifeTimer < OMM_CAPPY_LIFETIME &&
             cappy->oCappyBehavior < OMM_CAPPY_BHV_SPIN_GROUND &&
             !(cappy->oCappyFlags & OMM_CAPPY_FLAG_HOMING_ATTACK)) {
-            
+
             // Move Cappy unless first person mode or time stop
             cappy->oCappyFlags |= (OMM_CAPPY_FLAG_INTERACT_MARIO | OMM_CAPPY_FLAG_PLAY_AS);
             struct MarioState *m = gMarioState;
@@ -452,7 +440,7 @@ OMM_ROUTINE_UPDATE(omm_cappy_update_play_as) {
                 omm_cappy_perform_step(cappy, m, cappy->oVelX, cappy->oVelY, cappy->oVelZ, NULL, NULL, NULL);
                 omm_cappy_call_back(cappy, m, OMM_CAPPY_BHV_DEFAULT_CALL_BACK_START);
             }
-            
+
             // Reset inputs so Mario doesn't move
             m->controller->rawStickX = 0;
             m->controller->rawStickY = 0;
@@ -545,7 +533,7 @@ void omm_cappy_update_mario_anim(struct Object *cappy, struct MarioState *m) {
         bool water = ((m->action & ACT_GROUP_MASK) == ACT_GROUP_SUBMERGED);
         bool metal = ((m->action & ACT_GROUP_MASK) == ACT_GROUP_METAL_WATER);
         bool shell = ((m->action & ACT_FLAG_RIDING_SHELL) == ACT_FLAG_RIDING_SHELL);
-    
+
         // Start
         if (cappy->oCappyFlags & OMM_CAPPY_FLAG_START_ANIM) {
             ANM(p->anim, p->speed);

@@ -81,7 +81,7 @@ void omm_cappy_friendly_blargg_update_gfx(struct Object *o) {
 
     // Gfx
     obj_update_gfx(o);
-    
+
     // Cappy transform
     gOmmObject->cappy.object = o;
 }

@@ -174,30 +174,27 @@ static void *omm_models_read_pointer(OmmFileBuffer *fb, OmmGfxData *gfx_data, u3
 }
 
 OMM_OPTIMIZE static void omm_models_optimize_triangle_data(OmmDataNode_Gfx *node) {
-    static OmmDataNode_Gfx *prev = NULL;
     Gfx *gfx = node->data;
-    Vtx *verts = NULL; u32 nverts = 0;
+    Vtx *verts = NULL; u32 nverts = 0; u32 lastcount = 0;
     u32 *tris = NULL; u32 ntris = 0;
-    u32 vfirst = 0;
-    for (u32 i = 0, i0 = 0, ioff = 0xFFFF; i != (u32) node->size; ++i, gfx++) {
+    for (u32 k = 0, i0 = 0; k != (u32) node->size; ++k, gfx++) {
 
         // gsSPVertex
         if (gfx_op(gfx) == G_VTX) {
             i0 = nverts;
-            u32 count = gfx_c0(gfx, 12, 8);
+            u32 count = lastcount = gfx_c0(gfx, 12, 8);
             u32 first = gfx_c0(gfx, 1, 7) - count;
+
+            // Skip skinned meshes
+            if (first != 0) {
+                mem_del(verts);
+                mem_del(tris);
+                return;
+            }
+
             realloc_buf(verts, Vtx, nverts, nverts + count);
             mem_cpy(verts + nverts, gfx_w1p(gfx), count * sizeof(Vtx));
             nverts += count;
-            vfirst = max(vfirst, first);
-            ioff = min(ioff, first);
-
-            // Fix incorrect lights for skinned meshes
-            if (first != 0 && prev) {
-                prev->data->words.w0 &= 0xFFFFFF;
-                prev->data->words.w0 |= G_VTXEXTTC << 24;
-                prev = NULL;
-            }
             continue;
         }
 
@@ -207,9 +204,9 @@ OMM_OPTIMIZE static void omm_models_optimize_triangle_data(OmmDataNode_Gfx *node
             u32 i2 = gfx_c0(gfx,  8, 8) >> 1;
             u32 i3 = gfx_c0(gfx,  0, 8) >> 1;
             realloc_buf(tris, u32, ntris, ntris + 3);
-            tris[ntris + 0] = i1 + (i1 >= ioff ? i0 : 0);
-            tris[ntris + 1] = i2 + (i2 >= ioff ? i0 : 0);
-            tris[ntris + 2] = i3 + (i3 >= ioff ? i0 : 0);
+            tris[ntris + 0] = i0 + i1;
+            tris[ntris + 1] = i0 + i2;
+            tris[ntris + 2] = i0 + i3;
             ntris += 3;
             continue;
         }
@@ -223,12 +220,12 @@ OMM_OPTIMIZE static void omm_models_optimize_triangle_data(OmmDataNode_Gfx *node
             u32 i5 = gfx_c1(gfx,  8, 8) >> 1;
             u32 i6 = gfx_c1(gfx,  0, 8) >> 1;
             realloc_buf(tris, u32, ntris, ntris + 6);
-            tris[ntris + 0] = i1 + (i1 >= ioff ? i0 : 0);
-            tris[ntris + 1] = i2 + (i2 >= ioff ? i0 : 0);
-            tris[ntris + 2] = i3 + (i3 >= ioff ? i0 : 0);
-            tris[ntris + 3] = i4 + (i4 >= ioff ? i0 : 0);
-            tris[ntris + 4] = i5 + (i5 >= ioff ? i0 : 0);
-            tris[ntris + 5] = i6 + (i6 >= ioff ? i0 : 0);
+            tris[ntris + 0] = i0 + i1;
+            tris[ntris + 1] = i0 + i2;
+            tris[ntris + 2] = i0 + i3;
+            tris[ntris + 3] = i0 + i4;
+            tris[ntris + 4] = i0 + i5;
+            tris[ntris + 5] = i0 + i6;
             ntris += 6;
             continue;
         }
@@ -237,11 +234,10 @@ OMM_OPTIMIZE static void omm_models_optimize_triangle_data(OmmDataNode_Gfx *node
     // Replace the old display list by a 3-command display list with better performance
     mem_del(node->data);
     node->data = mem_new(Gfx, 3);
-    gSPVertexExt(node->data + 0, verts, nverts, vfirst);
+    gSPVertexExt(node->data + 0, verts, nverts, lastcount);
     gSPTrianglesExt(node->data + 1, tris, ntris / 3);
     gSPEndDisplayList(node->data + 2);
     node->size = 3;
-    prev = node;
 }
 
 static bool omm_models_check_emblem_color(OmmDataNode_Gfx *node) {

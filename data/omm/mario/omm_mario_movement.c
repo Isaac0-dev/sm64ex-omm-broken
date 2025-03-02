@@ -80,6 +80,7 @@ static bool update_air(struct MarioState *m, bool turn) {
         f32 dragThreshold = (m->action == ACT_LONG_JUMP ? 48.f : 32.f);
         f32 sidewaysSpeed = 0.f;
         f32 windFactor = (horizontalWind ? 0.5f : 1.f);
+        m->marioObj->oForwardVel = max_f(0.f, m->forwardVel);
 
         // Decrease progressively Mario's speed if no wind
         if (!horizontalWind) {

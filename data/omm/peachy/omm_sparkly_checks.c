@@ -5,7 +5,7 @@
 
 bool omm_sparkly_check_requirements(struct MarioState *m) {
 #if OMM_GAME_IS_SM64
-    gAcousticReachPerLevel[LEVEL_CASTLE_GROUNDS] = 25000 + 35000 * (gCurrAreaIndex == 2);
+    gAcousticReachPerLevel[OMM_SPARKLY_BOWSER_4_LEVEL] = 25000 + 35000 * (gCurrAreaIndex == OMM_SPARKLY_BOWSER_4_AREA);
     omm_sparkly_ending_cutscene();
 #endif
 
@@ -44,6 +44,12 @@ bool omm_sparkly_check_requirements(struct MarioState *m) {
 
     // If a save file has not all stars collected, disable the Sparkly Stars mode and return
     if (m->numStars < omm_stars_get_total_star_count(OMM_GAME_MODE)) {
+        omm_sparkly_disable();
+        return true;
+    }
+
+    // Disable the Sparkly Stars mode during Yoshi mode
+    if (gOmmGlobals->yoshiMode) {
         omm_sparkly_disable();
         return true;
     }

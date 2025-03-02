@@ -2065,6 +2065,10 @@ set_behavior(bhvOmmYoshiTongue, omm_geo_yoshi_tongue),
     set_bhv_types(0),
 set_behavior(bhvOmmYoshiWings, omm_geo_yoshi_wings),
     set_bhv_types(0),
+set_behavior(bhvOmmYoshiModeYoshi, yoshi_geo),
+    set_bhv_types(BHV_TYPE_PLAYER),
+set_behavior(bhvOmmYoshiModeCap, marios_cap_geo),
+    set_bhv_types(BHV_TYPE_PLAYER),
 
 //
 // Bowser

@@ -238,7 +238,7 @@ static bool omm_peach_vibe_toggle(struct MarioState *m, s32 vibeAction) {
                 } break;
             }
             if (m->flags & (MARIO_METAL_CAP | MARIO_WING_CAP | MARIO_VANISH_CAP)) {
-                m->capTimer = 1;
+                omm_mario_unset_cap(m);
             }
             return true;
         }

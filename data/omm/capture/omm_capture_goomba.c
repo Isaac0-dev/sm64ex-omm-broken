@@ -213,7 +213,7 @@ s32 omm_cappy_goomba_update(struct Object *o) {
 
         // Fall check
         if ((!obj_is_on_ground(o) && o->oVelY <= 0.f) || (obj_is_on_ground(o) && o->oPosY > obj->oPosY + obj->hitboxHeight / 4.f)) {
-            
+
             // Height check
             f32 y1 = obj->oPosY;
             f32 y2 = obj->oPosY + obj->hitboxHeight * 1.6f;

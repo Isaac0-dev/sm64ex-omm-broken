@@ -49,6 +49,21 @@ OMM_DIALOG_TOAD_SECRET, NO_SOUND, 3, 30, 200,
 },
 
 {
+OMM_DIALOG_TOAD_YOSHI, NO_SOUND, 5, 30, 200,
+"Contrary to popular belief,\n"
+"not watching the Super\n"
+"Mario Bros. Super Show\n"
+"doesn't actually turn\n"
+"you into a Goomba.\n"
+
+"But I've heard that if\n"
+"you press the Y button\n"
+"five times in a row in\n"
+"the main menu, you'll\n"
+"become a Yoshi!"
+},
+
+{
 OMM_DIALOG_SPARKLY_MIPS_1, NO_SOUND, 2, 30, 200,
 "Sorry, but... I don't\n"
 "have time for this!"

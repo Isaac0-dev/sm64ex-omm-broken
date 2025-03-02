@@ -3,6 +3,45 @@
 #undef OMM_ALL_HEADERS
 #include "behavior_commands.h"
 
+bool omm_obj_is_playable_yoshi(struct Object *o) {
+
+    // Yoshi model
+    if (!obj_has_geo_layout(o, yoshi_geo)) {
+        return false;
+    }
+
+    // Yoshi capture
+    // Check the behavior command rather than the object pointer
+    // to make the mirrored Yoshi object return true as well
+    if (omm_mario_is_capture(gMarioState) && o->curBhvCommand == gOmmCapture->curBhvCommand && omm_capture_get_type(gOmmCapture) == OMM_CAPTURE_YOSHI) {
+        return true;
+    }
+
+    // Yoshi mode
+    if (gOmmGlobals->yoshiMode && (o->behavior == bhvOmmYoshiModeYoshi || o->behavior == bhvOmmMainMenuMario)) {
+        return true;
+    }
+
+    // Not Yoshi
+    return false;
+}
+
+bool omm_obj_is_yoshi_tongue(struct Object *o) {
+
+    // Yoshi tongue model
+    if (!obj_has_geo_layout(o, omm_geo_yoshi_tongue)) {
+        return false;
+    }
+
+    // Yoshi capture
+    if (omm_mario_is_capture(gMarioState) && o->parentObj == gOmmCapture && omm_capture_get_type(gOmmCapture) == OMM_CAPTURE_YOSHI) {
+        return true;
+    }
+
+    // Not Yoshi tongue
+    return false;
+}
+
 //
 // Behavior
 //

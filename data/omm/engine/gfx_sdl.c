@@ -201,7 +201,7 @@ static void gfx_sdl_handle_events(void) {
                                 if (event.window.data2 >= 0) configWindow.y = event.window.data2;
                             }
                         } break;
-                        
+
                         case SDL_WINDOWEVENT_SIZE_CHANGED: {
                             configWindow.w = event.window.data1;
                             configWindow.h = event.window.data2;

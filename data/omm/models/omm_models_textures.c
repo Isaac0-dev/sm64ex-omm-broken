@@ -2,6 +2,7 @@
 #include "data/omm/omm_includes.h"
 #undef OMM_ALL_HEADERS
 #include "data/omm/engine/gfx_texture.h"
+extern bool gfx_texture_has_palette(const char *texname);
 
 void *omm_models_find_texture(OmmHMap *phmap, struct GfxRenderingAPI *rapi, const void *p) {
     omm_array_for_each(gOmmActorList, p_actor) {
@@ -9,10 +10,11 @@ void *omm_models_find_texture(OmmHMap *phmap, struct GfxRenderingAPI *rapi, cons
         if (actor->gfx_data) {
             omm_data_nodes_for_each(actor->gfx_data->textures, texture_node, OmmTexData) {
                 if ((const void *) texture_node == p) {
-                    
+                    const OmmPackData *pack = (const OmmPackData *) omm_array_get(gOmmPackList, ptr, actor->pack_index);
+
                     // Node found, computing name hash
                     sys_path_t name;
-                    fs_cat_paths(name, "OMM_MODELS", texture_node->name);
+                    fs_cat_paths(name, pack->name, texture_node->name);
                     u32 hash = str_hash(name);
                     GfxTexture *tex = NULL;
 
@@ -38,7 +40,7 @@ void *omm_models_find_texture(OmmHMap *phmap, struct GfxRenderingAPI *rapi, cons
                     tex->cms = 0;
                     tex->cmt = 0;
                     tex->lin = 0;
-                    tex->data = NULL;
+                    tex->data = (gfx_texture_has_palette(texture_node->name) ? mem_dup(texture_node->data->raw_data, tex->w * tex->h * 4) : NULL);
                     rapi->select_texture(0, tex->id);
                     rapi->set_sampler_parameters(0, false, 0, 0);
 

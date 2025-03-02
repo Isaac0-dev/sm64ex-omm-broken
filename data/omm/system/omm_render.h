@@ -59,9 +59,11 @@ extern const char *gOmmFontHud[0x100];
 #define Y_SCREEN_TO_WINDOW(_y_)                             relerp_0_1_f(_y_, 0, SCREEN_HEIGHT, 0, gfx_current_dimensions.height)
 
 // Commons
+#define OMM_RENDER_DEFINE_GLYPH_SIZE(value)                 s32 _GLYPH_SIZE_ = (s32) (value)
 #define OMM_INVSQRT2                                        (0.70710678118)
 #define OMM_SCROLL_STICK_VALUE_MIN                          (56)
-#define OMM_RENDER_GLYPH_SIZE                               (10)
+#define OMM_RENDER_GLYPH_SIZE                               (_GLYPH_SIZE_)
+#define OMM_RENDER_GLYPH_SIZE_DEFAULT                       (10)
 #define OMM_RENDER_LEFT_X                                   GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(12)
 #define OMM_RENDER_RIGHT_X                                  GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(12)
 #define OMM_RENDER_TOP_Y                                    (SCREEN_HEIGHT - 12)
@@ -158,6 +160,8 @@ extern const char *gOmmFontHud[0x100];
 #define OMM_RENDER_OBJECT_RADAR_X                           (OMM_RENDER_LEFT_X + (OMM_RENDER_OBJECT_RADAR_RADIUS + OMM_RENDER_OBJECT_RADAR_ARROW_SIZE / 2))
 #define OMM_RENDER_OBJECT_RADAR_Y                           (OMM_RENDER_BOTTOM_Y + (OMM_RENDER_OBJECT_RADAR_RADIUS + OMM_RENDER_OBJECT_RADAR_ARROW_SIZE / 2))
 #define OMM_RENDER_OBJECT_RADAR_OBJ_SIZE                    (OMM_RENDER_GLYPH_SIZE)
+#define OMM_RENDER_OBJECT_RADAR_COIN_SIZE                   (OMM_RENDER_GLYPH_SIZE)
+#define OMM_RENDER_OBJECT_RADAR_SECRET_SIZE                 (OMM_RENDER_GLYPH_SIZE)
 #define OMM_RENDER_OBJECT_RADAR_STAR_SIZE                   ((OMM_RENDER_GLYPH_SIZE * 5) / 4)
 #define OMM_RENDER_OBJECT_RADAR_ARROW_SIZE                  ((OMM_RENDER_GLYPH_SIZE * 7) / 8)
 #define OMM_RENDER_OBJECT_RADAR_RADIUS                      (((OMM_RENDER_OBJECT_RADAR_OBJ_SIZE + OMM_RENDER_OBJECT_RADAR_ARROW_SIZE) * 7) / 10)
@@ -278,8 +282,8 @@ void omm_render_effect_you_got_a_star();
 // HUD
 //
 
-void omm_render_hud_stars(s16 x, s16 y, u8 alpha, s32 levelNum);
-void omm_render_hud_coins(s16 x, s16 y, u8 alpha, s32 coins);
+void omm_render_hud_stars(s16 x, s16 y, s16 w, u8 alpha, s32 levelNum);
+void omm_render_hud_coins(s16 x, s16 y, s16 w, u8 alpha, s32 coins);
 void omm_render_hud();
 
 //
@@ -297,5 +301,12 @@ s32  omm_render_pause();
 
 void omm_render_course_complete_init();
 s32  omm_render_course_complete();
+
+//
+// Cake
+//
+
+void omm_render_cake_ending_screen();
+bool omm_render_cake_ending_screen_play_sound();
 
 #endif

@@ -953,7 +953,7 @@ static void bhv_omm_bowser_check_emergency_jump(OmmBowser *bowser) {
     if (omm_mario_is_capture_flaming_bobomb(gMarioState)) {
         return;
     }
-    
+
     // Deinit action
     switch (omm_bowser_current_action->action) {
 
@@ -1015,7 +1015,7 @@ OMM_BOWSER_CLONE_CODE(
                 obj_anim_play_with_sound(bowser->obj, OMM_BOWSER_ANIM_JUMP, 1.f, 0, false);
 );
             }
-            
+
             // Starts jumping
             else {
 OMM_BOWSER_CLONE_CODE(
@@ -1059,7 +1059,7 @@ OMM_BOWSER_CLONE_CODE(
 OMM_BOWSER_CLONE_CODE(
                 obj_anim_play_with_sound(bowser->obj, OMM_BOWSER_ANIM_LAND, 1.f, 0, true);
                 if ((bowser->timer % omm_bowser_current_action->delay) == 0) {
-                    omm_obj_spawn_bowser_shockwave_fire(bowser->obj, 100, 100, 150, 40, 5000, OMM_TEXTURE_BOWSER_FIRE_RED_1, OMM_TEXTURE_BOWSER_FIRE_RED_2);
+                    omm_obj_spawn_bowser_shockwave_fire(bowser->obj, 100, 100, 150, 40, bowser->landRadius + bowser->mineRadius, OMM_TEXTURE_BOWSER_FIRE_RED_1, OMM_TEXTURE_BOWSER_FIRE_RED_2);
                     bowser->jumpWaves--;
                 }
 );
@@ -1326,7 +1326,7 @@ OMM_BOWSER_CLONE_CODE(
                 flame->oIsBowserClone = is_bowser_clone;
 );
             }
-            
+
             // Next sub-action
             else {
 OMM_BOWSER_CLONE_CODE(
@@ -1387,7 +1387,7 @@ OMM_BOWSER_CLONE_CODE(
                 bowser->flamethrowerTimer++;
 );
             }
-            
+
             // Next sub-action
             else {
                 bhv_omm_bowser_update_action(bowser, 4);
@@ -1401,7 +1401,7 @@ OMM_BOWSER_CLONE_CODE(
             }
         } break;
     }
-    
+
     // Update flames
     for_each_object_with_behavior(flame, bhvOmmBowserFlame) {
         if (flame->oAction == 1) {
@@ -1822,10 +1822,8 @@ static void bhv_omm_bowser_damaged(OmmBowser *bowser) {
 //
 
 static void bhv_omm_bowser_spawn_sparkly_sparkles(struct Object *o) {
-    if (omm_sparkly_is_bowser_4_battle()) {
-        if (o->oTimer & 1) {
-            omm_obj_spawn_sparkly_star_sparkle(o, gOmmSparklyMode, 150.f, 20.f, 1.f, 100.f);
-        }
+    if (omm_sparkly_is_bowser_4_battle() && (o->oTimer & 1)) {
+        omm_obj_spawn_sparkly_star_sparkle(o, gOmmSparklyMode, 150.f, 20.f, 1.f, 100.f);
     }
 }
 
@@ -2165,7 +2163,7 @@ OMM_ROUTINE_UPDATE(omm_obj_spawn_bowser) {
             o->oPosX = 0;
             o->oPosY = 0;
             o->oPosZ = 0;
-            o->oBehParams = omm_sparkly_is_bowser_4_battle() || OMM_CAP_CAPPY_CAPTURE;
+            o->oBehParams = omm_sparkly_is_bowser_4_battle() || (OMM_CAP_CAPPY_CAPTURE && !gOmmGlobals->yoshiMode);
             o->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
             obj_reset_hitbox(o, 0, 0, 0, 0, 0, 0);
         }

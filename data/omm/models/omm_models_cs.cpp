@@ -2086,7 +2086,7 @@ const u32 **omm_models_cs_get_palette_preset(u32 cs_index) {
     return NULL;
 }
 
-const Animation *omm_models_cs_get_animation(u32 cs_index, s32 anim_index) {
+Animation *omm_models_cs_get_animation(u32 cs_index, s32 anim_index) {
     if (cs_index > 0 && cs_index <= sCsPacks.size()) {
         const CsPack *cs_pack = sCsPacks[cs_index - 1];
         if (anim_index >= 0 && anim_index < array_length(CS_CHAR_ANIMS)) {

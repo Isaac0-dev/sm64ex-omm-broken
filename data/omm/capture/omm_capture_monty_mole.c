@@ -161,7 +161,7 @@ s32 omm_cappy_monty_mole_update(struct Object *o) {
 
         // Hide
         case MONTY_MOLE_ACT_HIDE: {
-            
+
             // Update pos and vel
             obj_set_vel(o, 0.f, 0.f, 0.f);
             obj_set_angle(o, 0, o->oFaceAngleYaw, 0);

@@ -169,7 +169,10 @@ bool omm_sparkly_level__ten_goombas_stack(struct MarioState *m, const s32 *param
     u64 goombaType = omm_cappy_goomba_get_type(array_of(struct Object) { { .oBehParams2ndByte = goombaSize } });
     if (OMM_SPARKLY_STATE_IS_OK && omm_mario_is_capture(m)) {
         if (omm_capture_get_type(gOmmCapture) == goombaType) {
-            gOmmSparklyContext->successful |= gOmmObject->goomba.stackCount >= 9;
+            if (!gOmmSparklyContext->successful && gOmmObject->goomba.stackCount >= 9) {
+                gOmmSparklyContext->successful = true;
+                gOmmSparklyContext->spawner = gOmmObject->goomba.stackObj[gOmmObject->goomba.stackCount - 1];
+            }
         } else {
             omm_sparkly_state_set(OMM_SPARKLY_STATE_FAIL, 1);
         }
@@ -177,7 +180,7 @@ bool omm_sparkly_level__ten_goombas_stack(struct MarioState *m, const s32 *param
     return true;
 }
 
-bool omm_sparkly_level__launch_cappy_to_target(struct MarioState *m, const s32 *params) {
+bool omm_sparkly_level__launch_cappy_at_target(struct MarioState *m, const s32 *params) {
     if (!gOmmSparklyContext->successful && !gOmmSparkly->gamePaused && !gOmmSparkly->transition) {
         struct Object *cappy = omm_cappy_get_object();
         Vec3f targetPos = { params[0], params[1], params[2] };
@@ -186,7 +189,7 @@ bool omm_sparkly_level__launch_cappy_to_target(struct MarioState *m, const s32 *
                 case  0: case 14: case  27: case  39: case  50:
                 case 60: case 69: case  77: case  84: case  90:
                 case 95: case 99: case 102: case 104: case 105: {
-                    play_sound(SOUND_GENERAL_SHORT_STAR, gGlobalSoundArgs);
+                    play_sound(SOUND_GENERAL_SHORT_STAR, cappy->oCameraToObject);
                     omm_obj_spawn_sparkly_star_sparkle(cappy, gOmmSparklyMode, 0, 10.f, 0.4f, 50.f);
                     omm_obj_spawn_sparkly_star_sparkle(cappy, gOmmSparklyMode, 0, 10.f, 0.4f, 50.f);
                     omm_obj_spawn_sparkly_star_sparkle(cappy, gOmmSparklyMode, 0, 10.f, 0.4f, 50.f);
@@ -197,6 +200,9 @@ bool omm_sparkly_level__launch_cappy_to_target(struct MarioState *m, const s32 *
                 case 106: {
                     play_sound(SOUND_MENU_STAR_SOUND, gGlobalSoundArgs);
                     gOmmSparklyContext->successful = true;
+                    gOmmSparklyContext->spawner = spawn_object(m->marioObj, MODEL_NONE, bhvStaticObject);
+                    obj_set_pos(gOmmSparklyContext->spawner, params[0], params[3] - 150, params[2]);
+                    obj_reset_hitbox(gOmmSparklyContext->spawner, 0, 0, 0, 0, 0, 0);
                 } break;
             }
         } else {
@@ -217,7 +223,7 @@ bool omm_sparkly_level__dont_touch_floor(struct MarioState *m, const s32 *params
         if (!gOmmSparklyContext->entryDialog) {
             return false;
         }
-        
+
         // ...then, enter the jumping action
         if (m->prevAction == ACT_READING_AUTOMATIC_DIALOG) {
             gOmmSparklyContext->eventStarted = true;
@@ -240,19 +246,22 @@ bool omm_sparkly_level__dont_touch_floor(struct MarioState *m, const s32 *params
 }
 
 bool omm_sparkly_level__toads_on_pillars(struct MarioState *m, const s32 *params) {
-    if (!omm_mario_is_capture(m) && OMM_SPARKLY_STATE_IS_OK) {
-        struct Object *toad1 = obj_get_first_with_behavior(bhvToadMessage);
-        struct Object *toad2 = obj_get_next_with_behavior(toad1, bhvToadMessage);
-        if (toad1 && toad2) {
-            struct Object *toad1Pillar = obj_get_nearest_with_behavior(toad1, bhvWaterLevelPillar);
-            struct Object *toad2Pillar = obj_get_nearest_with_behavior(toad2, bhvWaterLevelPillar);
-            if (toad1Pillar && toad2Pillar && (toad1Pillar != toad2Pillar)) {
-                f32 heightToad1 = toad1->oPosY - toad1Pillar->oPosY;
-                f32 heightToad2 = toad2->oPosY - toad2Pillar->oPosY;
+    if (!omm_mario_is_capture(m) && OMM_SPARKLY_STATE_IS_OK && !gOmmSparklyContext->successful) {
+        struct Object *pillar1 = obj_get_first_with_behavior(bhvWaterLevelPillar);
+        struct Object *pillar2 = obj_get_next_with_behavior(pillar1, bhvWaterLevelPillar);
+        if (pillar1 && pillar2) {
+            struct Object *toad1 = obj_get_nearest_with_behavior(pillar1, bhvToadMessage);
+            struct Object *toad2 = obj_get_nearest_with_behavior(pillar2, bhvToadMessage);
+            if (toad1 && toad2 && (toad1 != toad2)) {
+                f32 heightToad1 = toad1->oPosY - pillar1->oPosY;
+                f32 heightToad2 = toad2->oPosY - pillar2->oPosY;
                 if (abs_f(heightToad1) < 20.f && abs_f(heightToad2) < 20.f) {
-                    f32 distToad1 = obj_get_horizontal_distance(toad1, toad1Pillar);
-                    f32 distToad2 = obj_get_horizontal_distance(toad2, toad2Pillar);
-                    gOmmSparklyContext->successful |= (distToad1 < 200 && distToad2 < 200);
+                    f32 distToad1 = obj_get_horizontal_distance(toad1, pillar1);
+                    f32 distToad2 = obj_get_horizontal_distance(toad2, pillar2);
+                    if (distToad1 < 200 && distToad2 < 200) {
+                        gOmmSparklyContext->successful = true;
+                        gOmmSparklyContext->spawner = obj_get_nearest_with_behavior(m->marioObj, bhvToadMessage);
+                    }
                 }
             }
         }

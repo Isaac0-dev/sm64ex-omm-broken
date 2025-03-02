@@ -17,6 +17,9 @@ s32 omm_health_to_ticks(s32 health) {
 }
 
 s32 omm_health_get_max(s32 health) {
+#if OMM_GAME_IS_SMSR
+    if (gOmmGlobals->yoshiMode && gOmmGlobals->booZeroLife) return OMM_HEALTH_1_SEGMENT;
+#endif
     if (OMM_MOVESET_ODYSSEY_1H) return OMM_HEALTH_1_SEGMENT;
     if (OMM_SPARKLY_STATE_IS_OK && omm_sparkly_context_get_data(OMM_SPARKLY_DATA_1_HEALTH)) return OMM_HEALTH_1_SEGMENT;
     if (OMM_SPARKLY_STATE_IS_OK && omm_sparkly_context_get_data(OMM_SPARKLY_DATA_3_HEALTH)) return OMM_HEALTH_ODYSSEY_3_SEGMENTS;
@@ -390,14 +393,36 @@ typedef struct {
     s32 shakeXFreq;
     s32 shakeXPhase;
     f32 shakeXOffset;
-    f32 shakeXAmplitude;
+    f32 (*shakeXAmplitude)(s16);
     s32 shakeYStart;
     s32 shakeYEnd;
     s32 shakeYFreq;
     s32 shakeYPhase;
     f32 shakeYOffset;
-    f32 shakeYAmplitude;
+    f32 (*shakeYAmplitude)(s16);
 } OmmHealthState;
+
+static f32 omm_health_state_shake_x_amplitude__zero(UNUSED s16 w) {
+    return 0.f;
+}
+
+static f32 omm_health_state_shake_x_amplitude__life_up(s16 w) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(w);
+    return OMM_HEALTH_ANIM_LIFE_UP_SHAKE_X;
+}
+
+static f32 omm_health_state_shake_y_amplitude__zero(UNUSED s16 w) {
+    return 0.f;
+}
+
+static f32 omm_health_state_shake_y_amplitude__damage(s16 w) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(w);
+    return OMM_HEALTH_ANIM_DAMAGE_SHAKE_Y;
+}
+static f32 omm_health_state_shake_y_amplitude__life_up(s16 w) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(w);
+    return OMM_HEALTH_ANIM_LIFE_UP_SHAKE_Y;
+}
 
 static const OmmHealthState OMM_HEALTH_STATES[][2] = {
     [OMM_HEALTH_STATE_NONE] = {{
@@ -409,13 +434,13 @@ static const OmmHealthState OMM_HEALTH_STATES[][2] = {
         .shakeXFreq         = 0,
         .shakeXPhase        = 0,
         .shakeXOffset       = 0,
-        .shakeXAmplitude    = 0,
+        .shakeXAmplitude    = omm_health_state_shake_x_amplitude__zero,
         .shakeYStart        = 0,
         .shakeYEnd          = 0,
         .shakeYFreq         = 0,
         .shakeYPhase        = 0,
         .shakeYOffset       = 0,
-        .shakeYAmplitude    = 0,
+        .shakeYAmplitude    = omm_health_state_shake_y_amplitude__zero,
     },{
         .duration           = 0,
         .moveStart          = 0,
@@ -425,13 +450,13 @@ static const OmmHealthState OMM_HEALTH_STATES[][2] = {
         .shakeXFreq         = 0,
         .shakeXPhase        = 0,
         .shakeXOffset       = 0,
-        .shakeXAmplitude    = 0,
+        .shakeXAmplitude    = omm_health_state_shake_x_amplitude__zero,
         .shakeYStart        = 0,
         .shakeYEnd          = 0,
         .shakeYFreq         = 0,
         .shakeYPhase        = 0,
         .shakeYOffset       = 0,
-        .shakeYAmplitude    = 0,
+        .shakeYAmplitude    = omm_health_state_shake_y_amplitude__zero,
     }},
     [OMM_HEALTH_STATE_HEAL] = {{
         .duration           = OMM_HEALTH_ANIM_HEAL_MOVE_START,
@@ -442,13 +467,13 @@ static const OmmHealthState OMM_HEALTH_STATES[][2] = {
         .shakeXFreq         = 0,
         .shakeXPhase        = 0,
         .shakeXOffset       = 0,
-        .shakeXAmplitude    = 0,
+        .shakeXAmplitude    = omm_health_state_shake_x_amplitude__zero,
         .shakeYStart        = 0,
         .shakeYEnd          = 0,
         .shakeYFreq         = 0,
         .shakeYPhase        = 0,
         .shakeYOffset       = 0,
-        .shakeYAmplitude    = 0,
+        .shakeYAmplitude    = omm_health_state_shake_y_amplitude__zero,
     },{
         .duration           = OMM_HEALTH_ANIM_HEAL_MOVE_END,
         .moveStart          = OMM_HEALTH_ANIM_HEAL_MOVE_START,
@@ -458,13 +483,13 @@ static const OmmHealthState OMM_HEALTH_STATES[][2] = {
         .shakeXFreq         = 0,
         .shakeXPhase        = 0,
         .shakeXOffset       = 0,
-        .shakeXAmplitude    = 0,
+        .shakeXAmplitude    = omm_health_state_shake_x_amplitude__zero,
         .shakeYStart        = 0,
         .shakeYEnd          = 0,
         .shakeYFreq         = 0,
         .shakeYPhase        = 0,
         .shakeYOffset       = 0,
-        .shakeYAmplitude    = 0,
+        .shakeYAmplitude    = omm_health_state_shake_y_amplitude__zero,
     }},
     [OMM_HEALTH_STATE_DAMAGE] = {{
         .duration           = OMM_HEALTH_ANIM_DAMAGE_MOVE_START,
@@ -475,13 +500,13 @@ static const OmmHealthState OMM_HEALTH_STATES[][2] = {
         .shakeXFreq         = 0,
         .shakeXPhase        = 0,
         .shakeXOffset       = 0,
-        .shakeXAmplitude    = 0,
+        .shakeXAmplitude    = omm_health_state_shake_x_amplitude__zero,
         .shakeYStart        = 0,
         .shakeYEnd          = OMM_HEALTH_ANIM_DAMAGE_SHAKE_END,
         .shakeYFreq         = OMM_HEALTH_ANIM_DAMAGE_SHAKE_FREQ,
         .shakeYPhase        = 0x4000,
         .shakeYOffset       = 0,
-        .shakeYAmplitude    = OMM_HEALTH_ANIM_DAMAGE_SHAKE_Y,
+        .shakeYAmplitude    = omm_health_state_shake_y_amplitude__damage,
     },{
         .duration           = OMM_HEALTH_ANIM_DAMAGE_MOVE_END,
         .moveStart          = OMM_HEALTH_ANIM_DAMAGE_MOVE_START,
@@ -491,13 +516,13 @@ static const OmmHealthState OMM_HEALTH_STATES[][2] = {
         .shakeXFreq         = 0,
         .shakeXPhase        = 0,
         .shakeXOffset       = 0,
-        .shakeXAmplitude    = 0,
+        .shakeXAmplitude    = omm_health_state_shake_x_amplitude__zero,
         .shakeYStart        = 0,
         .shakeYEnd          = OMM_HEALTH_ANIM_DAMAGE_SHAKE_END,
         .shakeYFreq         = OMM_HEALTH_ANIM_DAMAGE_SHAKE_FREQ,
         .shakeYPhase        = 0x4000,
         .shakeYOffset       = 0,
-        .shakeYAmplitude    = OMM_HEALTH_ANIM_DAMAGE_SHAKE_Y,
+        .shakeYAmplitude    = omm_health_state_shake_y_amplitude__damage,
     }},
     [OMM_HEALTH_STATE_LIFE_UP] = {{
         .duration           = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_END,
@@ -508,13 +533,13 @@ static const OmmHealthState OMM_HEALTH_STATES[][2] = {
         .shakeXFreq         = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_FREQ,
         .shakeXPhase        = 0x4000,
         .shakeXOffset       = -1.f,
-        .shakeXAmplitude    = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_X,
+        .shakeXAmplitude    = omm_health_state_shake_x_amplitude__life_up,
         .shakeYStart        = OMM_HEALTH_ANIM_LIFE_UP_MOVE_END,
         .shakeYEnd          = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_END,
         .shakeYFreq         = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_FREQ,
         .shakeYPhase        = 0,
         .shakeYOffset       = 0,
-        .shakeYAmplitude    = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_Y,
+        .shakeYAmplitude    = omm_health_state_shake_y_amplitude__life_up,
     },{
         .duration           = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_END,
         .moveStart          = OMM_HEALTH_ANIM_LIFE_UP_MOVE_START,
@@ -524,13 +549,13 @@ static const OmmHealthState OMM_HEALTH_STATES[][2] = {
         .shakeXFreq         = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_FREQ,
         .shakeXPhase        = 0x4000,
         .shakeXOffset       = -1.f,
-        .shakeXAmplitude    = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_X,
+        .shakeXAmplitude    = omm_health_state_shake_x_amplitude__life_up,
         .shakeYStart        = OMM_HEALTH_ANIM_LIFE_UP_MOVE_END,
         .shakeYEnd          = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_END,
         .shakeYFreq         = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_FREQ,
         .shakeYPhase        = 0,
         .shakeYOffset       = 0,
-        .shakeYAmplitude    = OMM_HEALTH_ANIM_LIFE_UP_SHAKE_Y,
+        .shakeYAmplitude    = omm_health_state_shake_y_amplitude__life_up,
     }},
 };
 
@@ -548,8 +573,8 @@ static f32 omm_health_state_get_shake(s32 timer, s32 tmin, s32 tmax, s32 freq, s
 
 void omm_health_state_get_anim_params(s32 state, s32 timer, f32 *shakeX, f32 *shakeY, f32 *relPos) {
     const OmmHealthState *hstate = omm_health_state_get(state);
-    *shakeX = omm_health_state_get_shake(timer, hstate->shakeXStart, hstate->shakeXEnd, hstate->shakeXFreq, hstate->shakeXPhase, hstate->shakeXOffset, hstate->shakeXAmplitude);
-    *shakeY = omm_health_state_get_shake(timer, hstate->shakeYStart, hstate->shakeYEnd, hstate->shakeYFreq, hstate->shakeYPhase, hstate->shakeYOffset, hstate->shakeYAmplitude);
+    *shakeX = omm_health_state_get_shake(timer, hstate->shakeXStart, hstate->shakeXEnd, hstate->shakeXFreq, hstate->shakeXPhase, hstate->shakeXOffset, hstate->shakeXAmplitude(gOmmHudSize));
+    *shakeY = omm_health_state_get_shake(timer, hstate->shakeYStart, hstate->shakeYEnd, hstate->shakeYFreq, hstate->shakeYPhase, hstate->shakeYOffset, hstate->shakeYAmplitude(gOmmHudSize));
     *relPos = omm_health_state_get_relative_pos(timer, hstate->moveStart, hstate->moveEnd);
 }
 
@@ -598,10 +623,12 @@ static bool omm_health_state_should_stay_active(struct MarioState *m) {
 
 OMM_ROUTINE_UPDATE(omm_health_state_update) {
     static u32 sOmmHealthPreviousState = 0;
+    static bool sOmmHealthBurnDamage = false;
 
     // Set state to 0 on the main menu
     if (omm_is_main_menu()) {
         sOmmHealthPreviousState = 0;
+        sOmmHealthBurnDamage = false;
         return;
     }
 
@@ -615,6 +642,14 @@ OMM_ROUTINE_UPDATE(omm_health_state_update) {
         } else if (++gOmmMario->state.health.timer > omm_health_state_get(gOmmMario->state.health.state)->duration) {
             gOmmMario->state.health.state = OMM_HEALTH_STATE_NONE;
             gOmmMario->state.health.timer = 0;
+        }
+
+        // Burn damage
+        if (!omm_mario_is_burning(m)) {
+            sOmmHealthBurnDamage = false;
+        } else if (OMM_MOVESET_ODYSSEY && !sOmmHealthBurnDamage) {
+            sOmmHealthBurnDamage = true;
+            m->hurtCounter = 1;
         }
 
         // Classic 8-segments health system

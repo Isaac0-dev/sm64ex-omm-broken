@@ -15,11 +15,12 @@ void omm_sparkly_state_set(s32 state, bool sound) {
 s32 omm_sparkly_context_get_data(u64 flags) {
     if (gOmmSparklyContext->data) {
         switch (flags) {
-            case OMM_SPARKLY_DATA_COINS:     return OMM_SPARKLY_DATA_GET_COINS(gOmmSparklyContext->data->flags);
-            case OMM_SPARKLY_DATA_RED_COINS: return OMM_SPARKLY_DATA_GET_RED_COINS(gOmmSparklyContext->data->flags);
-            case OMM_SPARKLY_DATA_BUTTONS:   return OMM_SPARKLY_DATA_GET_BUTTONS(gOmmSparklyContext->data->flags);
-            case OMM_SPARKLY_DATA_MUSHROOMS: return OMM_SPARKLY_DATA_GET_MUSHROOMS(gOmmSparklyContext->data->flags);
-            default:                         return (gOmmSparklyContext->data->flags & flags) != 0;
+            case OMM_SPARKLY_DATA_COINS:       return OMM_SPARKLY_DATA_GET_COINS(gOmmSparklyContext->data->flags);
+            case OMM_SPARKLY_DATA_RED_COINS:   return OMM_SPARKLY_DATA_GET_RED_COINS(gOmmSparklyContext->data->flags);
+            case OMM_SPARKLY_DATA_BUTTONS:     return OMM_SPARKLY_DATA_GET_BUTTONS(gOmmSparklyContext->data->flags);
+            case OMM_SPARKLY_DATA_MUSHROOMS:   return OMM_SPARKLY_DATA_GET_MUSHROOMS(gOmmSparklyContext->data->flags);
+            case OMM_SPARKLY_DATA_OBJECT_TYPE: return OMM_SPARKLY_DATA_GET_OBJECT_TYPE(gOmmSparklyContext->data->flags);
+            default:                           return (gOmmSparklyContext->data->flags & flags) != 0;
         }
     }
     return 0;
@@ -57,6 +58,7 @@ void omm_sparkly_context_reset_data() {
         obj_mark_for_deletion(gOmmSparklyContext->star);
     }
     gOmmSparklyContext->data = NULL;
+    gOmmSparklyContext->spawner = NULL;
     gOmmSparklyContext->star = NULL;
 }
 
@@ -75,7 +77,8 @@ void omm_sparkly_context_spawn_star(struct MarioState *m) {
         // Spawn the star only if not condition star or condition is fulfilled
         bool isConditionStar = (gOmmSparklyContext->data->flags & OMM_SPARKLY_DATA_CONDITION) != 0;
         if (!isConditionStar || gOmmSparklyContext->successful) {
-            gOmmSparklyContext->star = omm_obj_spawn_sparkly_star(m->marioObj,
+            gOmmSparklyContext->star = omm_obj_spawn_sparkly_star(
+                gOmmSparklyContext->spawner ? gOmmSparklyContext->spawner : m->marioObj,
                 gOmmSparklyMode,
                 gOmmSparklyContext->data->starX,
                 gOmmSparklyContext->data->starY,
@@ -164,7 +167,7 @@ static s32 omm_sparkly_context_display_hint_at_level_entry(struct MarioState *m,
             case OMM_SPARKLY_HINT_ALWAYS: {
                 omm_mario_set_action(m, ACT_READING_AUTOMATIC_DIALOG, dialogId, 0xFFFF);
             } break;
-            
+
             case OMM_SPARKLY_HINT_AREA_1:
             case OMM_SPARKLY_HINT_AREA_2:
             case OMM_SPARKLY_HINT_AREA_3:
@@ -202,7 +205,7 @@ static void omm_sparkly_context_skip_regular_star_cutscene() {
 }
 
 void omm_sparkly_context_update(struct MarioState *m) {
-    s32 starIndex = omm_sparkly_get_index(gOmmSparklyMode, gCurrLevelNum, gCurrAreaIndex);
+    s32 starIndex = omm_sparkly_get_star_index(gOmmSparklyMode, gCurrLevelNum, gCurrAreaIndex);
     const OmmSparklyData *data = (starIndex != -1 ? &gOmmSparklyData[gOmmSparklyMode][starIndex] : NULL);
 
     // Area
@@ -238,6 +241,7 @@ void omm_sparkly_context_update(struct MarioState *m) {
     // Leave the current capture if the specific flag is set
     if (gOmmSparklyContext->data != data || !data) {
         gOmmSparklyContext->data = data;
+        gOmmSparklyContext->spawner = m->marioObj;
         gOmmSparklyContext->star = NULL;
         if (data && (data->flags & OMM_SPARKLY_DATA_UNCAPTURE) && omm_mario_is_capture(m)) {
             struct Object *capture = gOmmCapture;
@@ -350,6 +354,13 @@ void omm_sparkly_context_update(struct MarioState *m) {
     // Restrictions
     // In Normal mode, no longer checks restrictions after the star spawn
     if (gOmmSparklyContext->inited && !OMM_SPARKLY_BYPASS_RESTRICTIONS) {
+
+        // Cap power required during cap courses
+        if (((dataFlags & OMM_SPARKLY_DATA_WING_CAP) && !(m->flags & MARIO_WING_CAP)) ||
+            ((dataFlags & OMM_SPARKLY_DATA_METAL_CAP) && !(m->flags & MARIO_METAL_CAP)) ||
+            ((dataFlags & OMM_SPARKLY_DATA_VANISH_CAP) && !(m->flags & MARIO_VANISH_CAP))) {
+            omm_sparkly_state_set(OMM_SPARKLY_STATE_INVALID, 1);
+        }
 
         // Only yellow coins
         if ((dataFlags & OMM_SPARKLY_DATA_ONLY_COIN_Y) && (gOmmSparklyContext->coinsRed || gOmmSparklyContext->coinsBlue)) {

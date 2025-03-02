@@ -57,6 +57,7 @@ omm/gfx/ending/omm_texture_ending_0_luigi.rgba32.png gfx/ending/omm_texture_endi
 omm/gfx/ending/omm_texture_ending_0_mario.rgba32.png gfx/ending/omm_texture_ending_0_mario.rgba32.png
 omm/gfx/ending/omm_texture_ending_0_wario.rgba32.png gfx/ending/omm_texture_ending_0_wario.rgba32.png
 omm/gfx/ending/omm_texture_ending_1.rgba32.png gfx/ending/omm_texture_ending_1.rgba32.png
+omm/gfx/ending/omm_texture_ending_yoshi.rgba32.png gfx/ending/omm_texture_ending_yoshi.rgba32.png
 omm/gfx/font/omm_texture_font_display.rgba32.png gfx/font/omm_texture_font_display.rgba32.png
 omm/gfx/font/omm_texture_font_hud_hyphen.rgba32.png gfx/font/omm_texture_font_hud_hyphen.rgba32.png
 omm/gfx/font/omm_texture_font_hud_j.rgba32.png gfx/font/omm_texture_font_hud_j.rgba32.png
@@ -144,11 +145,19 @@ omm/gfx/hud/omm_texture_hud_coin.rgba32.png gfx/hud/omm_texture_hud_coin.rgba32.
 omm/gfx/hud/omm_texture_hud_crown.rgba32.png gfx/hud/omm_texture_hud_crown.rgba32.png
 omm/gfx/hud/omm_texture_hud_dots.rgba32.png gfx/hud/omm_texture_hud_dots.rgba32.png
 omm/gfx/hud/omm_texture_hud_enemy.rgba32.png gfx/hud/omm_texture_hud_enemy.rgba32.png
+omm/gfx/hud/omm_texture_hud_health_1.rgba32.png gfx/hud/omm_texture_hud_health_1.rgba32.png
+omm/gfx/hud/omm_texture_hud_health_3.rgba32.png gfx/hud/omm_texture_hud_health_3.rgba32.png
 omm/gfx/hud/omm_texture_hud_icon_cap_m.rgba32.png gfx/hud/omm_texture_hud_icon_cap_m.rgba32.png
 omm/gfx/hud/omm_texture_hud_icon_cap_v.rgba32.png gfx/hud/omm_texture_hud_icon_cap_v.rgba32.png
 omm/gfx/hud/omm_texture_hud_icon_cap_w.rgba32.png gfx/hud/omm_texture_hud_icon_cap_w.rgba32.png
 omm/gfx/hud/omm_texture_hud_icon_key.rgba32.png gfx/hud/omm_texture_hud_icon_key.rgba32.png
 omm/gfx/hud/omm_texture_hud_m.rgba32.png gfx/hud/omm_texture_hud_m.rgba32.png
+omm/gfx/hud/omm_texture_hud_no_button.rgba32.png gfx/hud/omm_texture_hud_no_button.rgba32.png
+omm/gfx/hud/omm_texture_hud_no_capture.rgba32.png gfx/hud/omm_texture_hud_no_capture.rgba32.png
+omm/gfx/hud/omm_texture_hud_no_ground.rgba32.png gfx/hud/omm_texture_hud_no_ground.rgba32.png
+omm/gfx/hud/omm_texture_hud_no_mushroom.rgba32.png gfx/hud/omm_texture_hud_no_mushroom.rgba32.png
+omm/gfx/hud/omm_texture_hud_no_vibe.rgba32.png gfx/hud/omm_texture_hud_no_vibe.rgba32.png
+omm/gfx/hud/omm_texture_hud_no_x_button.rgba32.png gfx/hud/omm_texture_hud_no_x_button.rgba32.png
 omm/gfx/hud/omm_texture_hud_s.rgba32.png gfx/hud/omm_texture_hud_s.rgba32.png
 omm/gfx/hud/omm_texture_hud_slash.rgba32.png gfx/hud/omm_texture_hud_slash.rgba32.png
 omm/gfx/hud/omm_texture_hud_vibe_calm.rgba32.png gfx/hud/omm_texture_hud_vibe_calm.rgba32.png

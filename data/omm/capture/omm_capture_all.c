@@ -256,24 +256,25 @@ void pobj_move_3d(struct Object *o, bool run, bool dash, bool stop, s16 pitchMax
 // If numMaxJumps == 0, the object keeps jumping when A is held
 // If numMaxJumps > 1, the object can jump again while being airborne
 s32 pobj_jump(struct Object *o, s32 numMaxJumps) {
+    bool canJump = gOmmObject->state._squishTimer == 0;
     if (numMaxJumps > 0) {
         static s32 sJumps = 0;
         static s32 sFrames = 0;
         sJumps = (obj_is_on_ground(o) ? 0 : max_s(sJumps, 1));
-        if (POBJ_A_BUTTON_PRESSED && sJumps < numMaxJumps) {
+        if (POBJ_A_BUTTON_PRESSED && canJump && sJumps < numMaxJumps) {
             sJumps++;
             sFrames = 0;
             o->oVelY = max_f(o->oVelY, pobj_get_jump_velocity(o));
             o->oFloor = NULL;
             return POBJ_RESULT_JUMP_START;
         }
-        if (POBJ_A_BUTTON_DOWN && ++sFrames < 6) {
+        if (POBJ_A_BUTTON_DOWN && canJump && ++sFrames < 6) {
             o->oVelY = max_f(o->oVelY, pobj_get_jump_velocity(o));
             o->oFloor = NULL;
             return POBJ_RESULT_JUMP_HOLD;
         }
         sFrames = 6;
-    } else if (obj_is_on_ground(o) && POBJ_A_BUTTON_DOWN) {
+    } else if (obj_is_on_ground(o) && POBJ_A_BUTTON_DOWN && canJump) {
         o->oVelY = max_f(o->oVelY, pobj_get_jump_velocity(o));
         o->oFloor = NULL;
         return POBJ_RESULT_JUMP_START;
@@ -282,7 +283,7 @@ s32 pobj_jump(struct Object *o, s32 numMaxJumps) {
 }
 
 bool pobj_hop(struct Object *o, f32 hopDiv) {
-    if (obj_is_on_ground(o) && POBJ_IS_WALKING) {
+    if (obj_is_on_ground(o) && POBJ_IS_WALKING && gOmmObject->state._squishTimer == 0) {
         o->oVelY = max_f(o->oVelY, pobj_get_jump_velocity(o) / ((POBJ_IS_OPENING_DOORS ? 2.f : 1.f) * hopDiv));
         o->oFloor = NULL;
         return true;
@@ -310,6 +311,126 @@ void pobj_apply_gravity(struct Object *o, f32 mult) {
     }
 }
 
+static bool pobj_yoshi_mode_check_mario_dead(struct MarioState *m, struct Object *o, s32 damage, u32 unpossessAct, s16 *yaw, u32 deathAction) {
+    m->hurtCounter = damage * 4;
+    if ((OMM_MOVESET_ODYSSEY && (m->health - OMM_HEALTH_ODYSSEY_PER_SEGMENT) <= OMM_HEALTH_ODYSSEY_DEAD) ||
+        (OMM_MOVESET_CLASSIC && m->health - (m->hurtCounter - m->healCounter) * 0x40 <= OMM_HEALTH_CLASSIC_DEAD)
+#if OMM_GAME_IS_SMSR
+        || gOmmGlobals->booZeroLife
+#endif
+    ) {
+        if (yaw) {
+            omm_mario_unpossess_object_with_yaw(m, unpossessAct, 0, *yaw);
+        } else {
+            omm_mario_unpossess_object(m, unpossessAct, 0);
+        }
+        obj_destroy(o);
+        if (OMM_MOVESET_ODYSSEY && deathAction != ACT_QUICKSAND_DEATH) {
+            m->hurtCounter = 1;
+        } else {
+            m->health = OMM_HEALTH_DEAD;
+            m->hurtCounter = 0;
+        }
+        m->healCounter = 0;
+        m->invincTimer = 0;
+        if (deathAction) {
+            update_mario_sound_and_camera(m);
+            omm_mario_set_action(m, deathAction, 0, 0xFFFF);
+        }
+        if (unpossessAct == OMM_MARIO_UNPOSSESS_ACT_BURNT) {
+            m->marioObj->oMarioBurnTimer = 0;
+            obj_play_sound(m->marioObj, SOUND_MARIO_ON_FIRE);
+        }
+        if (unpossessAct == OMM_MARIO_UNPOSSESS_ACT_BLOWN) {
+            obj_play_sound(m->marioObj, SOUND_MARIO_WAAAOOOW);
+            level_trigger_warp(m, WARP_OP_DEATH);
+        }
+        return true;
+    }
+    return false;
+}
+
+static bool pobj_yoshi_mode_do_damage(struct MarioState *m, struct Object *o, s32 damage, u32 unpossessAct, s16 *yaw) {
+    if (damage == 0) {
+        return true;
+    }
+
+    if (damage > -2 && gOmmObject->state._invincTimer > 0) {
+        return false;
+    }
+
+    // Damage type
+    switch (damage) {
+
+        // Quicksand
+        case -1: {
+            if (pobj_yoshi_mode_check_mario_dead(m, o, OMM_MOVESET_CLASSIC ? 8 : 3, OMM_MARIO_UNPOSSESS_ACT_NONE, NULL, ACT_QUICKSAND_DEATH)) {
+                return false;
+            }
+            gOmmObject->state._invincTimer = 30;
+            set_camera_shake_from_hit(SHAKE_FALL_DAMAGE);
+        } break;
+
+        // Lava boost
+        case -2: {
+            if (pobj_yoshi_mode_check_mario_dead(m, o, 3, OMM_MARIO_UNPOSSESS_ACT_BURNT, NULL, ACT_LAVA_BOOST)) {
+                return false;
+            }
+            gOmmObject->state._invincTimer = 0;
+            gOmmObject->yoshi.flutterTimer = -1;
+            gOmmObject->yoshi.lavaBoost = true;
+            set_camera_shake_from_hit(SHAKE_FALL_DAMAGE);
+        } break;
+
+        // Lava wall
+        case -3: {
+            m->wall = o->oWall;
+            *yaw = atan2s(o->oWall->normal.z, o->oWall->normal.x);
+            if (pobj_yoshi_mode_check_mario_dead(m, o, 3, OMM_MARIO_UNPOSSESS_ACT_BURNT, yaw, ACT_LAVA_BOOST)) {
+                lava_boost_on_wall(m);
+                return false;
+            }
+            gOmmObject->state._invincTimer = 0;
+            gOmmObject->yoshi.flutterTimer = -1;
+            gOmmObject->yoshi.lavaBoost = true;
+            set_camera_shake_from_hit(SHAKE_FALL_DAMAGE);
+        } break;
+
+        // Regular
+        default: {
+            set_camera_shake_from_hit(SHAKE_SMALL_DAMAGE + min_s(damage / 2, 2));
+            if (pobj_yoshi_mode_check_mario_dead(m, o, damage, unpossessAct, yaw, 0)) {
+                return false;
+            }
+            gOmmObject->state._invincTimer = 30;
+        } break;
+    }
+
+    omm_sound_play_with_priority(OMM_SOUND_EFFECT_YOSHI_FLUTTER_END, o->oCameraToObject, 0xFF);
+    return true;
+}
+
+static void pobj_yoshi_mode_do_knockback(struct MarioState *m, struct Object *o, s16 yaw, f32 kbFVel, f32 kbYVel, s32 kbDuration) {
+    if (kbDuration > 0) {
+        if (kbFVel != 0) {
+            o->oFaceAngleYaw = yaw;
+            obj_set_forward_vel(o, yaw, 1.f, kbFVel);
+        }
+        if (kbYVel != 0) {
+            o->oVelY = kbYVel;
+        }
+        omm_mario_lock_once(m, kbDuration);
+        omm_sound_play_with_priority(OMM_SOUND_EFFECT_YOSHI_FLUTTER_END, o->oCameraToObject, 0xFF);
+    }
+}
+
+static void pobj_yoshi_mode_damage_and_knockback(struct Object *o, s32 damage, u32 unpossessAct, s16 yaw, f32 kbFVel, f32 kbYVel, s32 kbDuration) {
+    struct MarioState *m = gMarioState;
+    if (pobj_yoshi_mode_do_damage(m, o, damage, unpossessAct, &yaw)) {
+        pobj_yoshi_mode_do_knockback(m, o, yaw, kbFVel, kbYVel, kbDuration);
+    }
+}
+
 void pobj_handle_special_floors(struct Object *o) {
     o->oFloorType = OBJ_FLOOR_TYPE_NONE;
     f32 waterLevel = find_water_level(o->oPosX, o->oPosZ);
@@ -320,13 +441,16 @@ void pobj_handle_special_floors(struct Object *o) {
 
     // Out of bounds
     if (!o->oFloor) {
-        omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, 6);
+        omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
+        if (gOmmGlobals->yoshiMode) {
+            level_trigger_warp(gMarioState, WARP_OP_DEATH);
+        }
         obj_destroy(o);
         return;
     }
 
     // Squished
-    if (gOmmObject->state._squishTimer >= 6) {
+    if (gOmmObject->state._squishTimer >= 6 && !OMM_CHEAT_GOD_MODE) {
         struct Object *ceil = (o->oCeil ? o->oCeil->object : NULL);
         if (omm_mario_has_metal_cap(gMarioState) && ceil && ceil->activeFlags) {
             obj_destroy(ceil);
@@ -334,6 +458,15 @@ void pobj_handle_special_floors(struct Object *o) {
         } else if (canUnpossess) {
             set_camera_shake_from_hit(SHAKE_SMALL_DAMAGE);
             omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BACKWARD_KB, 15);
+            if (gOmmGlobals->yoshiMode) {
+                omm_mario_set_action(gMarioState, ACT_SQUISHED, 0, 0);
+                gMarioState->actionState = 2;
+                gMarioState->actionTimer = 15;
+                gMarioState->squishTimer = 0xFF;
+                gMarioState->health = OMM_HEALTH_DEAD;
+                level_trigger_warp(gMarioState, WARP_OP_DEATH);
+                obj_destroy(o);
+            }
             return;
         }
     }
@@ -346,6 +479,10 @@ void pobj_handle_special_floors(struct Object *o) {
     // Above water
     if (!isUnderwater && !POBJ_IS_ABOVE_WATER && canUnpossess) {
         omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, 6);
+        if (gOmmGlobals->yoshiMode) {
+            gMarioState->health = OMM_HEALTH_DEAD;
+            level_trigger_warp(gMarioState, WARP_OP_DEATH);
+        }
         obj_destroy(o);
         return;
     }
@@ -374,6 +511,10 @@ void pobj_handle_special_floors(struct Object *o) {
     if (isUnderwater && !POBJ_IS_UNDER_WATER && canUnpossess) {
         o->oPosY = waterLevel + max_f(o->hitboxHeight / 2, 60.f);
         omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, 6);
+        if (gOmmGlobals->yoshiMode) {
+            gMarioState->health = OMM_HEALTH_DEAD;
+            level_trigger_warp(gMarioState, WARP_OP_DEATH);
+        }
         obj_destroy(o);
         return;
     }
@@ -392,12 +533,31 @@ void pobj_handle_special_floors(struct Object *o) {
         }
     }
 
+    // Lava wall
+    // TODO: YOSHIMODE
+    // if (o->oWall && o->oWall->type == SURFACE_BURNING && !OMM_CHEAT_WALK_ON_LAVA && !POBJ_IS_IMMUNE_TO_LAVA && canUnpossess) {
+    //     if (gOmmGlobals->yoshiMode) {
+    //         pobj_yoshi_mode_damage_and_knockback(o, -3, OMM_MARIO_UNPOSSESS_ACT_BURNT, o->oFaceAngleYaw, 80, 84, 15);
+    //     } else {
+    //         gMarioState->wall = o->oWall;
+    //         omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BURNT, 0);
+    //         lava_boost_on_wall(gMarioState);
+    //         obj_destroy(o);
+    //     }
+    //     return;
+    // }
+
     // Special floors
     switch (o->oFloor->type) {
         case SURFACE_DEATH_PLANE:
         case SURFACE_VERTICAL_WIND: {
             if (o->oDistToFloor < 2048.f && !OMM_CHEAT_WALK_ON_DEATH_BARRIER && canUnpossess) {
-                omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, 6);
+                f32 objVelY = o->oVelY;
+                omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
+                if (gOmmGlobals->yoshiMode) {
+                    check_death_barrier(gMarioState);
+                }
+                gMarioState->vel[1] = objVelY;
                 obj_destroy(o);
             } else if (o->oFloor->type == SURFACE_VERTICAL_WIND && POBJ_IS_AFFECTED_BY_VERTICAL_WIND) {
                 f32 offsetY = o->oPosY - -1500.f;
@@ -411,16 +571,24 @@ void pobj_handle_special_floors(struct Object *o) {
         case SURFACE_INSTANT_QUICKSAND:
         case SURFACE_INSTANT_MOVING_QUICKSAND: {
             if (o->oDistToFloor < 5.f && !OMM_CHEAT_WALK_ON_QUICKSAND && !POBJ_IS_IMMUNE_TO_QUICKSAND && canUnpossess) {
-                omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, 6);
-                obj_destroy(o);
+                if (gOmmGlobals->yoshiMode) {
+                    pobj_yoshi_mode_damage_and_knockback(o, -1, OMM_MARIO_UNPOSSESS_ACT_NONE, o->oFaceAngleYaw, 0, 0, 0);
+                } else {
+                    omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_JUMP_OUT, 6);
+                    obj_destroy(o);
+                }
             }
         } break;
 
         case SURFACE_BURNING: {
             if (o->oDistToFloor < 5.f && !OMM_CHEAT_WALK_ON_LAVA && !POBJ_IS_IMMUNE_TO_LAVA && canUnpossess) {
-                omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BURNT, 0);
-                omm_mario_set_action(gMarioState, ACT_LAVA_BOOST, 0, 0);
-                obj_destroy(o);
+                if (gOmmGlobals->yoshiMode) {
+                    pobj_yoshi_mode_damage_and_knockback(o, -2, OMM_MARIO_UNPOSSESS_ACT_BURNT, o->oFaceAngleYaw, 0.01f, 84, 1);
+                } else {
+                    omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BURNT, 0);
+                    omm_mario_set_action(gMarioState, ACT_LAVA_BOOST, 0, 0);
+                    obj_destroy(o);
+                }
             } else if (isOnGround) {
                 o->oFloorType = OBJ_FLOOR_TYPE_LAVA;
                 obj_make_step_sound_and_particle(o, NULL, 0, 0, POBJ_SOUND_RIDING_SHELL_LAVA, OBJ_PARTICLE_FLAME);
@@ -654,16 +822,24 @@ static bool pobj_mario_take_damage_and_unpossess(struct Object *o, struct Object
     // Damage Mario
     if (overlapHurtbox) {
         obj->oInteractStatus = INT_STATUS_INTERACTED | INT_STATUS_ATTACKED_MARIO;
-        gMarioState->hurtCounter += 4 * obj->oDamageOrCoinValue;
         gMarioState->interactObj = obj;
         s16 angleYaw = obj_get_object1_angle_yaw_to_object2(o, obj);
         u16 angleDiff = abs_s((s16) (angleYaw - o->oFaceAngleYaw));
-        if (angleDiff < 0x4000) {
-            omm_mario_unpossess_object_with_yaw(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BACKWARD_KB, 15, angleYaw);
+        if (gOmmGlobals->yoshiMode) {
+            if (angleDiff < 0x4000) {
+                pobj_yoshi_mode_damage_and_knockback(o, obj->oDamageOrCoinValue, OMM_MARIO_UNPOSSESS_ACT_BACKWARD_KB, angleYaw, -60, 0, 15);
+            } else {
+                pobj_yoshi_mode_damage_and_knockback(o, obj->oDamageOrCoinValue, OMM_MARIO_UNPOSSESS_ACT_FORWARD_KB, angleYaw + 0x8000, 60, 0, 15);
+            }
         } else {
-            omm_mario_unpossess_object_with_yaw(gMarioState, OMM_MARIO_UNPOSSESS_ACT_FORWARD_KB, 15, angleYaw + 0x8000);
+            gMarioState->hurtCounter += 4 * obj->oDamageOrCoinValue;
+            if (angleDiff < 0x4000) {
+                omm_mario_unpossess_object_with_yaw(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BACKWARD_KB, 15, angleYaw);
+            } else {
+                omm_mario_unpossess_object_with_yaw(gMarioState, OMM_MARIO_UNPOSSESS_ACT_FORWARD_KB, 15, angleYaw + 0x8000);
+            }
+            set_camera_shake_from_hit(SHAKE_SMALL_DAMAGE + min_s(obj->oDamageOrCoinValue / 2, 2));
         }
-        set_camera_shake_from_hit(SHAKE_SMALL_DAMAGE + min_s(obj->oDamageOrCoinValue / 2, 2));
         return true;
     }
 
@@ -750,9 +926,13 @@ static bool pobj_mario_burn_and_unpossess(struct Object *o, struct Object *obj, 
 
         obj->oInteractStatus = INT_STATUS_INTERACTED;
         gMarioState->interactObj = obj;
-        gMarioState->marioObj->oMarioBurnTimer = 0;
-        obj_play_sound(gMarioState->marioObj, SOUND_MARIO_ON_FIRE);
-        omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BURNT, 15);
+        if (gOmmGlobals->yoshiMode) {
+            pobj_yoshi_mode_damage_and_knockback(o, 3, OMM_MARIO_UNPOSSESS_ACT_BURNT, o->oFaceAngleYaw, 0, 0, 0);
+        } else {
+            gMarioState->marioObj->oMarioBurnTimer = 0;
+            obj_play_sound(gMarioState->marioObj, SOUND_MARIO_ON_FIRE);
+            omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BURNT, 15);
+        }
         return true;
     }
 
@@ -763,7 +943,8 @@ static bool pobj_interact_bully(struct Object *o, struct Object *obj, bool overl
 
     // Bully
     if (overlapHitbox) {
-        f32 knockback = 3600.f / obj->hitboxRadius;
+        f32 pobjKnockback = 0.65f * obj->hitboxRadius;
+        f32 bullyKnockback = 3600.f / obj->hitboxRadius;
         s16 angle = obj_get_object1_angle_yaw_to_object2(o, obj);
 
         // Bully the bully if capture attacks/jumps or is invulnerable
@@ -772,27 +953,42 @@ static bool pobj_interact_bully(struct Object *o, struct Object *obj, bool overl
             // Capture
             o->oFaceAngleYaw = angle;
             o->oMoveAngleYaw = angle;
-            obj_set_forward_vel(o, o->oFaceAngleYaw, 0.2f, -knockback);
+            obj_set_forward_vel(o, o->oFaceAngleYaw, 0.25f, -pobjKnockback);
             pobj_push_out_of_object_hitbox(o, obj, overlapHitbox, overlapHurtbox);
             omm_mario_lock_once(gMarioState, 6);
 
             // Bully
             obj->oFaceAngleYaw = angle + 0x8000;
             obj->oMoveAngleYaw = angle;
-            obj->oForwardVel = knockback;
+            obj->oForwardVel = bullyKnockback;
             obj->oInteractStatus = INT_STATUS_ATTACKED;
             obj_play_sound(obj, SOUND_OBJ_BULLY_METAL);
 
         } else if (!POBJ_IS_INTANGIBLE) {
 
+            // Bully
+            obj->oFaceAngleYaw = angle + 0x8000;
+            obj->oMoveAngleYaw = angle + 0x8000;
+            obj->oForwardVel = -0.25f * bullyKnockback;
+            obj->oInteractStatus = INT_STATUS_INTERACTED;
+            obj_play_sound(obj, SOUND_OBJ_BULLY_METAL);
+
             // If capture was bullied during the last 60 frames, eject Mario
             if (gOmmObject->state._bullyTimer > 0) {
                 s16 angleYaw = obj_get_object1_angle_yaw_to_object2(o, obj);
                 u16 angleDiff = abs_s((s16) (angleYaw - o->oFaceAngleYaw));
-                if (angleDiff < 0x4000) {
-                    omm_mario_unpossess_object_with_yaw(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BACKWARD_KB, 15, angleYaw);
+                if (gOmmGlobals->yoshiMode) {
+                    if (angleDiff < 0x4000) {
+                        pobj_yoshi_mode_damage_and_knockback(o, max_s(1, pobjKnockback / 20), OMM_MARIO_UNPOSSESS_ACT_BACKWARD_KB, angleYaw, -60, 0, 15);
+                    } else {
+                        pobj_yoshi_mode_damage_and_knockback(o, max_s(1, pobjKnockback / 20), OMM_MARIO_UNPOSSESS_ACT_FORWARD_KB, angleYaw + 0x8000, 60, 0, 15);
+                    }
                 } else {
-                    omm_mario_unpossess_object_with_yaw(gMarioState, OMM_MARIO_UNPOSSESS_ACT_FORWARD_KB, 15, angleYaw + 0x8000);
+                    if (angleDiff < 0x4000) {
+                        omm_mario_unpossess_object_with_yaw(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BACKWARD_KB, 15, angleYaw);
+                    } else {
+                        omm_mario_unpossess_object_with_yaw(gMarioState, OMM_MARIO_UNPOSSESS_ACT_FORWARD_KB, 15, angleYaw + 0x8000);
+                    }
                 }
                 return true;
             }
@@ -801,16 +997,10 @@ static bool pobj_interact_bully(struct Object *o, struct Object *obj, bool overl
             gOmmObject->state._bullyTimer = 60;
             o->oFaceAngleYaw = angle;
             o->oMoveAngleYaw = angle;
-            obj_set_forward_vel(o, o->oFaceAngleYaw, 1.f, -knockback);
+            obj_set_forward_vel(o, o->oFaceAngleYaw, 1.f, -pobjKnockback);
             pobj_push_out_of_object_hitbox(o, obj, overlapHitbox, overlapHurtbox);
             obj_play_sound(o, o->oDeathSound);
-            omm_mario_lock_once(gMarioState, 30);
-
-            // Bully
-            obj->oFaceAngleYaw = angle + 0x8000;
-            obj->oMoveAngleYaw = angle + 0x8000;
-            obj->oInteractStatus = INT_STATUS_INTERACTED;
-            obj_play_sound(obj, SOUND_OBJ_BULLY_METAL);
+            omm_mario_lock_once(gMarioState, 20);
         }
         return false;
     }
@@ -900,12 +1090,23 @@ static bool pobj_interact_grabbable(struct Object *o, struct Object *obj, bool o
     // Grabs Mario out of his possession
     if (overlapHitbox) {
         if ((obj->oInteractionSubtype & INT_SUBTYPE_GRABS_MARIO) && obj_is_object1_facing_object2(obj, o, 0x2800) && !omm_mario_has_metal_cap(gMarioState)) {
-            obj->oInteractStatus = INT_STATUS_INTERACTED | INT_STATUS_GRABBED_MARIO;
-            o->oFaceAngleYaw = obj->oMoveAngleYaw;
-            gMarioState->interactObj = obj;
-            gMarioState->usedObj = obj;
-            obj_play_sound(gMarioState->marioObj, SOUND_MARIO_OOOF);
-            omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_GRABBED, 15);
+            if (gOmmGlobals->yoshiMode) {
+                obj->oInteractStatus = INT_STATUS_INTERACTED;
+                s16 angleYaw = obj_get_object1_angle_yaw_to_object2(o, obj);
+                u16 angleDiff = abs_s((s16) (angleYaw - o->oFaceAngleYaw));
+                if (angleDiff < 0x4000) {
+                    pobj_yoshi_mode_damage_and_knockback(o, 3, OMM_MARIO_UNPOSSESS_ACT_BACKWARD_KB, angleYaw, -60, 0, 15);
+                } else {
+                    pobj_yoshi_mode_damage_and_knockback(o, 3, OMM_MARIO_UNPOSSESS_ACT_FORWARD_KB, angleYaw + 0x8000, 60, 0, 15);
+                }
+            } else {
+                obj->oInteractStatus = INT_STATUS_INTERACTED | INT_STATUS_GRABBED_MARIO;
+                o->oFaceAngleYaw = obj->oMoveAngleYaw;
+                gMarioState->interactObj = obj;
+                gMarioState->usedObj = obj;
+                obj_play_sound(gMarioState->marioObj, SOUND_MARIO_OOOF);
+                omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_GRABBED, 15);
+            }
             return true;
         }
     }
@@ -962,8 +1163,12 @@ static bool pobj_interact_strong_wind(struct Object *o, struct Object *obj, bool
         gMarioState->interactObj = obj;
         gMarioState->usedObj = obj;
         gMarioState->unkC4 = 0.4f;
-        obj_play_sound(gMarioState->marioObj, SOUND_MARIO_WAAAOOOW);
-        omm_mario_unpossess_object_with_yaw(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BLOWN, 15, obj->oMoveAngleYaw + 0x8000);
+        if (gOmmGlobals->yoshiMode) {
+            pobj_yoshi_mode_damage_and_knockback(o, 1, OMM_MARIO_UNPOSSESS_ACT_BLOWN, obj->oMoveAngleYaw + 0x8000, -60, 0, 15);
+        } else {
+            obj_play_sound(gMarioState->marioObj, SOUND_MARIO_WAAAOOOW);
+            omm_mario_unpossess_object_with_yaw(gMarioState, OMM_MARIO_UNPOSSESS_ACT_BLOWN, 15, obj->oMoveAngleYaw + 0x8000);
+        }
         return true;
     }
 
@@ -983,10 +1188,17 @@ static bool pobj_interact_tornado(struct Object *o, struct Object *obj, bool ove
         obj->oInteractStatus = INT_STATUS_INTERACTED;
         gMarioState->interactObj = obj;
         gMarioState->usedObj = obj;
-        gMarioState->marioObj->oMarioTornadoYawVel = 0x400;
-        gMarioState->marioObj->oMarioTornadoPosY = o->oPosY - obj->oPosY;
-        obj_play_sound(gMarioState->marioObj, SOUND_MARIO_WAAAOOOW);
-        omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_TORNADO, 15);
+        if (gOmmGlobals->yoshiMode) {
+            f32 gravity = -pobj_get_gravity(o);
+            pobj_yoshi_mode_damage_and_knockback(o, 0, 0, o->oFaceAngleYaw, 0, 60.f * sqrtf(gravity), 1);
+            gOmmObject->state._cannonTimer = (s32) ceilf(o->oVelY / gravity);
+            obj_play_sound(o, SOUND_ACTION_FLYING_FAST);
+        } else {
+            gMarioState->marioObj->oMarioTornadoYawVel = 0x400;
+            gMarioState->marioObj->oMarioTornadoPosY = o->oPosY - obj->oPosY;
+            obj_play_sound(gMarioState->marioObj, SOUND_MARIO_WAAAOOOW);
+            omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_TORNADO, 15);
+        }
         return true;
     }
 
@@ -1079,8 +1291,13 @@ bool pobj_interact_bbh_entrance(struct Object *o, struct Object *obj, bool overl
 
     // Unpossess and start BBH entrance cutscene
     if (overlapHitbox) {
-        omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
-        omm_mario_interact_bbh_entrance(gMarioState, obj);
+        if (gOmmGlobals->yoshiMode) {
+            omm_mario_unpossess_object_before_warp(gMarioState);
+            omm_mario_interact_warp(gMarioState, obj);
+        } else {
+            omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
+            omm_mario_interact_bbh_entrance(gMarioState, obj);
+        }
         return true;
     }
 
@@ -1133,6 +1350,9 @@ bool pobj_interact_whirlpool(struct Object *o, struct Object *obj, bool overlapH
     if (overlapHitbox) {
         if (!POBJ_IS_IMMUNE_TO_STRONG_WINDS) {
             omm_mario_unpossess_object(gMarioState, OMM_MARIO_UNPOSSESS_ACT_NONE, 0);
+            if (gOmmGlobals->yoshiMode) {
+                obj_destroy(o);
+            }
             omm_mario_interact_whirlpool(gMarioState, obj);
             return true;
         }

@@ -184,22 +184,14 @@ static void bhv_omm_yoshi_tongue_update() {
     }
 
     // Hitbox
+    // To be consistent between different Yoshi models, position for collision is computed from object values
+    o->oPosX = p->oPosX + (omm_capture_get_hitbox_radius(p) + OMM_YOSHI_TONGUE_LENGTH * gOmmObject->yoshi.tongueSine) * sins(p->oFaceAngleYaw);
+    o->oPosY = p->oPosY + (omm_capture_get_hitbox_height(p) / 2.f);
+    o->oPosZ = p->oPosZ + (omm_capture_get_hitbox_radius(p) + OMM_YOSHI_TONGUE_LENGTH * gOmmObject->yoshi.tongueSine) * coss(p->oFaceAngleYaw);
+    obj_set_angle(o, 0, p->oFaceAngleYaw, 0);
     obj_set_scale(o, p->oScaleX, p->oScaleY, p->oScaleZ);
     obj_set_params(o, 0, 0, 0, 0, true);
     obj_reset_hitbox(o, 80, 160, 0, 0, 0, 80);
-
-    // Gfx
-    obj_set_scale(o, p->oScaleX, p->oScaleY, p->oScaleZ * gOmmObject->yoshi.tongueSine);
-    Mat4 objTransform;
-    geo_compute_capture_cappy_obj_transform(p, 4, objTransform);
-    o->oPosX = objTransform[3][0] + (10.f * p->oScaleX + OMM_YOSHI_TONGUE_LENGTH * gOmmObject->yoshi.tongueSine) * sins(p->oFaceAngleYaw);
-    o->oPosY = objTransform[3][1] + (15.f * p->oScaleY);
-    o->oPosZ = objTransform[3][2] + (10.f * p->oScaleZ + OMM_YOSHI_TONGUE_LENGTH * gOmmObject->yoshi.tongueSine) * coss(p->oFaceAngleYaw);
-    obj_set_angle(o, 0, p->oFaceAngleYaw, 0);
-    obj_update_gfx(o);
-    obj_set_always_rendered(o, true);
-    obj_copy_visibility_and_transparency(o, p);
-    o->activeFlags = (o->activeFlags & ~ACTIVE_FLAG_DITHERED_ALPHA) | (p->activeFlags & ACTIVE_FLAG_DITHERED_ALPHA);
 
     // Collisions
     if (!gOmmObject->yoshi.tongued) {
@@ -260,6 +252,19 @@ static void bhv_omm_yoshi_tongue_update() {
             }
         }
     }
+
+    // Gfx
+    obj_set_scale(o, p->oScaleX, p->oScaleY, p->oScaleZ * gOmmObject->yoshi.tongueSine);
+    Mat4 objTransform;
+    geo_compute_capture_cappy_obj_transform(p, 4, objTransform);
+    o->oPosX = objTransform[3][0] + (10.f * p->oScaleX + OMM_YOSHI_TONGUE_LENGTH * gOmmObject->yoshi.tongueSine) * sins(p->oFaceAngleYaw);
+    o->oPosY = objTransform[3][1] + (15.f * p->oScaleY);
+    o->oPosZ = objTransform[3][2] + (10.f * p->oScaleZ + OMM_YOSHI_TONGUE_LENGTH * gOmmObject->yoshi.tongueSine) * coss(p->oFaceAngleYaw);
+    obj_set_angle(o, 0, p->oFaceAngleYaw, 0);
+    obj_update_gfx(o);
+    obj_set_always_rendered(o, true);
+    obj_copy_visibility_and_transparency(o, p);
+    o->activeFlags = (o->activeFlags & ~ACTIVE_FLAG_DITHERED_ALPHA) | (p->activeFlags & ACTIVE_FLAG_DITHERED_ALPHA);
 
     // Update "tongued" object
     if (gOmmObject->yoshi.tongued) {

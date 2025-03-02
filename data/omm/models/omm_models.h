@@ -140,7 +140,7 @@ void         omm_models_cs_update_current();
 u64          omm_models_cs_get_size(u32 cs_index);
 u32          omm_models_cs_get_current_cs_index();
 const u32  **omm_models_cs_get_palette_preset(u32 cs_index);
-const Animation *omm_models_cs_get_animation(u32 cs_index, s32 anim_index);
+Animation   *omm_models_cs_get_animation(u32 cs_index, s32 anim_index);
 const char  *omm_models_cs_get_pack_folder(u32 cs_index);
 const char  *omm_models_cs_get_sound_name(u32 cs_index, s32 char_sound, s32 variant);
 void        *omm_models_cs_sound_load(const char *pack_folder, const char *sound_name, u64 *loaded_bytes);

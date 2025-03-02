@@ -6,7 +6,7 @@
 struct Object *omm_cappy_get_object();
 struct Object *omm_cappy_get_object_play_as();
 struct Object *omm_cappy_spawn(struct MarioState *m);
-struct Object *omm_cappy_find_target(f32 *origin, struct Object *cappy, struct MarioState *m, f32 distanceMax);
+struct Object *omm_cappy_find_target(f32 *origin, struct Object *cappy, struct MarioState *m, Vec3f direction, f32 distanceMax);
 void omm_cappy_update(struct MarioState *m);
 void omm_cappy_return_to_mario(struct Object *cappy);
 void omm_cappy_try_to_target_next_object(struct Object *cappy, struct MarioState *m);

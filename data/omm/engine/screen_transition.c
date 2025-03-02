@@ -27,8 +27,6 @@ void gfx_clear_frame_transition() {
 // Utils
 //
 
-s32 sTransitionColorFadeTimer = 0;
-s32 sTransitionTextureFadeTimer = 0;
 static const void *sTransitionTextures[] = {
     texture_transition_star_half,
     texture_transition_circle_half,
@@ -36,11 +34,9 @@ static const void *sTransitionTextures[] = {
     texture_transition_bowser_half,
 };
 
-static bool set_and_reset_transition_fade_timer(s32 transTime) {
-    sTransitionColorFadeTimer++;
-    if (sTransitionColorFadeTimer == transTime) {
-        sTransitionColorFadeTimer = 0;
-        sTransitionTextureFadeTimer = 0;
+static bool update_transition_timer_and_check_finished(struct WarpTransitionData *transData, s32 transTime) {
+    if (++transData->texTimer >= transTime) {
+        transData->texTimer = 0;
         return true;
     }
     return false;
@@ -64,13 +60,13 @@ static void vertex_transition_color(Vtx *vtx, struct WarpTransitionData *transDa
 static bool render_fade_transition_color(s32 transTime, struct WarpTransitionData *transData, bool fadeOut) {
 
     // Current frame
-    u8 alpha1 = get_transition_color_fade_alpha(fadeOut, sTransitionColorFadeTimer, transTime);
+    u8 alpha1 = get_transition_color_fade_alpha(fadeOut, transData->texTimer, transTime);
     vertex_transition_color(sTransitionVtx1, transData, alpha1);
 
     // Previous frame
     if (gFrameInterpolation) {
         sTransitionPos = gDisplayListHead;
-        u8 alpha0 = get_transition_color_fade_alpha(fadeOut, sTransitionColorFadeTimer - 1, transTime);
+        u8 alpha0 = get_transition_color_fade_alpha(fadeOut, max_s(0, transData->texTimer - 1), transTime);
         vertex_transition_color(sTransitionVtx0, transData, alpha0);
     } else {
         mem_cpy(sTransitionVtx0, sTransitionVtx1, sizeof(sTransitionVtx1));
@@ -88,12 +84,12 @@ static bool render_fade_transition_color(s32 transTime, struct WarpTransitionDat
     gSPDisplayList(gDisplayListHead++, dl_screen_transition_end);
 
     // Update fade timer
-    return set_and_reset_transition_fade_timer(transTime);
+    return update_transition_timer_and_check_finished(transData, transTime);
 }
 
 static s16 calc_tex_transition_radius(s32 transTime, struct WarpTransitionData *transData, f32 t) {
     f32 texRadius = transData->endTexRadius - transData->startTexRadius;
-    f32 radiusTime = (max_f(sTransitionColorFadeTimer - 1 + t, 0.f) * texRadius) / (f32) (transTime - 1);
+    f32 radiusTime = (max_f(transData->texTimer - 1 + t, 0.f) * texRadius) / (f32) (transTime - 1);
     f32 result = transData->startTexRadius + radiusTime;
     return (s16) (result + 0.5f);
 }
@@ -104,7 +100,7 @@ static f32 calc_tex_transition_time(s32 transTime, struct WarpTransitionData *tr
     f32 endX = transData->endTexX;
     f32 endY = transData->endTexY;
     f32 sqrtfXY = sqrtf(sqr_f(startX - endX) + sqr_f(startY - endY));
-    f32 result = ((f32) sTransitionColorFadeTimer * sqrtfXY) / (f32) (transTime - 1);
+    f32 result = ((f32) transData->texTimer * sqrtfXY) / (f32) (transTime - 1);
     return result;
 }
 
@@ -128,7 +124,7 @@ static void make_tex_transition_vertex(Vtx *vtx, s32 n, struct WarpTransitionDat
     u8 r = transData->red;
     u8 g = transData->green;
     u8 b = transData->blue;
-    u16 zeroTimer = sTransitionTextureFadeTimer;
+    u16 zeroTimer = 0;
     f32 centerX = texRadius1 * coss(zeroTimer) - texRadius2 * sins(zeroTimer) + centerTransX;
     f32 centerY = texRadius1 * sins(zeroTimer) + texRadius2 * coss(zeroTimer) + centerTransY;
     s16 x = round_float(centerX);
@@ -199,8 +195,7 @@ static bool render_textured_transition(s32 transTime, struct WarpTransitionData 
     gSPDisplayList(gDisplayListHead++, dl_screen_transition_end);
 
     // Update fade timer
-    sTransitionTextureFadeTimer += transData->texTimer;
-    return set_and_reset_transition_fade_timer(transTime);
+    return update_transition_timer_and_check_finished(transData, transTime);
 }
 
 //

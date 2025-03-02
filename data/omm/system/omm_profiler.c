@@ -16,7 +16,11 @@ static struct {
     } pc[OMM_PRF_MAX];
 #endif
     f32 fps;
+#if OMM_CODE_DEBUG
     Gfx gfx[0x10000];
+#else
+    Gfx gfx[0x100];
+#endif
 } sOmmProfiler[1];
 
 void omm_profiler_start(DEBUG_ONLY s32 prf) {

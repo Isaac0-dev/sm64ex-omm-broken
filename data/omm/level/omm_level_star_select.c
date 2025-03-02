@@ -123,7 +123,7 @@ static void omm_star_select_render() {
     }
     omm_text_capitalize(buffer);
     omm_star_select_render_string(buffer, (SCREEN_WIDTH - omm_star_select_get_string_width(buffer, 16, 1)) / 2, OMM_RENDER_STAR_SELECT_COURSE_NAME_Y, 16, 1, true, true);
-    
+
     // Act text
     u8 *actText = omm_text_convert(OMM_TEXT_ACT, false);
     s32 actTextW = omm_star_select_get_string_width(actText, 12, 2);
@@ -157,9 +157,10 @@ static void omm_star_select_render() {
     omm_render_string(scoreTextX,     OMM_RENDER_STAR_SELECT_SCORE_Y,     0xFF, 0xFF, 0x00, sOmmStarSelect->alpha, scoreText, false);
 
     // Coin score
+    OMM_RENDER_DEFINE_GLYPH_SIZE(OMM_RENDER_GLYPH_SIZE_DEFAULT);
     s32 scoreCoins = omm_save_file_get_course_coin_score(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1);
     s32 scoreCoinsX = (SCREEN_WIDTH / 2) - 7;
-    omm_render_hud_coins(scoreCoinsX, OMM_RENDER_STAR_SELECT_SCORE_Y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sOmmStarSelect->alpha, scoreCoins);
+    omm_render_hud_coins(scoreCoinsX, OMM_RENDER_STAR_SELECT_SCORE_Y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), OMM_RENDER_GLYPH_SIZE, sOmmStarSelect->alpha, scoreCoins);
 
     // 100 coins star
     if (starSaveFlags & 0x40) {

@@ -35,9 +35,10 @@ static void omm_render_course_complete_update() {
 }
 
 static s16 omm_render_course_complete_coins(s16 y) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(OMM_RENDER_GLYPH_SIZE_DEFAULT);
     u8 *textScore = omm_text_convert(OMM_TEXT_MY_SCORE, false);
     omm_render_string_right_align(OMM_RENDER_COURSE_COMPLETE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmComplete->alpha, textScore, true);
-    omm_render_hud_coins(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sOmmComplete->alpha, sOmmComplete->coins);
+    omm_render_hud_coins(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), OMM_RENDER_GLYPH_SIZE, sOmmComplete->alpha, sOmmComplete->coins);
     if (sOmmComplete->coins == sOmmComplete->score && gGotFileCoinHiScore) {
         u8 intensity = (0xFF * ((1.f + sins(gGlobalTimer * 0x1000)) / 2.f));
         u8 *textHiScore = omm_text_convert(OMM_TEXT_COURSE_COMPLETE_HI_SCORE, false);
@@ -48,10 +49,11 @@ static s16 omm_render_course_complete_coins(s16 y) {
 }
 
 static s16 omm_render_course_complete_stars(s16 y) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(OMM_RENDER_GLYPH_SIZE_DEFAULT);
     s32 levelNum = OMM_BOWSER_IN_THE_LEVEL(gLastCompletedLevelNum);
     u8 *textStars = omm_text_convert(OMM_TEXT_MY_STARS, false);
     omm_render_string_right_align(OMM_RENDER_COURSE_COMPLETE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sOmmComplete->alpha, textStars, true);
-    omm_render_hud_stars(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sOmmComplete->alpha, levelNum);
+    omm_render_hud_stars(OMM_RENDER_COURSE_COMPLETE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), OMM_RENDER_GLYPH_SIZE, sOmmComplete->alpha, levelNum);
     y += OMM_RENDER_COURSE_COMPLETE_OFFSET_Y;
     return y;
 }

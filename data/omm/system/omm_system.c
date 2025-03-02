@@ -48,7 +48,7 @@ void omm_select_save_file(s32 fileIndex, s32 modeIndex, s32 courseNum, bool skip
     sOmmSystem->warpToLastCourseNum = courseNum;
     sOmmSystem->isMainMenu = false;
     sOmmSystem->isEndingCutscene = false;
-    sOmmSystem->skipIntro = skipIntro;
+    sOmmSystem->skipIntro = skipIntro || gOmmGlobals->yoshiMode;
 }
 
 void omm_return_to_main_menu() {
@@ -243,7 +243,7 @@ void omm_pre_render() {
         f32 vel = vec3f_dist(m->pos, gOmmMario->state.previous.pos);
         if (gGlobalTimer % (3 - clamp_s(vel / 25.f, 0, 2)) == 0) {
             struct Object *sparkle = omm_obj_spawn_sparkly_star_sparkle_mario(o, OMM_SPARKLY_STARS_COMPLETION_REWARD, 20.f, 10.f, 0.4f, 30.f);
-            Vec3f marioRootPos; geo_get_marios_root_pos(marioRootPos);
+            Vec3f marioRootPos; geo_get_marios_anim_part_pos(NULL, marioRootPos, MARIO_ANIM_PART_ROOT);
             sparkle->oPosX += (marioRootPos[0] - o->oPosX);
             sparkle->oPosY += (marioRootPos[1] - o->oPosY);
             sparkle->oPosZ += (marioRootPos[2] - o->oPosZ);
@@ -325,9 +325,9 @@ void *omm_update_cmd(void *cmd, UNUSED s32 reg) {
 #if OMM_GAME_IS_SM64
     // Skip intro cutscene (NOT Lakitu and Bowser's laugh)
     // Oddly enough, the check for intro Lakitu and Bowser's laugh occurs BEFORE the check for the intro cutscene
-    // Meaning we can enable the former, then set configSkipIntro to skip the latter 
+    // Meaning we can enable the former, then set configSkipIntro to skip the latter
     static const uintptr_t cmd_lvl_init_from_save_file[] = { CALL(0, lvl_init_from_save_file) };
-    if (mem_eq(cmd, cmd_lvl_init_from_save_file, sizeof(cmd_lvl_init_from_save_file))) {
+    if (gOmmGlobals->yoshiMode || mem_eq(cmd, cmd_lvl_init_from_save_file, sizeof(cmd_lvl_init_from_save_file))) {
         configSkipIntro = sOmmSystem->skipIntro;
     }
 #endif
@@ -357,11 +357,20 @@ void *omm_update_cmd(void *cmd, UNUSED s32 reg) {
         if (cmd == level_script_cake_ending) {
             sOmmSystem->isEndingCutscene = true;
             sOmmSystem->isEndingCake = true;
+            // TODO: YOSHIMODE
+            // if (gOmmGlobals->yoshiMode) {
+            //     omm_secrets_unlock(OMM_SECRET_YOSHI_ENDING);
+            // }
         }
 #endif
 
         // Skip ending
-        if (sOmmSystem->isEndingCutscene && !sOmmSystem->returnToMainMenu && (gPlayer1Controller->buttonPressed & START_BUTTON)) {
+        if (sOmmSystem->isEndingCutscene && !sOmmSystem->returnToMainMenu && (gPlayer1Controller->buttonPressed & START_BUTTON)
+        // TODO: YOSHIMODE
+// #if OMM_GAME_IS_SM64
+//             && (!gOmmGlobals->yoshiMode || omm_secrets_is_unlocked(OMM_SECRET_YOSHI_ENDING))
+// #endif
+        ) {
             sOmmSystem->returnToMainMenu = gGlobalTimer;
             play_transition(WARP_TRANSITION_FADE_INTO_STAR, 30, 0, 0, 0);
             music_fade_out(SEQ_PLAYER_LEVEL, 190);
@@ -423,4 +432,8 @@ bool omm_is_ending_cutscene() {
 
 bool omm_is_ending_cake_screen() {
     return sOmmSystem->isEndingCake;
+}
+
+bool omm_is_warping_to_last_course() {
+    return sOmmSystem->warpToLastCourseNum != COURSE_NONE;
 }

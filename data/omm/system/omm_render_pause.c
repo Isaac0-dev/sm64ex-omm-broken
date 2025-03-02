@@ -76,11 +76,13 @@ static void omm_render_pause_sparkly_timer(s16 x, s16 y, s16 w, u8 alpha, s32 sp
 //
 
 OMM_INLINE void omm_render_pause_collectible(s16 x, s16 y, const void *texture, bool collected) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(OMM_RENDER_GLYPH_SIZE_DEFAULT);
     omm_render_glyph_hud(x, y, 0xFF * collected, 0xFF * collected, 0xFF * collected, sPauseAlpha / (2 - collected), texture, false);
 }
 
 static void omm_render_pause_collectibles() {
 #if OMM_GAME_IS_R96X
+    OMM_RENDER_DEFINE_GLYPH_SIZE(OMM_RENDER_GLYPH_SIZE_DEFAULT);
 
     // Luigi keys
     if ((gHudDisplay.flags & HUD_DISPLAY_FLAG_KEYS) && gHudDisplay.keys > 0 && gHudDisplay.keys < NUM_KEYS) {
@@ -183,9 +185,10 @@ static s16 omm_render_pause_course_act(s16 y) {
 static s16 omm_render_pause_course_stars(s16 y) {
     s32 levelNum = OMM_BOWSER_IN_THE_LEVEL(gCurrLevelNum);
     if (omm_stars_get_level_flags(levelNum, OMM_GAME_MODE) != 0) {
+        OMM_RENDER_DEFINE_GLYPH_SIZE(OMM_RENDER_GLYPH_SIZE_DEFAULT);
         u8 *textStars = omm_text_convert(OMM_TEXT_MY_STARS, false);
         omm_render_string_right_align(OMM_RENDER_PAUSE_COURSE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sPauseAlpha, textStars, true);
-        omm_render_hud_stars(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sPauseAlpha, levelNum);
+        omm_render_hud_stars(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), OMM_RENDER_GLYPH_SIZE, sPauseAlpha, levelNum);
         y -= OMM_RENDER_PAUSE_COURSE_OFFSET_Y;
     }
     return y;
@@ -194,9 +197,10 @@ static s16 omm_render_pause_course_stars(s16 y) {
 static s16 omm_render_pause_course_coins(s16 y) {
     s32 levelNum = OMM_BOWSER_IN_THE_LEVEL(gCurrLevelNum);
     if (omm_stars_get_level_flags(levelNum, OMM_GAME_MODE) != 0) {
+        OMM_RENDER_DEFINE_GLYPH_SIZE(OMM_RENDER_GLYPH_SIZE_DEFAULT);
         u8 *textScore = omm_text_convert(OMM_TEXT_MY_SCORE, false);
         omm_render_string_right_align(OMM_RENDER_PAUSE_COURSE_RIGHT_ALIGN_X, y, 0xFF, 0xFF, 0xFF, sPauseAlpha, textScore, true);
-        omm_render_hud_coins(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), sPauseAlpha, omm_save_file_get_course_coin_score(gCurrSaveFileNum - 1, OMM_GAME_MODE, omm_level_get_course(levelNum) - 1));
+        omm_render_hud_coins(OMM_RENDER_PAUSE_COURSE_LEFT_ALIGN_X, y - ((OMM_RENDER_GLYPH_SIZE - 8) / 2), OMM_RENDER_GLYPH_SIZE, sPauseAlpha, omm_save_file_get_course_coin_score(gCurrSaveFileNum - 1, OMM_GAME_MODE, omm_level_get_course(levelNum) - 1));
         y -= OMM_RENDER_PAUSE_COURSE_OFFSET_Y;
     }
     return y;
@@ -204,6 +208,7 @@ static s16 omm_render_pause_course_coins(s16 y) {
 
 static void omm_render_pause_course_red_coins() {
     if (gOmmArea->redCoins > 0 && obj_get_red_coin_star()) {
+        OMM_RENDER_DEFINE_GLYPH_SIZE(OMM_RENDER_GLYPH_SIZE_DEFAULT);
         s32 x = OMM_RENDER_RED_COINS_X;
         omm_render_texrect(
             x, OMM_RENDER_RED_COINS_Y, OMM_RENDER_GLYPH_SIZE, OMM_RENDER_GLYPH_SIZE,
@@ -231,7 +236,7 @@ static void omm_render_pause_course_collectibles() {
 }
 
 static void omm_render_pause_course_sparkly_timer() {
-    if (OMM_SPARKLY_MODE_IS_ENABLED) {
+    if (OMM_SPARKLY_MODE_IS_ENABLED && !time_trials_is_enabled()) {
         s32 sparklyMode = gOmmSparklyMode;
         omm_render_pause_sparkly_timer(
             OMM_RENDER_SPARKLY_TIMER_X(OMM_RENDER_SPARKLY_TIMER_GLYPH_SIZE),
@@ -286,7 +291,7 @@ static void omm_render_pause_course_select_option() {
             case 1: { // Restart Level
                 omm_restart_level();
             } break;
-            
+
             case 2: { // Exit Level
                 omm_exit_level(gCurrLevelNum, gCurrAreaIndex, false);
             } break;
@@ -393,7 +398,7 @@ static void omm_render_pause_castle_pause() {
 static void omm_render_pause_castle_course() {
     s32 levelNum = OMM_PAUSE_LEVEL_LIST[sCastleScrollV.idx];
     s32 courseIndex = omm_level_get_course(levelNum) - 1;
-    
+
     // Course name
     ustr_t textCourseName;
     if (courseIndex == -1) {
@@ -482,10 +487,10 @@ static void omm_render_pause_castle_caps_keys_captures() {
 
 static void omm_render_pause_castle_sparkly_stars_and_timer() {
     s32 sparklyMode = gOmmSparklyMode;
-    s32 count = omm_sparkly_get_bowser_4_index(sparklyMode) + 1;
-    u8 textR = OMM_SPARKLY_HUD_COLOR[sparklyMode][0];
-    u8 textG = OMM_SPARKLY_HUD_COLOR[sparklyMode][1];
-    u8 textB = OMM_SPARKLY_HUD_COLOR[sparklyMode][2];
+    s32 count = omm_sparkly_get_num_stars(sparklyMode);
+    u8 textR = OMM_SPARKLY_HUD_COLOR_R[sparklyMode];
+    u8 textG = OMM_SPARKLY_HUD_COLOR_G[sparklyMode];
+    u8 textB = OMM_SPARKLY_HUD_COLOR_B[sparklyMode];
     omm_render_update_scroll(&sCastleScrollH, count, gPlayer1Controller->stickX);
 
     // Horizontal arrows
@@ -525,7 +530,7 @@ static void omm_render_pause_castle_sparkly_stars_and_timer() {
         if (omm_sparkly_get_level_name(levelName, sparklyMode, sCastleScrollH.idx)) {
             if ((sCastleScrollH.idx == count - 1 && omm_sparkly_is_grand_star_collected(sparklyMode)) || omm_sparkly_is_star_collected(sparklyMode, sCastleScrollH.idx)) {
                 omm_render_string_centered(OMM_RENDER_PAUSE_CASTLE_BOX_LINE_3_Y, textR, textG, textB, sPauseAlpha, levelName, false);
-            } else if (sCastleScrollH.idx == count - 1) {
+            } else if (sCastleScrollH.idx == count - 1 && !omm_sparkly_is_completed(sparklyMode)) {
                 omm_render_string_centered(OMM_RENDER_PAUSE_CASTLE_BOX_LINE_3_Y, textR / 2, textG / 2, textB / 2, sPauseAlpha, omm_text_convert(OMM_TEXT_UNKNOWN, false), false);
             } else {
                 omm_render_string_centered(OMM_RENDER_PAUSE_CASTLE_BOX_LINE_3_Y, textR / 2, textG / 2, textB / 2, sPauseAlpha, levelName, false);
@@ -593,7 +598,7 @@ void omm_render_pause_castle() {
         switch (sCastleScrollV.idx) {
             case OMM_PAUSE_NUM_LEVELS + 0: omm_render_pause_castle_caps_keys_captures(); break;
             case OMM_PAUSE_NUM_LEVELS + 1: omm_render_pause_castle_sparkly_stars_and_timer(); break;
-            default:             omm_render_pause_castle_course(); break;
+            default:                       omm_render_pause_castle_course(); break;
         }
         omm_render_pause_castle_collectibles();
         omm_render_pause_castle_close();

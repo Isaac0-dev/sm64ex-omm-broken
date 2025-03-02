@@ -273,7 +273,7 @@ static void bhv_omm_star_ring_update() {
                     o->oStarRingDot1 = 0.f;
                 }
             }
-            
+
             // Vertical ring, infinite horizontal cylinder
             else {
                 Vec3f n = { sins(o->oFaceAngleYaw), 0, coss(o->oFaceAngleYaw) };

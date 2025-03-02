@@ -46,7 +46,7 @@ void omm_cappy_bobomb_end(struct Object *o) {
     o->oBehParams &= 0xFF00FFFF;
     o->oBehParams |= (BOBOMB_BP_STYPE_GENERIC << 16);
     o->oBehParams2ndByte = BOBOMB_BP_STYPE_GENERIC;
-    o->oAnimInfo.curAnim = NULL;
+    o->oCurrAnim = NULL;
     obj_anim_play(o, 0, 1.f);
 
     // As Bob-omb's respawn point is set to its home position,

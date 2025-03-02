@@ -173,7 +173,7 @@ void triggerLuigiNotification() {
         audio_play_puzzle_jingle();
         set_notification_state(TRUE);
         notificationStatus = TRUE;
-    }    
+    }
 }
 
 void set_notification_status(s8 newState) {

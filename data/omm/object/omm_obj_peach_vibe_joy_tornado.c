@@ -159,7 +159,7 @@ static void bhv_omm_peach_vibe_joy_tornado_update() {
             min_s(0xFF, o->oOpacity * 1.5f)
         );
     }
-    
+
     // Repel enemies, attract and collect coins
     obj_set_params(o, 0, 0, 0, 0, true);
     obj_reset_hitbox(o, 300, 600, 0, 0, 0, 0);

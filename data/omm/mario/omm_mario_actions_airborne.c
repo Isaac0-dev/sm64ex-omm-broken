@@ -127,7 +127,17 @@ static s32 omm_act_airborne_cancels__cappy_pound_kick_spins(struct MarioState *m
 }
 
 static s32 omm_act_triple_jump(struct MarioState *m) {
-    action_init(m->forwardVel, 69.f + (OMM_MOVESET_ODYSSEY ? 0.25f * max_f(0.f, m->forwardVel / 0.8f - 20.f) : 0.f), 0, 0, obj_anim_play_with_sound(m->marioObj, MARIO_ANIM_TRIPLE_JUMP, 1.f, 0, true););
+    if (!m->actionState) {
+        if (OMM_MOVESET_ODYSSEY) {
+            m->vel[1] = (
+                (64.f + 0.25f * (m->forwardVel / 0.8f)) *
+                ((m->squishTimer != 0 || m->quicksandDepth > 1.f) ? 0.5f : 1.f) *
+                omm_player_physics_get_selected_jump()
+            );
+        }
+        obj_anim_play_with_sound(m->marioObj, MARIO_ANIM_TRIPLE_JUMP, 1.f, 0, true);
+        m->actionState = 1;
+    }
     return omm_act_airborne_cancels__cappy_pound_kick_spins(m);
 }
 
@@ -218,7 +228,7 @@ static s32 omm_act_flying(struct MarioState *m) {
 
     // Improved Wing cap
     omm_act_flying_set_flying_camera(m);
-    
+
     // Angles
     s32 targetPitch = (s32) ((m->controller->stickY / 64.f) * -0x3000);
     s32 targetYaw   = (s32) ((m->controller->stickX / 64.f) * -0x0200) + m->faceAngle[1];
@@ -237,7 +247,7 @@ static s32 omm_act_flying(struct MarioState *m) {
         m->faceAngle[2] *= (m->forwardVel / OMM_MARIO_WING_FLYING_MAX_SPEED);
         ANM(MARIO_ANIM_FALL_FROM_SLIDE_KICK, 1.f);
     }
-    
+
     // Flying
     else {
         m->forwardVel = min_f(abs_f(m->forwardVel) + 1.f, OMM_MARIO_WING_FLYING_MAX_SPEED * omm_player_physics_get_selected_air());
@@ -253,7 +263,7 @@ static s32 omm_act_flying(struct MarioState *m) {
     m->vel[2] = m->forwardVel * coss(m->faceAngle[0]) * coss(m->faceAngle[1]);
     m->slideVelX = m->vel[0];
     m->slideVelZ = m->vel[2];
-    
+
     // Perform step
     switch (perform_air_step(m, 0)) {
         case AIR_STEP_LANDED: {
@@ -405,7 +415,7 @@ static s32 omm_act_air_throw(struct MarioState *m) {
 
 static s32 omm_act_jump_kick(struct MarioState *m) {
     if (m->actionState == 0) {
-        if (OMM_MOVESET_ODYSSEY && OMM_PERRY_SWORD_ACTION) {
+        if (OMM_MOVESET_ODYSSEY && OMM_PERRY_IS_AVAILABLE) {
             m->vel[1] = omm_get_initial_upwards_velocity(m, 24.f * omm_player_physics_get_selected_jump());
         } else {
             s32 rainbowSpin = OMM_MOVESET_ODYSSEY && omm_cappy_get_object();
@@ -419,7 +429,7 @@ static s32 omm_act_jump_kick(struct MarioState *m) {
     }
 
     // Cancels
-    action_condition(OMM_MOVESET_ODYSSEY && OMM_PERRY_SWORD_ACTION, ACT_OMM_PEACH_ATTACK_AIR, 0, RETURN_CANCEL);
+    action_condition(OMM_MOVESET_ODYSSEY && OMM_PERRY_IS_AVAILABLE, ACT_OMM_PEACH_ATTACK_AIR, 0, RETURN_CANCEL);
     action_cappy(1, ACT_OMM_CAPPY_THROW_AIRBORNE, 0, RETURN_CANCEL);
     action_z_pressed(OMM_MOVESET_ODYSSEY, ACT_GROUND_POUND, 0, RETURN_CANCEL);
     action_b_pressed(omm_mario_has_wing_cap(m), ACT_FLYING, 0, RETURN_CANCEL);
@@ -528,7 +538,6 @@ static s32 omm_act_knockback_air(struct MarioState *m, f32 forwardVel, f32 upwar
 
 static s32 omm_act_burning_air(struct MarioState *m) {
     if (OMM_MOVESET_ODYSSEY) {
-        m->hurtCounter += (m->marioObj->oMarioBurnTimer == 0);
         action_condition(m->marioObj->oMarioBurnTimer > 160, ACT_FREEFALL, 0, RETURN_CANCEL);
     }
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
@@ -694,7 +703,7 @@ static s32 omm_act_roll_air(struct MarioState *m) {
     action_condition(step == AIR_STEP_LANDED, ACT_OMM_ROLL, 0, RETURN_BREAK);
     action_condition(step == AIR_STEP_HIT_LAVA_WALL && lava_boost_on_wall(m), ACT_LAVA_BOOST, 1, RETURN_BREAK);
     action_condition(step == AIR_STEP_HIT_WALL, ACT_BACKWARD_AIR_KB, 0, RETURN_BREAK, PFX(PARTICLE_VERTICAL_STAR););
-    
+
     f32 speed = m->forwardVel / 60.f;
     s16 prevAngle = m->faceAngle[0];
     m->faceAngle[0] += (s16) (0x1C00 * speed);

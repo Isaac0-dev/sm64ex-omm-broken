@@ -2,6 +2,7 @@
 #define OMM_MACROS_H
 #undef USE_SYSTEM_MALLOC
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +32,7 @@ bool noBillboard;
 #endif
 
 #define omm_AnimInfo_extra_fields \
+const void *curAnimRef; \
 s16 animFlags; \
 s16_ts _animID; \
 ptr_ts _curAnim; \

@@ -189,7 +189,7 @@ static void bhv_omm_peach_vibe_sparkle_update() {
                 pos[1] += o->oVelY * (OMM_PEACH_VIBE_SPARKLE_PHASE_1_DURATION - o->oTimer) * OMM_PEACH_VIBE_SPARKLE_PHASE_1_VEL_MULT;
                 pos[2] += o->oVelZ * (OMM_PEACH_VIBE_SPARKLE_PHASE_1_DURATION - o->oTimer) * OMM_PEACH_VIBE_SPARKLE_PHASE_1_VEL_MULT;
             }
-            
+
             // Phase 2: target and follow Peach
             else {
                 Vec3f target = {

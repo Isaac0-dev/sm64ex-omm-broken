@@ -344,7 +344,7 @@ static bool fs_packtype_zip_seek(UNUSED void *pack, fs_file_t *file, const s64 o
         }
         return true;
     }
-    return false;    
+    return false;
 }
 
 static s64 fs_packtype_zip_tell(UNUSED void *pack, fs_file_t *file) {

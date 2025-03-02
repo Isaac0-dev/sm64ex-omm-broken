@@ -560,7 +560,7 @@ OMM_CAPPY_ONLY_CODE(
 
             // Destructible objects
             if (interactionFlags & OBJ_INT_ATTACK_DESTRUCTIBLE) {
-                                
+
                 // Destructible
                 if (omm_obj_is_destructible(target)) {
                     omm_obj_handle_perry_attack(target, interactionFlags);
@@ -643,7 +643,7 @@ OMM_CAPPY_ONLY_CODE(
 
                 // Triggers
                 if (interactionFlags & OBJ_INT_COLLECT_TRIGGERS) {
-                        
+
                     // Water rings
                     if (omm_obj_is_water_ring(target)) {
                         target->oInteractStatus = INT_STATUS_INTERACTED;

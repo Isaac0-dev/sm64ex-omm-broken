@@ -36,6 +36,9 @@ static OmmSecret sOmmSecrets[] = {
     OMM_SECRET_DEFINE_(SMSR_SECRET),
     OMM_SECRET_DEFINE_(SMGS_SECRET),
     OMM_SECRET_DEFINE_(R96_SECRET),
+    // TODO: YOSHIMODE
+    // OMM_SECRET_DEFINE_(YOSHI_ENDING),
+    // OMM_SECRET_DEFINE_(SMSR_YOSHI_ENDING),
 };
 
 u32 omm_secrets_get_count() {

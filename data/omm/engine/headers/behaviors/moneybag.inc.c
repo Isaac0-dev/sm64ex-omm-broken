@@ -59,7 +59,7 @@ void moneybag_jump(s8 collisionFlags) {
     switch (o->oMoneybagJumpState) {
         case MONEYBAG_JUMP_PREPARE: {
             cur_obj_init_animation(1);
-            if (o->oAnimInfo.animFrame == 5) {
+            if (o->oAnimFrame == 5) {
                 o->oForwardVel = 20.f;
                 o->oVelY = 40.f;
             }
@@ -91,7 +91,7 @@ void moneybag_jump(s8 collisionFlags) {
             if (o->oTimer >= 61) {
                 o->oMoneybagJumpState = MONEYBAG_JUMP_LANDING;
                 o->oForwardVel = 0;
-                o->oAnimInfo.animFrame = 0;
+                o->oAnimFrame = 0;
             }
         } break;
 

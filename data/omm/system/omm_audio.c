@@ -77,7 +77,7 @@ s32 omm_audio_time_stretch(u8 **output, const u8 *input, s32 inputLength, s32 au
         if ((uintptr_t) (currOffset + OMM_AUDIO_FLAT_DURATION + OMM_AUDIO_OVERLAP_SIZE) > (uintptr_t) (input + inputLength)) {
             currOffset = ((const s16 *) (input + inputLength)) - (OMM_AUDIO_FLAT_DURATION + OMM_AUDIO_OVERLAP_SIZE);
         }
-        
+
         // Prepare output
         mem_cpy(outputBuffer, currOffset, OMM_AUDIO_FLAT_DURATION * sizeof(s16));
         const s16 *prevOffset = currOffset + OMM_AUDIO_FLAT_DURATION;

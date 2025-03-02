@@ -112,19 +112,17 @@ static bool omm_obj_effect_metal_get_parameter(struct Object *obj, bool enable, 
     struct MarioState *m = gMarioState;
 
     // Metal Yoshi (and tongue)
-    if (((obj_has_geo_layout(obj, yoshi_geo) && obj == gOmmCapture) ||                          // Yoshi
-        (obj_has_geo_layout(obj, omm_geo_yoshi_tongue) && obj->parentObj == gOmmCapture)) &&    // Yoshi tongue
-        omm_mario_is_capture(m) && omm_capture_get_type(gOmmCapture) == OMM_CAPTURE_YOSHI &&    // Yoshi capture
-        omm_mario_has_metal_cap(m) && !omm_mario_cap_is_flickering(m)                           // Metal Mario
+    if ((omm_obj_is_playable_yoshi(obj) || omm_obj_is_yoshi_tongue(obj)) &&     // Yoshi
+        omm_mario_has_metal_cap(m) && !omm_mario_cap_is_flickering(m)           // Metal Mario
     ) {
         *parameter = ((enable ? 1 : 0) << 8) | 0xFF;
         return true;
     }
 
     // Sparkly Bowser (Bowser 4)
-    if ((obj_has_geo_layout(obj, bowser_geo) || obj_has_geo_layout(obj, bowser2_geo)) &&        // Bowser
-        (obj->behavior != bhvBowser || obj->oAction != 4) &&                                    // Not dead
-        omm_sparkly_is_bowser_4_battle()                                                        // Bowser 4
+    if ((obj_has_geo_layout(obj, bowser_geo) || obj_has_geo_layout(obj, bowser2_geo)) &&    // Bowser
+        (obj->behavior != bhvBowser || obj->oAction != 4) &&                                // Not dead
+        omm_sparkly_is_bowser_4_battle()                                                    // Bowser 4
     ) {
         *parameter = ((enable ? gOmmSparklyMode + 1 : 0) << 8) | (obj->oOpacity & 0xFF);
         return true;

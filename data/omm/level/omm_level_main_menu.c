@@ -3,6 +3,8 @@
 #undef OMM_ALL_HEADERS
 #include "menu/intro_geo.h"
 #include "level_commands.h"
+extern bool omm_save_file_are_all_captures_registered_sm64();
+
 void beh_yellow_background_menu_init(void) {}
 void beh_yellow_background_menu_loop(void) {}
 void bhv_menu_button_init(void) {}
@@ -12,8 +14,14 @@ void bhv_menu_button_manager_loop(void) {}
 Gfx *geo_file_select_strings_and_menu_cursor(UNUSED s32 callContext, UNUSED struct GraphNode *node, UNUSED Mat4 mtx) { return NULL; }
 
 static struct {
+    f32 x, y, scale, alpha;
+    f32 vx, vy, vscale, valpha;
+} sOmmMainMenuSmoke[20];
+
+static struct {
     s32 timer;
     s32 index;
+    s32 yoshi;
 } sOmmMainMenu[1];
 
 static struct {
@@ -200,6 +208,10 @@ static const struct Animation *sOmmMainMenuMarioAnims[] = { &sOmmMainMenuMarioAn
 static s32 omm_main_menu_get_mario_sound(s32 soundBits) {
     switch (soundBits) {
         case SOUND_MENU_STAR_SOUND_OKEY_DOKEY: {
+            if (gOmmGlobals->yoshiMode) {
+                play_sound(SOUND_MENU_STAR_SOUND | 0xFF00, gGlobalSoundArgs);
+                return SOUND_GENERAL_YOSHI_TALK | 0xFF00;
+            }
 #if OMM_GAME_IS_SMSR
             if (gOmmGlobals->booZeroLife) {
                 play_sound(SOUND_MENU_STAR_SOUND | 0xFF00, gGlobalSoundArgs);
@@ -210,6 +222,9 @@ static s32 omm_main_menu_get_mario_sound(s32 soundBits) {
         } break;
 
         case SOUND_MARIO_WAAAOOOW: {
+            if (gOmmGlobals->yoshiMode) {
+                return SOUND_GENERAL_SPLATTERING | 0xFF00;
+            }
 #if OMM_GAME_IS_SMSR
             if (gOmmGlobals->booZeroLife) {
                 return SOUND_OBJ_BOO_LAUGH_SHORT | 0xFF00;
@@ -227,109 +242,183 @@ static f32 omm_main_menu_get_mario_cappy_pos_y(f32 t, f32 value_at_0, f32 peak, 
     return a * t * t + b * t + c;
 }
 
-static s32 omm_main_menu_update() {
-    if (optmenu_open) return 0;
-    sOmmMainMenu->timer++;
+static f32 omm_main_menu_get_yoshi_head_height(struct Object *o) {
+    static OmmMap_(struct GraphNode *, f32) sOmmMainMenuYoshiHeadHeights = omm_map_zero;
 
-    // Update Mario
-    struct Object *mario = obj_get_first_with_behavior(bhvOmmMainMenuMario);
-#if OMM_GAME_IS_SMSR
-    if (mario && gOmmGlobals->booZeroLife) {
-        f32 t = relerp_0_1_f(mario->oTimer, 0, 20, 1, 0);
-        f32 sin01 = relerp_0_1_f(sins(mario->oTimer * 0x800), -1, 1, 0, 1);
-        f32 posX = 175 * GFX_DIMENSIONS_ASPECT_RATIO;
-        s32 posY = omm_main_menu_get_mario_cappy_pos_y(t, -950, -850, 0.2f) + 725.f - 25.f * sin01;
-        obj_scale_xyz(mario,
-            3.5f * (1.f + sins(mario->oTimer * 0x400) * 0.03f),
-            3.5f * (1.f - sins(mario->oTimer * 0x400) * 0.03f),
-            3.5f * (1.f + sins(mario->oTimer * 0x400) * 0.03f)
-        );
-        obj_set_xyz(mario, posX, posY, 0);
-        obj_set_angle(mario, -0x800 - 0x200 * sin01, -6 * posX, 0);
-        obj_update_gfx(mario);
-        mario->oOpacity = 0xFF;
-        mario->oGraphNode = gLoadedGraphNodes[MODEL_BOO] = geo_layout_to_graph_node(NULL, boo_geo);
-        mario->oNodeFlags |= GRAPH_RENDER_ALWAYS;
-        mario->oAction = 0;
-        mario->oTimer++;
-        if (gOmmExtrasInvisibleMode) {
-            mario->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
-        } else {
-            mario->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
-        }
-    } else
-#endif
-    if (mario) {
-        mario->oAnimations = (struct Animation **) sOmmMainMenuMarioAnims;
-        f32 t = relerp_0_1_f(mario->oTimer, 0, 20, 1, 0);
-        f32 posX = 175 * GFX_DIMENSIONS_ASPECT_RATIO;
-        f32 posY = omm_main_menu_get_mario_cappy_pos_y(t, -950, -850, 0.2f);
-        f32 headHeight;
-        geo_compute_marios_heights(mario);
-        geo_get_marios_heights(NULL, &headHeight, NULL);
-        posY -= (7.f * headHeight - (564.2f + (headHeight - 85.f) * sign_f(headHeight - 85.f))); // don't ask
-        obj_scale(mario, 7);
-        obj_set_xyz(mario, posX, posY, 0);
-        obj_set_angle(mario, -0x800, -6 * posX, 0);
-        obj_update_gfx(mario);
-        obj_anim_play(mario, 0, 1.f);
-        obj_anim_set_frame(mario, gMarioState->actionTimer);
-        gMarioState->actionTimer = (gMarioState->actionTimer + 1) * !obj_anim_is_at_end(mario);
-        mario->oGraphNode = gLoadedGraphNodes[MODEL_MARIO] = geo_layout_to_graph_node(NULL, mario_geo);
-        mario->oNodeFlags |= GRAPH_RENDER_ALWAYS;
-        mario->oAction = 0;
-        mario->oTimer++;
-        if (gOmmExtrasInvisibleMode) {
-            mario->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
-        } else {
-            mario->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
-        }
+    // Find in cache
+    s32 i = omm_map_find_key(sOmmMainMenuYoshiHeadHeights, ptr, o->oGraphNode);
+    if (i != -1) {
+        return omm_map_get_val(sOmmMainMenuYoshiHeadHeights, f32, i);
     }
 
-    // Update Cappy
-    struct Object *cappy = obj_get_first_with_behavior(bhvOmmMainMenuCappy);
-    if (cappy) {
-        f32 t = relerp_0_1_f(cappy->oTimer, 0, 30, 1, 0);
-        f32 posX = 175 * GFX_DIMENSIONS_ASPECT_RATIO;
-        f32 posY = omm_main_menu_get_mario_cappy_pos_y(t, 0, 100, 0.225f);
-        obj_scale(cappy, 6);
-        obj_set_xyz(cappy, posX, posY + relerp_0_1_f(sins(cappy->oTimer * 0x400), -1, 1, 20, 60), 0);
-        obj_set_angle(cappy, -0x400, -6 * posX, relerp_0_1_f(coss(cappy->oTimer * 0x6B7), -1, 1, 0, -0x400));
-        obj_update_gfx(cappy);
-        cappy->oOpacity = 0xFF;
-        cappy->oGraphNode = gLoadedGraphNodes[MODEL_MARIOS_CAP] = geo_layout_to_graph_node(NULL, marios_cap_geo);
-        cappy->oNodeFlags |= GRAPH_RENDER_ALWAYS;
-        cappy->oTimer++;
-        if (gOmmExtrasInvisibleMode) {
-            cappy->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
+    // Compute value for graph node
+    Mat4 transform;
+    obj_set_pos_vec3f(o, gVec3fZero);
+    obj_set_angle_vec3s(o, gVec3sZero);
+    obj_set_scale_vec3f(o, gVec3fOne);
+    obj_update_gfx(o);
+    obj_anim_play_with_sound(o, 0, 1.f, NO_SOUND, true);
+    if (geo_compute_capture_cappy_obj_transform(o, 4, transform)) {
+        f32 height = transform[3][1];
+        omm_map_add(sOmmMainMenuYoshiHeadHeights, ptr, o->oGraphNode, f32, height);
+        return height;
+    }
+    return 0;
+}
+
+static void omm_main_menu_update_mario_cappy(const BehaviorScript *bhv, f32 tmax) {
+    struct Object *o = obj_get_first_with_behavior(bhv);
+    if (!o) {
+        return;
+    }
+
+    // Default values
+    Vec3f pos = { 175 * GFX_DIMENSIONS_ASPECT_RATIO, 0, 0 };
+    Vec3s angle = { 0, -0x41A * GFX_DIMENSIONS_ASPECT_RATIO, 0 };
+    Vec3f scale = { 1, 1, 1 };
+    s32 modelId = MODEL_MARIO;
+    const GeoLayout *geoLayout = NULL;
+    const struct Animation *const *animations = NULL;
+    f32 t = relerp_0_1_f(o->oTimer, 0, tmax, 1, 0);
+
+    // Cappy
+    if (bhv == bhvOmmMainMenuCappy) {
+        pos[1] = omm_main_menu_get_mario_cappy_pos_y(t, 0, 100, 0.225f) + relerp_0_1_f(sins(o->oTimer * 0x400), -1, 1, 20, 60);
+        angle[0] = -0x400;
+        angle[2] = relerp_0_1_f(coss(o->oTimer * 0x6B7), -1, 1, 0, -0x400);
+        vec3f_set(scale, 6, 6, 6);
+        modelId = MODEL_MARIOS_CAP;
+        geoLayout = marios_cap_geo;
+    }
+
+    // Yoshi mode
+    else if (gOmmGlobals->yoshiMode) {
+        if (obj_has_geo_layout(o, yoshi_geo)) {
+            f32 s = 450.f / omm_main_menu_get_yoshi_head_height(o);
+            pos[1] = omm_main_menu_get_mario_cappy_pos_y(t, -950, -850, 0.2f) + 125;
+            angle[0] = -0x800;
+            vec3f_set(scale, s, s, s * 0.5f);
         } else {
-            cappy->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
+            vec3f_set(scale, 0, 0, 0);
         }
+        modelId = MODEL_YOSHI;
+        geoLayout = yoshi_geo;
+        animations = yoshi_seg5_anims_05024100;
+    }
+
+#if OMM_GAME_IS_SMSR
+    // Zero-life Boo
+    else if (gOmmGlobals->booZeroLife) {
+        f32 sin01 = relerp_0_1_f(sins(o->oTimer * 0x800), -1, 1, 0, 1);
+        pos[1] = omm_main_menu_get_mario_cappy_pos_y(t, -950, -850, 0.2f) + 725.f - 25.f * sin01;
+        angle[0] = -0x800 - 0x200 * sin01;
+        vec3f_set(scale,
+            3.5f * (1.f + sins(o->oTimer * 0x400) * 0.03f),
+            3.5f * (1.f - sins(o->oTimer * 0x400) * 0.03f),
+            3.5f * (1.f + sins(o->oTimer * 0x400) * 0.03f)
+        );
+        modelId = MODEL_BOO;
+        geoLayout = boo_geo;
+    }
+#endif
+
+    // Mario
+    else {
+        f32 headHeight = geo_get_marios_anim_part_height(o->oGraphNode, MARIO_ANIM_PART_HEAD);
+        pos[1] = omm_main_menu_get_mario_cappy_pos_y(t, -950, -850, 0.2f) - (7.f * headHeight - (564.2f + (headHeight - 85.f) * sign_f(headHeight - 85.f))); // don't ask
+        angle[0] = -0x800;
+        vec3f_set(scale, 7, 7, 7);
+        modelId = MODEL_MARIO;
+        geoLayout = mario_geo;
+        animations = sOmmMainMenuMarioAnims;
+    }
+
+    // Update gfx
+    obj_set_pos_vec3f(o, pos);
+    obj_set_angle_vec3s(o, angle);
+    obj_set_scale_vec3f(o, scale);
+    obj_update_gfx(o);
+    o->oGraphNode = gLoadedGraphNodes[modelId] = geo_layout_to_graph_node(NULL, geoLayout);
+    if (animations) {
+        o->oAnimations = (struct Animation **) animations;
+        obj_anim_play(o, 0, 1.f);
+    }
+    o->oOpacity = 0xFF;
+    o->oNodeFlags |= GRAPH_RENDER_ALWAYS;
+    o->oTimer += !optmenu_open;
+    if (gOmmExtrasInvisibleMode) {
+        o->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
+    } else {
+        o->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
+    }
+}
+
+static s32 omm_main_menu_update() {
+    sOmmMainMenu->timer += !optmenu_open;
+    gAreaUpdateCounter += !optmenu_open;
+
+    // Update Mario and Cappy
+    omm_main_menu_update_mario_cappy(bhvOmmMainMenuMario, 20);
+    omm_main_menu_update_mario_cappy(bhvOmmMainMenuCappy, 30);
+
+    // Stop updating if the options menu is open
+    if (optmenu_open) {
+        return 0;
+    }
+
+    // Transition to File select screen
+    if (sOmmFileSelect->timer) {
+        sOmmFileSelect->open = (--sOmmFileSelect->timer == 0);
+        return 0;
     }
 
     // Update inputs
     u32 inputs = omm_get_inputs();
 
-    // Transition to File select screen
-    if (sOmmFileSelect->timer) {
-        sOmmFileSelect->open = (--sOmmFileSelect->timer == 0);
-        mario->oAction = (sOmmFileSelect->open && sOmmMainMenu->index == OMM_MM_PLAY);
-    }
-    
+    // Yoshi mode
+    // TODO: YOSHIMODE
+//     if (inputs == Y_BUTTON && omm_save_file_are_all_captures_registered_sm64()) {
+//         if (++sOmmMainMenu->yoshi == 5) {
+//             gOmmGlobals->yoshiMode = !gOmmGlobals->yoshiMode;
+//             if (gOmmGlobals->yoshiMode) {
+//                 play_sound(SOUND_GENERAL_YOSHI_TALK, gGlobalSoundArgs);
+// #if OMM_GAME_IS_SMSR
+//             } else if (gOmmGlobals->booZeroLife) {
+//                 play_sound(SOUND_OBJ_BOO_LAUGH_LONG, gGlobalSoundArgs);
+// #endif
+//             } else {
+//                 play_sound(SOUND_MARIO_HERE_WE_GO, gGlobalSoundArgs);
+//             }
+//             for (u32 i = 0; i != array_length(sOmmMainMenuSmoke); ++i) {
+//                 sOmmMainMenuSmoke[i].x = lerp_f(0.72f, GFX_DIMENSIONS_FROM_LEFT_EDGE(0), GFX_DIMENSIONS_FROM_RIGHT_EDGE(0)) + 40 * random_float_n1_p1();
+//                 sOmmMainMenuSmoke[i].y = (SCREEN_HEIGHT / 4) + (SCREEN_HEIGHT / 4) * random_float_n1_p1();
+//                 sOmmMainMenuSmoke[i].scale = 60.f + 40.f * random_float();
+//                 sOmmMainMenuSmoke[i].alpha = 0xC0 + 0x40 * random_float();
+//                 sOmmMainMenuSmoke[i].vx = 6.f * random_float_n1_p1();
+//                 sOmmMainMenuSmoke[i].vy = 3.f * random_float_n1_p1();
+//                 sOmmMainMenuSmoke[i].vscale = 1.f + 2.f * random_float();
+//                 sOmmMainMenuSmoke[i].valpha = sOmmMainMenuSmoke[i].alpha / 30;
+//             }
+//             sOmmMainMenu->yoshi = 0;
+//         }
+//     } else if (inputs != 0) {
+//         sOmmMainMenu->yoshi = 0;
+//     }
+
     // Option above
-    else if (inputs & STICK_UP) {
+    if (inputs & STICK_UP) {
         play_sound(OMM_MM_SOUND_SCROLL, gGlobalSoundArgs);
         sOmmMainMenu->index = (sOmmMainMenu->index + OMM_MM_STRINGS_COUNT - 1) % OMM_MM_STRINGS_COUNT;
         sOmmMainMenu->timer = 8;
     }
-    
+
     // Option below
     else if (inputs & STICK_DOWN) {
         play_sound(OMM_MM_SOUND_SCROLL, gGlobalSoundArgs);
         sOmmMainMenu->index = (sOmmMainMenu->index + 1) % OMM_MM_STRINGS_COUNT;
         sOmmMainMenu->timer = 8;
     }
-    
+
     // Next menu (A)
     else if (inputs & A_BUTTON) {
         switch (sOmmMainMenu->index) {
@@ -415,6 +504,7 @@ static s32 omm_main_menu_update() {
             } break;
         }
     }
+
     return 0;
 }
 
@@ -440,6 +530,24 @@ static void omm_main_menu_render() {
 
     // Update Mario eyes
     gMarioState->marioBodyState->eyeState = ((OMM_MARIO_COLORS && omm_models_get_mario_model_pack_index() == -1) ? MARIO_EYES_LOOK_UP : MARIO_EYES_OPEN);
+
+    // Smoke
+    for (u32 i = 0; i != array_length(sOmmMainMenuSmoke); ++i) {
+        if (sOmmMainMenuSmoke[i].alpha > 0) {
+            omm_render_texrect(
+                sOmmMainMenuSmoke[i].x - sOmmMainMenuSmoke[i].scale / 2.f,
+                sOmmMainMenuSmoke[i].y - sOmmMainMenuSmoke[i].scale / 2.f,
+                sOmmMainMenuSmoke[i].scale, sOmmMainMenuSmoke[i].scale,
+                32, 32, 0xFF, 0xFF, 0xFF,
+                sOmmMainMenuSmoke[i].alpha,
+                OMM_ASSET_SMOKE, false
+            );
+            sOmmMainMenuSmoke[i].x += sOmmMainMenuSmoke[i].vx;
+            sOmmMainMenuSmoke[i].y += sOmmMainMenuSmoke[i].vy;
+            sOmmMainMenuSmoke[i].scale += sOmmMainMenuSmoke[i].vscale;
+            sOmmMainMenuSmoke[i].alpha -= sOmmMainMenuSmoke[i].valpha;
+        }
+    }
 
     // Game logo
     omm_render_texrect(OMM_MM_LOGO_X, OMM_MM_LOGO_Y, OMM_MM_LOGO_W, OMM_MM_LOGO_H, 1024, 640, 0xFF, 0xFF, 0xFF, 0xFF, OMM_MM_LOGO_TEXTURE, false);
@@ -724,7 +832,7 @@ static s32 omm_file_select_update() {
 
             // Copy an existing file
             case OMM_MM_COPY: {
-                
+
                 // Enter copy mode
                 if (!sOmmFileCopy->open && omm_save_file_exists(sOmmFileSelect->index, sOmmFileSelect->mode)) {
                     play_sound(OMM_FS_SOUND_SCROLL, gGlobalSoundArgs);
@@ -1027,9 +1135,9 @@ void omm_render_score_board(s32 fileIndex, s32 modeIndex, f32 scale, u8 a, bool 
 
         // If timer is not started yet, display a message
         if (!omm_sparkly_is_timer_started(sparklyMode)) {
-            u8 r = OMM_SPARKLY_HUD_COLOR[sparklyMode][0];
-            u8 g = OMM_SPARKLY_HUD_COLOR[sparklyMode][1];
-            u8 b = OMM_SPARKLY_HUD_COLOR[sparklyMode][2];
+            u8 r = OMM_SPARKLY_HUD_COLOR_R[sparklyMode];
+            u8 g = OMM_SPARKLY_HUD_COLOR_G[sparklyMode];
+            u8 b = OMM_SPARKLY_HUD_COLOR_B[sparklyMode];
             s32 numLines = array_length(*sOmmSparklyScoreMessages);
             s32 messageY = y0 - 4 + 8 * (numLines - 1);
             for (s32 i = 0; i != numLines; ++i) {
@@ -1042,7 +1150,7 @@ void omm_render_score_board(s32 fileIndex, s32 modeIndex, f32 scale, u8 a, bool 
             return;
         }
 
-        s32 allStars = (omm_sparkly_get_collected_count(sparklyMode) == omm_sparkly_get_bowser_4_index(sparklyMode) + 1);
+        s32 allStars = (omm_sparkly_get_collected_count(sparklyMode) == omm_sparkly_get_num_stars(sparklyMode));
         s32 timer = omm_sparkly_get_timer(sparklyMode);
 
         // Collected count
@@ -1063,7 +1171,7 @@ void omm_render_score_board(s32 fileIndex, s32 modeIndex, f32 scale, u8 a, bool 
         omm_render_glyph(starIconX, starIconY, starIconW, starIconW, 0xFF, 0xFF, 0xFF, alpha, OMM_SPARKLY_HUD_GLYPH[sparklyMode], false);
         omm_render_number(numStarsX, numStarsY, numStarsW, numStarsW, numStarsS, alpha, omm_sparkly_get_collected_count(sparklyMode), 2, true, false);
         omm_render_glyph(sepGlyphX, sepGlyphY, sepGlyphW, sepGlyphW, 0xFF, 0xFF, 0xFF, alpha, OMM_TEXTURE_HUD_SLASH, false);
-        omm_render_number(maxStarsX, maxStarsY, maxStarsW, maxStarsW, maxStarsS, alpha, omm_sparkly_get_bowser_4_index(sparklyMode) + 1, 2, true, false);
+        omm_render_number(maxStarsX, maxStarsY, maxStarsW, maxStarsW, maxStarsS, alpha, omm_sparkly_get_num_stars(sparklyMode), 2, true, false);
 
         // Elapsed time
         s32 timerGlyphs[] = {
@@ -1081,7 +1189,7 @@ void omm_render_score_board(s32 fileIndex, s32 modeIndex, f32 scale, u8 a, bool 
         // List of stars
         // Needs some preprocessing: compute the length of each column to perfectly balance the display
         struct { struct { u8 name[0x100]; s32 width; s32 index; } levels[15]; s32 count; s32 maxWidth; } sparklyLevels[2] = {0};
-        for (s32 i = 0, n = omm_sparkly_get_bowser_4_index(sparklyMode); i <= n; ++i) {
+        for (s32 i = 0, n = omm_sparkly_get_num_stars(sparklyMode); i < n; ++i) {
             ustr_t levelName;
             if (omm_sparkly_get_level_name(levelName, sparklyMode, i)) {
                 s32 courseNum = omm_level_get_course(gOmmSparklyData[sparklyMode][i].levelNum);
@@ -1095,9 +1203,9 @@ void omm_render_score_board(s32 fileIndex, s32 modeIndex, f32 scale, u8 a, bool 
                 sparklyLevels[mainCourse].count++;
             }
         }
-        u8 r = OMM_SPARKLY_HUD_COLOR[sparklyMode][0];
-        u8 g = OMM_SPARKLY_HUD_COLOR[sparklyMode][1];
-        u8 b = OMM_SPARKLY_HUD_COLOR[sparklyMode][2];
+        u8 r = OMM_SPARKLY_HUD_COLOR_R[sparklyMode];
+        u8 g = OMM_SPARKLY_HUD_COLOR_G[sparklyMode];
+        u8 b = OMM_SPARKLY_HUD_COLOR_B[sparklyMode];
         for (s32 i = 0; i != 2; ++i)
         for (s32 j = 0; j != sparklyLevels[i].count; ++j) {
             s32 levelIndex = sparklyLevels[i].levels[j].index;
@@ -1427,13 +1535,14 @@ static void omm_file_select_render() {
 //
 
 static s32 omm_level_main_menu_init(UNUSED s32 arg, UNUSED s32 unused) {
-    mem_zero(sOmmMainMenu, sizeof(*sOmmMainMenu));
-    mem_zero(sOmmFileSelect, sizeof(*sOmmFileSelect));
-    mem_zero(sOmmFileCopy, sizeof(*sOmmFileCopy));
-    mem_zero(sOmmFileScore, sizeof(*sOmmFileScore));
+    mem_zero(sOmmMainMenuSmoke, sizeof(sOmmMainMenuSmoke));
+    mem_zero(sOmmMainMenu, sizeof(sOmmMainMenu));
+    mem_zero(sOmmFileSelect, sizeof(sOmmFileSelect));
+    mem_zero(sOmmFileCopy, sizeof(sOmmFileCopy));
+    mem_zero(sOmmFileScore, sizeof(sOmmFileScore));
     mem_zero(gPlayerSpawnInfos, sizeof(*gPlayerSpawnInfos));
-    mem_zero(gPlayerCameraState, sizeof(*gPlayerCameraState));
-    mem_zero(gBodyStates, sizeof(*gBodyStates));
+    mem_zero(gPlayerCameraState, sizeof(gPlayerCameraState));
+    mem_zero(gBodyStates, sizeof(gBodyStates));
     mem_zero(gMarioState, sizeof(*gMarioState));
     gMarioState->controller = gControllers;
     gMarioState->spawnInfo = gPlayerSpawnInfos;

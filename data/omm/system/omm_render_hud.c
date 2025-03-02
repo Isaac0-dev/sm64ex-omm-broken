@@ -246,7 +246,7 @@ static u8 omm_hud_update_stars_timer(OmmHudTimer *timer, struct MarioState *m) {
     }
 
     // Reset timer when star dancing
-    if (omm_mario_is_star_dancing(m) || (m->action == ACT_JUMBO_STAR_CUTSCENE && !omm_sparkly_is_bowser_4_battle())) {
+    if (m->action != ACT_OMM_SPARKLY_STAR_DANCE && (omm_mario_is_star_dancing(m) || (m->action == ACT_JUMBO_STAR_CUTSCENE && !omm_sparkly_is_bowser_4_battle()))) {
         timer->timer = timer->timerMin;
     }
 
@@ -404,7 +404,7 @@ static u8 omm_hud_update_breath_timer(OmmHudTimer *timer, struct MarioState *m) 
         return 0x00;
     }
 
-    // When paused, invisible if faded out, fully opaque otherwise 
+    // When paused, invisible if faded out, fully opaque otherwise
     if (omm_is_game_paused()) {
         return (timer->timer < timer->timerMax) * 0xFF;
     }
@@ -500,11 +500,10 @@ OMM_ROUTINE_LEVEL_ENTRY(omm_render_at_level_entry) {
 // Stars
 //
 
-void omm_render_hud_stars(s16 x, s16 y, u8 alpha, s32 levelNum) {
-    static const f32 STAR_SHADING[2][2] = { { 0.f, 0.f }, { 0.625f, 1.f } };
-    static const f32 STAR_OPACITY[2][2] = { { 0.f, 0.5f }, { 1.f, 1.f } };
+static const f32 STAR_SHADING[2][2] = { { 0.f, 0.f }, { 0.625f, 1.f } };
+static const f32 STAR_OPACITY[2][2] = { { 0.f, 0.5f }, { 1.f, 1.f } };
 
-    // Course stars
+static s16 omm_render_hud_course_stars(s16 x, s16 y, s16 w, u8 alpha, s32 levelNum) {
     s32 courseNum = omm_level_get_course(levelNum);
     u8 starLevelFlags = omm_stars_get_level_flags(levelNum, OMM_GAME_MODE);
     u8 starSaveFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, courseNum - 1);
@@ -525,33 +524,42 @@ void omm_render_hud_stars(s16 x, s16 y, u8 alpha, s32 levelNum) {
             f32 opacity = STAR_OPACITY[collected][available];
             const void *tex = omm_render_get_star_glyph(clamp_s(courseNum, 0, 16), OMM_GAME_MODE, OMM_EXTRAS_COLORED_STARS, collected);
             const u8 *rgb = omm_render_get_star_rgb(OMM_GAME_MODE, OMM_EXTRAS_COLORED_STARS, true);
+            OMM_RENDER_DEFINE_GLYPH_SIZE(w);
             omm_render_glyph_hud(x, y, rgb[0] * shading, rgb[1] * shading, rgb[2] * shading, alpha * opacity, tex, false);
             x += OMM_RENDER_STAR_OFFSET_X;
         }
     }
+    return x;
+}
 
-    // Sparkly Star
+static s16 omm_render_hud_sparkly_stars(s16 x, s16 y, s16 w, u8 alpha, s32 levelNum) {
     if (OMM_SPARKLY_MODE_IS_ENABLED) {
         s32 sparklyMode = gOmmSparklyMode;
-        for (s32 i = -1; i != 8; ++i) {
-            s32 starIndex = omm_sparkly_get_index(sparklyMode, levelNum, i == -1 ? gCurrAreaIndex : i);
-            if (starIndex != -1) {
-                bool collected = omm_sparkly_is_star_collected(sparklyMode, starIndex);
-                bool state = OMM_SPARKLY_STATE_IS_OK;
-                f32 shading = STAR_SHADING[collected][state];
-                f32 opacity = STAR_OPACITY[collected][state];
-                omm_render_glyph_hud(x, y, 0xFF * shading, 0xFF * shading, 0xFF * shading, alpha * opacity, OMM_SPARKLY_HUD_GLYPH[sparklyMode], false);
-                return;
-            }
+        s32 starIndex = omm_sparkly_get_star_index_in_level(sparklyMode, levelNum, gCurrAreaIndex);
+        if (starIndex != -1) {
+            bool collected = omm_sparkly_is_star_collected(sparklyMode, starIndex);
+            bool state = OMM_SPARKLY_STATE_IS_OK;
+            f32 shading = STAR_SHADING[collected][state];
+            f32 opacity = STAR_OPACITY[collected][state];
+            OMM_RENDER_DEFINE_GLYPH_SIZE(w);
+            omm_render_glyph_hud(x, y, 0xFF * shading, 0xFF * shading, 0xFF * shading, alpha * opacity, OMM_SPARKLY_HUD_GLYPH[sparklyMode], false);
+            return x + OMM_RENDER_STAR_OFFSET_X;
         }
     }
+    return x;
+}
+
+void omm_render_hud_stars(s16 x, s16 y, s16 w, u8 alpha, s32 levelNum) {
+    x = omm_render_hud_course_stars(x, y, w, alpha, levelNum);
+    x = omm_render_hud_sparkly_stars(x, y, w, alpha, levelNum);
 }
 
 //
 // Coins
 //
 
-void omm_render_hud_coins(s16 x, s16 y, u8 alpha, s32 coins) {
+void omm_render_hud_coins(s16 x, s16 y, s16 w, u8 alpha, s32 coins) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(w);
     omm_render_glyph_hud(x, y, 0xFF, 0xFF, 0xFF, alpha, OMM_TEXTURE_HUD_COIN, false);
     omm_render_number_hud(x + (OMM_RENDER_VALUE_NUMBER_X - OMM_RENDER_VALUE_GLYPH_X), y, alpha, coins, 3, true, false);
 }
@@ -564,6 +572,7 @@ static void omm_render_hud_camera(struct MarioState *m) {
     if (HUD_DISPLAY_CAMERA && !gOmmGlobals->hideHudCamera) {
         u8 alpha = sOmmHudCameraTimer->update(sOmmHudCameraTimer, m);
         if (alpha) {
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
 
             // OMM cam
             if (!OMM_CAMERA_CLASSIC) {
@@ -583,7 +592,7 @@ static void omm_render_hud_camera(struct MarioState *m) {
                     omm_render_glyph_hud(OMM_RENDER_CAMERA_X, OMM_RENDER_CAMERA_Y + sign * (OMM_RENDER_CAMERA_OFFSET_Y + OMM_RENDER_CAMERA_STEP_Y * i), 0xFF, 0xFF, 0xFF, alpha, (mode > 0 ? OMM_TEXTURE_HUD_CAMERA_FAR : OMM_TEXTURE_HUD_CAMERA_NEAR), false);
                 }
             }
-            
+
             // Puppy/better cam
             else if (BETTER_CAM_IS_ENABLED) {
                 omm_render_create_dl_ortho_matrix();
@@ -622,6 +631,7 @@ static void omm_render_hud_camera(struct MarioState *m) {
 //
 
 static void omm_render_hud_power_meter_background(Gfx **gfx, Vtx **vtx, f32 x, f32 y, f32 alpha) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
     for (s32 i = 0; i != OMM_RENDER_POWER_BACKGROUND_NUM_TRIS; ++i) {
         f32 a0 = ((i + 0) * 65536.f) / OMM_RENDER_POWER_BACKGROUND_NUM_TRIS;
         f32 a1 = ((i + 1) * 65536.f) / OMM_RENDER_POWER_BACKGROUND_NUM_TRIS;
@@ -665,6 +675,7 @@ static void omm_render_hud_power_meter_segments(Gfx **gfx, Vtx **vtx, f32 x0, f3
     vec3s_interpolate(border, gVec3sZero, center, 0.75f);
 
     // Render
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
     f32 ma = (65536.f * ticks) / (OMM_RENDER_POWER_FULL_SEGMENTS * OMM_RENDER_POWER_TICKS_PER_SEGMENT);
     f32 da = (65536.f)         / (OMM_RENDER_POWER_FULL_SEGMENTS * OMM_RENDER_POWER_SEGMENT_NUM_QUADS);
     for (s32 segment = 0; segment != OMM_RENDER_POWER_FULL_SEGMENTS; ++segment) {
@@ -715,6 +726,7 @@ static void omm_render_hud_power_meter_heart(Gfx **gfx, Vtx **vtx, f32 x, f32 y,
         gSPVertex((*gfx)++, (*vtx), 5, 0);
         gSP2Triangles((*gfx)++, 2, 1, 4, 0x0, 1, 3, 4, 0x0);
         gSP1Triangle((*gfx)++, 1, 0, 3, 0x0);
+        OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
         *((*vtx)++) = (Vtx) { { { x,                                           y,                                           0 }, 0, { 0, 0 }, { center[0], center[1], center[2], (u8) clamp_s(alpha, 0x00, 0xFF) } } };
         *((*vtx)++) = (Vtx) { { { x + dx0 * OMM_RENDER_POWER_HEART_RADIUS_1_X, y + dy0 * OMM_RENDER_POWER_HEART_RADIUS_1_Y, 0 }, 0, { 0, 0 }, { center[0], center[1], center[2], (u8) clamp_s(alpha, 0x00, 0xFF) } } };
         *((*vtx)++) = (Vtx) { { { x + dx0 * OMM_RENDER_POWER_HEART_RADIUS_2_X, y + dy0 * OMM_RENDER_POWER_HEART_RADIUS_2_Y, 0 }, 0, { 0, 0 }, { border[0], border[1], border[2], (u8) clamp_s(alpha, 0x00, 0xFF) } } };
@@ -731,6 +743,7 @@ static void omm_render_hud_power_meter_number(Gfx **gfx, f32 x, f32 y, f32 alpha
         OMM_TEXTURE_HUD_6, OMM_TEXTURE_HUD_7,
         OMM_TEXTURE_HUD_8, OMM_TEXTURE_HUD_9,
     };
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
     f32 w = OMM_RENDER_POWER_SIZE;
     f32 h = OMM_RENDER_POWER_SIZE;
     s16 x0 = (s16) (x * 4.f);
@@ -754,6 +767,7 @@ static void omm_render_hud_power_meter_number(Gfx **gfx, f32 x, f32 y, f32 alpha
 }
 
 static void omm_render_hud_power_meter_health_gauge(Gfx **gfx, Vtx **vtx, f32 shakeX, f32 shakeY, f32 relPos, f32 alpha, s32 state, f32 ticks, bool isLifeUp) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
     f32 x = lerp_f(relPos, OMM_RENDER_POWER_X, OMM_RENDER_POWER_ANIM_X) + shakeX;
     f32 y = lerp_f(relPos, OMM_RENDER_POWER_Y, OMM_RENDER_POWER_ANIM_Y) + shakeY;
     if (!isLifeUp) {
@@ -777,6 +791,7 @@ static Gfx *omm_render_hud_power_meter_with_offset(Gfx *pos, Gfx *gfx, Vtx *vtx,
     gDPSetRenderMode(gfx++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
     gDPSetCombineLERP(gfx++, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE);
     if (OMM_MOVESET_ODYSSEY) {
+        OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
         omm_render_hud_power_meter_health_gauge(&gfx, &vtx, shakeX, shakeY, relPos * (state != OMM_HEALTH_STATE_LIFE_UP), alpha, state, ticks, false);
         omm_render_hud_power_meter_health_gauge(&gfx, &vtx, shakeX - OMM_RENDER_POWER_LIFE_UP_OFFSET_X, shakeY, relPos, alpha, state, ticks, true);
     } else {
@@ -788,7 +803,11 @@ static Gfx *omm_render_hud_power_meter_with_offset(Gfx *pos, Gfx *gfx, Vtx *vtx,
 }
 
 static void omm_render_hud_power_meter(struct MarioState *m) {
-    if (HUD_DISPLAY_POWER_METER && !OMM_MOVESET_ODYSSEY_1H) {
+    if (HUD_DISPLAY_POWER_METER && !OMM_MOVESET_ODYSSEY_1H
+#if OMM_GAME_IS_SMSR
+        && !(gOmmGlobals->yoshiMode && gOmmGlobals->booZeroLife)
+#endif
+    ) {
         u8 alpha = sOmmHudHealthTimer->update(sOmmHudHealthTimer, m);
         if (alpha) {
             omm_render_create_dl_ortho_matrix();
@@ -810,7 +829,7 @@ static void omm_render_hud_power_meter(struct MarioState *m) {
                 sOmmPowerMeter->s0,
                 sOmmPowerMeter->t0
             );
-            return;    
+            return;
         }
     }
     interp_data_reset(sOmmPowerMeter);
@@ -902,6 +921,7 @@ static Gfx *omm_render_hud_timer_m_s_ms(Gfx *pos, Vtx *vtx, f32 timer) {
         OMM_TEXTURE_HUD_8, OMM_TEXTURE_HUD_9,
         OMM_TEXTURE_HUD_M, OMM_TEXTURE_HUD_S,
     };
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
 
     // Clock
     s16 clockW = (OMM_RENDER_GLYPH_SIZE * 8) / 5;
@@ -971,6 +991,7 @@ static Gfx *omm_render_hud_timer_m_s_ms(Gfx *pos, Vtx *vtx, f32 timer) {
 
 static void omm_render_hud_timer() {
     if (HUD_DISPLAY_TIMER && !OMM_HUD_NONE) {
+        OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
 
         // Clock
         s16 clockW = (OMM_RENDER_GLYPH_SIZE * 8) / 5;
@@ -1003,14 +1024,16 @@ static void omm_render_hud_cannon_reticle() {
 //
 
 static s16 omm_render_hud_star_count(struct MarioState *m, s16 y) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
     s32 levelNum = gCurrLevelNum;
 
     // Course stars + course Sparkly star
     if (!omm_is_game_paused() && !OMM_LEVEL_IS_BOWSER_FIGHT(levelNum) && omm_stars_get_level_flags(levelNum, OMM_GAME_MODE) != 0) {
         if (HUD_DISPLAY_STAR_COUNT || HUD_DISPLAY_SPARKLY_COUNT) {
-            u8 alpha = max_s(sOmmHudStarsTimer->update(sOmmHudStarsTimer, m), sOmmHudSparklyTimer->update(sOmmHudSparklyTimer, m));
+            sOmmHudSparklyTimer->update(sOmmHudSparklyTimer, m);
+            u8 alpha = sOmmHudStarsTimer->update(sOmmHudStarsTimer, m);
             if (alpha) {
-                omm_render_hud_stars(OMM_RENDER_VALUE_GLYPH_X, y, alpha, levelNum);
+                omm_render_hud_stars(OMM_RENDER_VALUE_GLYPH_X, y, OMM_RENDER_GLYPH_SIZE, alpha, levelNum);
                 y -= OMM_RENDER_OFFSET_Y;
             }
         }
@@ -1049,9 +1072,10 @@ static s16 omm_render_hud_coin_count(struct MarioState *m, s16 y) {
     if (HUD_DISPLAY_COIN_COUNT) {
         u8 alpha = sOmmHudCoinsTimer->update(sOmmHudCoinsTimer, m);
         if (alpha) {
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
 
             // Coins
-            omm_render_hud_coins(OMM_RENDER_VALUE_GLYPH_X, y, alpha, gHudDisplay.coins);
+            omm_render_hud_coins(OMM_RENDER_VALUE_GLYPH_X, y, OMM_RENDER_GLYPH_SIZE, alpha, gHudDisplay.coins);
 
             // Sparkles
             if (OMM_HUD_VANISHING) {
@@ -1096,6 +1120,7 @@ static s16 omm_render_hud_vibe_gauge(struct MarioState *m, s16 y) {
     if (HUD_DISPLAY_VIBE_GAUGE && OMM_PLAYER_IS_PEACH) {
         u8 alpha = sOmmHudVibeTimer->update(sOmmHudVibeTimer, m);
         if (alpha) {
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
             switch (gOmmPeach->vibeType) {
                 case OMM_PEACH_VIBE_TYPE_NONE:  omm_render_glyph_hud(OMM_RENDER_VALUE_GLYPH_X, y, 0xFF, 0xFF, 0xFF, alpha, OMM_TEXTURE_HUD_VIBE_NORMAL, false); break;
                 case OMM_PEACH_VIBE_TYPE_JOY:   omm_render_glyph_hud(OMM_RENDER_VALUE_GLYPH_X, y, 0xFF, 0xFF, 0xFF, alpha, OMM_TEXTURE_HUD_VIBE_JOY, false); break;
@@ -1112,7 +1137,7 @@ static s16 omm_render_hud_vibe_gauge(struct MarioState *m, s16 y) {
 }
 
 static s16 omm_render_hud_power_up(struct MarioState *m, s16 y) {
-    if (HUD_DISPLAY_CAP_TIMER) {
+    if (HUD_DISPLAY_CAP_TIMER && OMM_HUD_SHOW_NON_ESSENTIAL) {
         static const char *OMM_HUD_POWER_UP_GLYPHS[4][2][2] = {
             { { OMM_TEXTURE_HUD_CAP_MARIO,   OMM_TEXTURE_HUD_CAP_MARIO_METAL   },
               { OMM_TEXTURE_HUD_CAPPY_MARIO, OMM_TEXTURE_HUD_CAPPY_MARIO_METAL }, },
@@ -1133,6 +1158,7 @@ static s16 omm_render_hud_power_up(struct MarioState *m, s16 y) {
         // Render the cap power-up remaining time
         if (m->capTimer > 0 && (wc || mc || vc)) {
             u8 alpha = (vc ? 0x80 : 0xFF);
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
             if (wc) omm_render_glyph_hud(OMM_RENDER_VALUE_GLYPH_X, y, 0xFF, 0xFF, 0xFF, alpha, OMM_TEXTURE_HUD_CAP_WINGS, false);
             omm_render_glyph_hud(OMM_RENDER_VALUE_GLYPH_X, y, 0xFF, 0xFF, 0xFF, alpha, OMM_HUD_POWER_UP_GLYPHS[idx][cc][mc], false);
             omm_render_number_hud(OMM_RENDER_VALUE_NUMBER_X, y, 0xFF, (m->capTimer + 29) / 30, 3, true, false);
@@ -1140,6 +1166,31 @@ static s16 omm_render_hud_power_up(struct MarioState *m, s16 y) {
         }
     }
     return y;
+}
+
+static void omm_render_sparkly_stars_background(s16 y) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
+    s16 x0 = GFX_DIMENSIONS_FROM_LEFT_EDGE(-1);
+    s16 x1 = OMM_RENDER_VALUE_NUMBER_X + 4 * OMM_RENDER_GLYPH_SIZE;
+    s16 y0 = y - (OMM_RENDER_OFFSET_Y - OMM_RENDER_GLYPH_SIZE) / 2;
+    s16 y1 = y0 + OMM_RENDER_OFFSET_Y;
+    u8 r = OMM_SPARKLY_HUD_COLOR_R[gOmmSparklyMode];
+    u8 g = OMM_SPARKLY_HUD_COLOR_G[gOmmSparklyMode];
+    u8 b = OMM_SPARKLY_HUD_COLOR_B[gOmmSparklyMode];
+
+    Vtx *vtx = omm_alloc_vtx(4);
+    vtx[0] = (Vtx) {{{ x0, y0, 0 }, 0, { 0, 0 }, { r, g, b, 0xA0 }}};
+    vtx[1] = (Vtx) {{{ x1, y0, 0 }, 0, { 0, 0 }, { r, g, b, 0x00 }}};
+    vtx[2] = (Vtx) {{{ x0, y1, 0 }, 0, { 0, 0 }, { r, g, b, 0xA0 }}};
+    vtx[3] = (Vtx) {{{ x1, y1, 0 }, 0, { 0, 0 }, { r, g, b, 0x00 }}};
+
+    omm_render_create_dl_ortho_matrix();
+    gSPClearGeometryMode(gDisplayListHead++, G_LIGHTING);
+    gDPSetCombineLERP(gDisplayListHead++, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE);
+    gDPSetRenderMode(gDisplayListHead++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
+    gSPVertex(gDisplayListHead++, vtx, 4, 0);
+    gSP2Triangles(gDisplayListHead++, 0, 1, 2, 0x0, 2, 1, 3, 0x0);
+    gSPSetGeometryMode(gDisplayListHead++, G_LIGHTING);
 }
 
 static s16 omm_render_hud_sparkly_coins(s16 y) {
@@ -1152,6 +1203,7 @@ static s16 omm_render_hud_sparkly_coins(s16 y) {
         );
         s32 coins = numCoins - collectedCoins;
         if (coins > 0) {
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
             s32 coinW = OMM_RENDER_GLYPH_SIZE;
             s32 coinX = OMM_RENDER_VALUE_GLYPH_X - (coinW - OMM_RENDER_GLYPH_SIZE) / 2;
             s32 coinY = y - (coinW - OMM_RENDER_GLYPH_SIZE) / 2;
@@ -1163,15 +1215,19 @@ static s16 omm_render_hud_sparkly_coins(s16 y) {
                 { 0x78, 0x78, 0xFF, 5 }, // Blue
                 { 0xFF, 0xFF, 0x00, 1 },
             };
-            s32 coinType = min_s(3,
-                0 * omm_sparkly_context_get_data(OMM_SPARKLY_DATA_ONLY_COIN_Y) +
-                1 * omm_sparkly_context_get_data(OMM_SPARKLY_DATA_ONLY_COIN_R) +
-                2 * omm_sparkly_context_get_data(OMM_SPARKLY_DATA_ONLY_COIN_B)
+            s32 coinType = clamp_s(-2 +
+                2 * omm_sparkly_context_get_data(OMM_SPARKLY_DATA_ONLY_COIN_Y) +
+                3 * omm_sparkly_context_get_data(OMM_SPARKLY_DATA_ONLY_COIN_R) +
+                4 * omm_sparkly_context_get_data(OMM_SPARKLY_DATA_ONLY_COIN_B),
+                0, 3
             );
-            
+
+            // Render the background
+            omm_render_sparkly_stars_background(y);
+
             // Render the coin icon
             omm_render_texrect(
-                coinX, coinY, coinW, coinW, 32, 32, 
+                coinX, coinY, coinW, coinW, 32, 32,
                 OMM_HUD_SPARKLY_COINS[coinType].r, OMM_HUD_SPARKLY_COINS[coinType].g, OMM_HUD_SPARKLY_COINS[coinType].b, 0xFF,
                 (const void *) (array_of(const char *) {
                     OMM_ASSET_COIN_0,
@@ -1181,7 +1237,7 @@ static s16 omm_render_hud_sparkly_coins(s16 y) {
                 })[(gGlobalTimer >> 1) & 3],
                 false
             );
-            
+
             // Render the number
             omm_render_number_hud(OMM_RENDER_VALUE_NUMBER_X, y, 0xFF, coins / OMM_HUD_SPARKLY_COINS[coinType].value, 3, true, false);
             y -= OMM_RENDER_OFFSET_Y;
@@ -1195,12 +1251,16 @@ static s16 omm_render_hud_sparkly_red_coins(s16 y) {
     if (numRedCoins > 0 && OMM_SPARKLY_STATE_IS_OK) {
         s32 redCoins = numRedCoins - gOmmSparklyContext->coinsRed;
         if (redCoins > 0) {
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
             s32 redCoinW = OMM_RENDER_GLYPH_SIZE;
             s32 redCoinX = OMM_RENDER_VALUE_GLYPH_X - (redCoinW - OMM_RENDER_GLYPH_SIZE) / 2;
             s32 redCoinY = y - (redCoinW - OMM_RENDER_GLYPH_SIZE) / 2;
-            
+
+            // Render the background
+            omm_render_sparkly_stars_background(y);
+
             // Render the red coin or star shard icon
-            if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_SHARDS)) {
+            if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_OBJECT_TYPE) == OMM_SPARKLY_DATA_OBJECT_TYPE_SHARDS) {
                 omm_render_texrect(
                     redCoinX, redCoinY, redCoinW, redCoinW,
                     32, 32, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -1227,7 +1287,7 @@ static s16 omm_render_hud_sparkly_red_coins(s16 y) {
                     false
                 );
             }
-            
+
             // Render the number
             omm_render_number_hud(OMM_RENDER_VALUE_NUMBER_X, y, 0xFF, redCoins, 3, true, false);
             y -= OMM_RENDER_OFFSET_Y;
@@ -1236,14 +1296,64 @@ static s16 omm_render_hud_sparkly_red_coins(s16 y) {
     return y;
 }
 
+static s16 omm_render_hud_sparkly_secrets(s16 y) {
+    if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_OBJECT_TYPE) == OMM_SPARKLY_DATA_OBJECT_TYPE_SECRETS && OMM_SPARKLY_STATE_IS_OK) {
+        s32 secrets = gOmmSparklyContext->secrets;
+        if (secrets > 0) {
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
+            s32 secretsW = (OMM_RENDER_GLYPH_SIZE * 3) / 5;
+            s32 secretsX = OMM_RENDER_VALUE_GLYPH_X - (secretsW - OMM_RENDER_GLYPH_SIZE) / 2;
+            s32 secretsY = y - (secretsW - OMM_RENDER_GLYPH_SIZE) / 2;
+            s32 sparklesW = OMM_RENDER_GLYPH_SIZE;
+            s32 sparklesX = OMM_RENDER_VALUE_GLYPH_X - (sparklesW - OMM_RENDER_GLYPH_SIZE) / 2;
+            s32 sparklesY = y - (sparklesW - OMM_RENDER_GLYPH_SIZE) / 2;
+
+            // Render the background
+            omm_render_sparkly_stars_background(y);
+
+            // Render secret icon
+            omm_render_texrect(
+                secretsX, secretsY, secretsW, secretsW,
+                32, 32, 0xFF, 0xFF, 0xFF, 0xFF,
+                (const void *) OMM_ASSET_SECRET,
+                false
+            );
+
+            // Render sparkles
+            omm_render_texrect(
+                sparklesX, sparklesY, sparklesW, sparklesW,
+                32, 32, 0xFF, 0xFF, 0xFF, 0xC0,
+                (const void *) (array_of(const char *) {
+                    OMM_ASSET_WHITE_SPARKLE_0,
+                    OMM_ASSET_WHITE_SPARKLE_1,
+                    OMM_ASSET_WHITE_SPARKLE_2,
+                    OMM_ASSET_WHITE_SPARKLE_3,
+                    OMM_ASSET_WHITE_SPARKLE_4,
+                    OMM_ASSET_WHITE_SPARKLE_5,
+                })[(gGlobalTimer >> 1) % 6],
+                false
+            );
+
+            // Render the number
+            omm_render_number_hud(OMM_RENDER_VALUE_NUMBER_X, y, 0xFF, secrets, 3, true, false);
+            y -= OMM_RENDER_OFFSET_Y;
+        }
+    }
+    return y;
+}
+
 static s16 omm_render_hud_sparkly_flames(s16 y) {
-    if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_FLAMES) && OMM_SPARKLY_STATE_IS_OK) {
+    if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_OBJECT_TYPE) == OMM_SPARKLY_DATA_OBJECT_TYPE_FLAMES && OMM_SPARKLY_STATE_IS_OK) {
         s32 flames = omm_sparkly_context_get_remaining_flames();
         if (flames > 0) {
-            s32 flameW = 20;
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
+            s32 flameW = 2 * OMM_RENDER_GLYPH_SIZE;
             s32 flameX = OMM_RENDER_VALUE_GLYPH_X - (flameW - OMM_RENDER_GLYPH_SIZE) / 2;
             s32 flameY = y - (flameW - OMM_RENDER_GLYPH_SIZE) / 2;
             s32 flameT = (gGlobalTimer / 2) % 8;
+
+            // Render the background
+            omm_render_sparkly_stars_background(y);
 
             // Render the animated flame
             omm_render_texrect(
@@ -1271,12 +1381,16 @@ static s16 omm_render_hud_sparkly_flames(s16 y) {
 }
 
 static s16 omm_render_hud_sparkly_boxes(s16 y) {
-    if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_BOXES) && OMM_SPARKLY_STATE_IS_OK) {
+    if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_OBJECT_TYPE) == OMM_SPARKLY_DATA_OBJECT_TYPE_BOXES && OMM_SPARKLY_STATE_IS_OK) {
         s32 boxes = omm_sparkly_context_get_remaining_boxes();
         if (boxes > 0) {
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
             s32 boxW = OMM_RENDER_GLYPH_SIZE;
             s32 boxX = OMM_RENDER_VALUE_GLYPH_X - (boxW - OMM_RENDER_GLYPH_SIZE) / 2;
             s32 boxY = y - (boxW - OMM_RENDER_GLYPH_SIZE) / 2;
+
+            // Render the background
+            omm_render_sparkly_stars_background(y);
 
             // Render the box icon
             omm_render_texrect(
@@ -1299,9 +1413,13 @@ static s16 omm_render_hud_sparkly_mushrooms(s16 y) {
     if (numMushrooms > 0 && OMM_SPARKLY_STATE_IS_OK) {
         s32 mushrooms = numMushrooms - gOmmSparklyContext->mushrooms;
         if (mushrooms > 0) {
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
             s32 mushroomW = OMM_RENDER_GLYPH_SIZE;
             s32 mushroomX = OMM_RENDER_VALUE_GLYPH_X - (mushroomW - OMM_RENDER_GLYPH_SIZE) / 2;
             s32 mushroomY = y - (mushroomW - OMM_RENDER_GLYPH_SIZE) / 2;
+
+            // Render the background
+            omm_render_sparkly_stars_background(y);
 
             // Render the mushroom icon
             omm_render_texrect(
@@ -1320,13 +1438,17 @@ static s16 omm_render_hud_sparkly_mushrooms(s16 y) {
 }
 
 static s16 omm_render_hud_sparkly_star_rings(s16 y) {
-    if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_RINGS) && OMM_SPARKLY_STATE_IS_OK) {
+    if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_OBJECT_TYPE) == OMM_SPARKLY_DATA_OBJECT_TYPE_RINGS && OMM_SPARKLY_STATE_IS_OK) {
         s32 rings = omm_sparkly_context_get_remaining_star_rings();
         if (rings > 0) {
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
             s32 ringW = OMM_RENDER_GLYPH_SIZE;
             s32 ringX = OMM_RENDER_VALUE_GLYPH_X + ringW / 2;
             s32 ringY = y + ringW / 2;
             f32 ringS = ringW / 512.f;
+
+            // Render the background
+            omm_render_sparkly_stars_background(y);
 
             // Render the star ring
             create_dl_translation_matrix(G_MTX_PUSH, ringX, ringY, 0);
@@ -1335,7 +1457,7 @@ static s16 omm_render_hud_sparkly_star_rings(s16 y) {
             gSPDisplayList(gDisplayListHead++, omm_geo_star_ring[11]);
             gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
             gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
-            
+
             // Render the number
             omm_render_number_hud(OMM_RENDER_VALUE_NUMBER_X, y, 0xFF, rings, 3, true, false);
             y -= OMM_RENDER_OFFSET_Y;
@@ -1345,10 +1467,11 @@ static s16 omm_render_hud_sparkly_star_rings(s16 y) {
 }
 
 static s16 omm_render_hud_sparkly_enemies(s16 y) {
-    if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_ENEMIES) && OMM_SPARKLY_STATE_IS_OK) {
+    if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_OBJECT_TYPE) == OMM_SPARKLY_DATA_OBJECT_TYPE_ENEMIES && OMM_SPARKLY_STATE_IS_OK) {
         s32 enemies = omm_sparkly_context_get_remaining_enemies();
         if (enemies > 0) {
-            s32 enemyW = 14;
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
+            s32 enemyW = (OMM_RENDER_GLYPH_SIZE * 7) / 5;
             s32 enemyX = OMM_RENDER_VALUE_GLYPH_X - (enemyW - OMM_RENDER_GLYPH_SIZE) / 2;
             s32 enemyY = y - (enemyW - OMM_RENDER_GLYPH_SIZE) / 2;
             s32 enemyT = gGlobalTimer % 30;
@@ -1365,6 +1488,9 @@ static s16 omm_render_hud_sparkly_enemies(s16 y) {
             gSPVertex(tri + 0, vtx, 4, 0);
             gSP2Triangles(tri + 1, 0, 1, 2, 0, 0, 2, 3, 0);
             gSPEndDisplayList(tri + 2);
+
+            // Render the background
+            omm_render_sparkly_stars_background(y);
 
             // Render the enemy
             omm_render_create_dl_ortho_matrix();
@@ -1386,22 +1512,95 @@ static s16 omm_render_hud_sparkly_enemies(s16 y) {
     return y;
 }
 
-static void omm_render_hud_values(struct MarioState *m) {
-    s16 y = OMM_RENDER_VALUE_Y;
-    y = omm_render_hud_star_count(m, y);
-    y = omm_render_hud_coin_count(m, y);
-    y = omm_render_hud_vibe_gauge(m, y);
-    if (!OMM_HUD_NONE && (!OMM_HUD_PRO || omm_is_game_paused())) {
-        y = omm_render_hud_power_up(m, y);
-        if (HUD_DISPLAY_SPARKLY_OBJECTIVE) {
-            y = omm_render_hud_sparkly_coins(y);
-            y = omm_render_hud_sparkly_red_coins(y);
-            y = omm_render_hud_sparkly_flames(y);
-            y = omm_render_hud_sparkly_boxes(y);
-            y = omm_render_hud_sparkly_mushrooms(y);
-            y = omm_render_hud_sparkly_star_rings(y);
-            y = omm_render_hud_sparkly_enemies(y);
+typedef struct { u64 flag; s32 value; const char *texture; bool checkBypassRestrictions; } SparklyRestriction;
+static const SparklyRestriction OMM_HUD_SPARKLY_RESTRICTIONS[] = {
+    { OMM_SPARKLY_DATA_1_HEALTH, TRUE, OMM_TEXTURE_HUD_1_HEALTH, false },
+    { OMM_SPARKLY_DATA_3_HEALTH, TRUE, OMM_TEXTURE_HUD_3_HEALTH, false },
+    { OMM_SPARKLY_DATA_NO_GROUND, TRUE, OMM_TEXTURE_HUD_NO_GROUND, false },
+    { OMM_SPARKLY_DATA_BUTTONS, A_BUTTON | B_BUTTON | START_BUTTON | Z_TRIG | X_BUTTON | Y_BUTTON, OMM_TEXTURE_HUD_NO_BUTTON, true },
+    { OMM_SPARKLY_DATA_BUTTONS, X_BUTTON, OMM_TEXTURE_HUD_NO_X_BUTTON, true },
+    { OMM_SPARKLY_DATA_NO_MUSHROOM, TRUE, OMM_TEXTURE_HUD_NO_MUSHROOM, true },
+    { OMM_SPARKLY_DATA_NO_CAPTURE, TRUE, OMM_TEXTURE_HUD_NO_CAPTURE, true },
+    { OMM_SPARKLY_DATA_NO_VIBE, TRUE, OMM_TEXTURE_HUD_NO_VIBE, true },
+};
+
+static void omm_render_hud_sparkly_restrictions(s16 y) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
+    s16 x = OMM_RENDER_VALUE_NUMBER_X;
+    array_for_each_(const SparklyRestriction, restriction, OMM_HUD_SPARKLY_RESTRICTIONS) {
+        if (omm_sparkly_context_get_data(restriction->flag) == restriction->value &&
+            (!restriction->checkBypassRestrictions || !OMM_SPARKLY_BYPASS_RESTRICTIONS)
+        ) {
+            omm_render_texrect(
+                x, y, OMM_RENDER_GLYPH_SIZE, OMM_RENDER_GLYPH_SIZE,
+                32, 32, 0xFF, 0xFF, 0xFF, 0xFF,
+                (const void *) restriction->texture,
+                false
+            );
+            x += (OMM_RENDER_GLYPH_SIZE + 1);
         }
+    }
+}
+
+static bool omm_render_hud_sparkly_elements(struct MarioState *m, s16 *y, bool *renderPowerUp) {
+    if (HUD_DISPLAY_SPARKLY_OBJECTIVE && OMM_HUD_SHOW_NON_ESSENTIAL && !OMM_LEVEL_IS_BOWSER_FIGHT(gCurrLevelNum) && OMM_SPARKLY_MODE_IS_ENABLED && OMM_SPARKLY_STATE_IS_OK) {
+        s16 displayFlags = gHudDisplay.flags;
+
+        // Star and restrictions
+        omm_render_sparkly_stars_background(*y);
+        if (omm_is_game_paused()) {
+            gHudDisplay.flags = (gHudDisplay.flags & ~HUD_DISPLAY_FLAG_STAR_COUNT) | HUD_DISPLAY_FLAG_SPARKLY_COUNT;
+            *y = omm_render_hud_star_count(m, *y);
+        } else {
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
+            omm_render_hud_sparkly_stars(OMM_RENDER_VALUE_GLYPH_X, *y, OMM_RENDER_GLYPH_SIZE, 0xFF, gCurrLevelNum);
+            omm_render_hud_sparkly_restrictions(*y);
+            *y -= OMM_RENDER_OFFSET_Y;
+        }
+
+        // Conditions
+        *y = omm_render_hud_sparkly_coins(*y);
+        *y = omm_render_hud_sparkly_red_coins(*y);
+        *y = omm_render_hud_sparkly_secrets(*y);
+        *y = omm_render_hud_sparkly_flames(*y);
+        *y = omm_render_hud_sparkly_boxes(*y);
+        *y = omm_render_hud_sparkly_mushrooms(*y);
+        *y = omm_render_hud_sparkly_star_rings(*y);
+        *y = omm_render_hud_sparkly_enemies(*y);
+        if (omm_sparkly_context_get_data(OMM_SPARKLY_DATA_CAPS)) {
+            gHudDisplay.flags |= HUD_DISPLAY_FLAG_CAP_TIMER;
+            OMM_RENDER_BACKUP_DL_HEAD(gDisplayListHead);
+            s16 y0 = *y;
+            if (omm_render_hud_power_up(m, *y) != y0) {
+                OMM_RENDER_RESTORE_DL_HEAD(gDisplayListHead);
+                omm_render_sparkly_stars_background(*y);
+                *y = omm_render_hud_power_up(m, *y);
+                *renderPowerUp = false;
+            }
+        }
+
+        // Make sure to hide other counters
+        sOmmHudStarsTimer->timer = sOmmHudStarsTimer->timerMax;
+        sOmmHudSparklyTimer->timer = sOmmHudSparklyTimer->timerMax;
+        sOmmHudCoinsTimer->timer = sOmmHudCoinsTimer->timerMax;
+        sOmmHudCoinsTimer->prev = gHudDisplay.coins;
+        gHudDisplay.flags = displayFlags;
+        return true;
+    }
+    return false;
+}
+
+static void omm_render_hud_values(struct MarioState *m) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
+    s16 y = OMM_RENDER_VALUE_Y;
+    bool renderPowerUp = true;
+    if (!omm_render_hud_sparkly_elements(m, &y, &renderPowerUp)) {
+        y = omm_render_hud_star_count(m, y);
+        y = omm_render_hud_coin_count(m, y);
+    }
+    y = omm_render_hud_vibe_gauge(m, y);
+    if (renderPowerUp) {
+        y = omm_render_hud_power_up(m, y);
     }
 }
 
@@ -1416,6 +1615,7 @@ static Gfx *omm_render_hud_objects_radar_arrow(Gfx *pos, Vtx *vtx, f32 angle) {
         OMM_TEXTURE_HUD_ARROW_SECRET,
         OMM_TEXTURE_HUD_ARROW_STAR,
     };
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
 
     // Vertices
     vtx[0] = (Vtx) {{{ 0, 0, 0 }, 0, { 0x0000, 0x1000 }, { 0xFF, 0xFF, 0xFF, 0xFF }}};
@@ -1496,35 +1696,53 @@ static bool obj_is_valid(UNUSED struct MarioState *m, struct Object *o) {
 
 #endif
 
-typedef struct { s32 type; struct Object *obj; s32 size; s32 textureCount; const char *textures[8]; } ObjectsRadarTarget;
-static ObjectsRadarTarget sOmmHudObjectsRadarTargets[][1] = {
-    { { 0, NULL, OMM_RENDER_OBJECT_RADAR_OBJ_SIZE, 4, {
-        OMM_ASSET_COIN_0,
-        OMM_ASSET_COIN_1,
-        OMM_ASSET_COIN_2,
-        OMM_ASSET_COIN_3,
-    } } }, // Coin
-    { { 0, NULL, OMM_RENDER_OBJECT_RADAR_OBJ_SIZE, 6, {
-        OMM_ASSET_WHITE_SPARKLE_0,
-        OMM_ASSET_WHITE_SPARKLE_1,
-        OMM_ASSET_WHITE_SPARKLE_2,
-        OMM_ASSET_WHITE_SPARKLE_3,
-        OMM_ASSET_WHITE_SPARKLE_4,
-        OMM_ASSET_WHITE_SPARKLE_5,
-    } } }, // Secret
-    { { 0, NULL, OMM_RENDER_OBJECT_RADAR_STAR_SIZE, 8, {
-        OMM_ASSET_WHITE_STAR_0,
-        OMM_ASSET_WHITE_STAR_1,
-        OMM_ASSET_WHITE_STAR_2,
-        OMM_ASSET_WHITE_STAR_3,
-        OMM_ASSET_WHITE_STAR_4,
-        OMM_ASSET_WHITE_STAR_5,
-        OMM_ASSET_WHITE_STAR_6,
-        OMM_ASSET_WHITE_STAR_7
-    } } }, // Star
+static const char *OMM_HUD_OBJECT_RADAR_COIN_TEXTURES[] = {
+    OMM_ASSET_COIN_0,
+    OMM_ASSET_COIN_1,
+    OMM_ASSET_COIN_2,
+    OMM_ASSET_COIN_3,
 };
 
-static ObjectsRadarTarget *omm_render_hud_objects_radar_get_target(struct MarioState *m, s32 radar) {
+static const char *OMM_HUD_OBJECT_RADAR_SECRET_TEXTURES[] = {
+    OMM_ASSET_WHITE_SPARKLE_0,
+    OMM_ASSET_WHITE_SPARKLE_1,
+    OMM_ASSET_WHITE_SPARKLE_2,
+    OMM_ASSET_WHITE_SPARKLE_3,
+    OMM_ASSET_WHITE_SPARKLE_4,
+    OMM_ASSET_WHITE_SPARKLE_5,
+};
+
+static const char *OMM_HUD_OBJECT_RADAR_STAR_TEXTURES[] = {
+    OMM_ASSET_WHITE_STAR_0,
+    OMM_ASSET_WHITE_STAR_1,
+    OMM_ASSET_WHITE_STAR_2,
+    OMM_ASSET_WHITE_STAR_3,
+    OMM_ASSET_WHITE_STAR_4,
+    OMM_ASSET_WHITE_STAR_5,
+    OMM_ASSET_WHITE_STAR_6,
+    OMM_ASSET_WHITE_STAR_7
+};
+
+static s32 omm_render_hud_objects_radar_get_size(s32 index) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
+    switch (index) {
+        case 0: return OMM_RENDER_OBJECT_RADAR_COIN_SIZE;
+        case 1: return OMM_RENDER_OBJECT_RADAR_SECRET_SIZE;
+        case 2: return OMM_RENDER_OBJECT_RADAR_STAR_SIZE;
+    }
+    return 0;
+}
+
+static const char *omm_render_hud_objects_radar_get_texture(s32 index, s32 t) {
+    switch (index) {
+        case 0: return OMM_HUD_OBJECT_RADAR_COIN_TEXTURES[t % array_length(OMM_HUD_OBJECT_RADAR_COIN_TEXTURES)];
+        case 1: return OMM_HUD_OBJECT_RADAR_SECRET_TEXTURES[t % array_length(OMM_HUD_OBJECT_RADAR_SECRET_TEXTURES)];
+        case 2: return OMM_HUD_OBJECT_RADAR_STAR_TEXTURES[t % array_length(OMM_HUD_OBJECT_RADAR_STAR_TEXTURES)];
+    }
+    return NULL;
+}
+
+static bool omm_render_hud_objects_radar_get_target(struct MarioState *m, s32 radar, s32 *type, s32 *index, struct Object **obj) {
     switch (radar) {
 
         // Red coin
@@ -1533,14 +1751,16 @@ static ObjectsRadarTarget *omm_render_hud_objects_radar_get_target(struct MarioS
             if (redCoinStar) {
                 struct Object *redCoin = obj_get_nearest_red_coin(m);
                 if (redCoin) {
-                    sOmmHudObjectsRadarTargets[0]->type = 1;
-                    sOmmHudObjectsRadarTargets[0]->obj = redCoin;
-                    return sOmmHudObjectsRadarTargets[0];
+                    *type = 1;
+                    *index = 0;
+                    *obj = redCoin;
+                    return true;
                 }
                 if (obj_is_valid(m, redCoinStar) && gRedCoinsCollected >= gOmmArea->redCoins) {
-                    sOmmHudObjectsRadarTargets[2]->type = 1;
-                    sOmmHudObjectsRadarTargets[2]->obj = redCoinStar;
-                    return sOmmHudObjectsRadarTargets[2];
+                    *type = 1;
+                    *index = 2;
+                    *obj = redCoinStar;
+                    return true;
                 }
             }
         } break;
@@ -1551,14 +1771,16 @@ static ObjectsRadarTarget *omm_render_hud_objects_radar_get_target(struct MarioS
             if (secretStar) {
                 struct Object *secret = obj_get_nearest_secret(m);
                 if (secret) {
-                    sOmmHudObjectsRadarTargets[1]->type = 2;
-                    sOmmHudObjectsRadarTargets[1]->obj = secret;
-                    return sOmmHudObjectsRadarTargets[1];
+                    *type = 2;
+                    *index = 1;
+                    *obj = secret;
+                    return true;
                 }
                 if (obj_is_valid(m, secretStar) && obj_get_count_with_behavior(bhvHiddenStarTrigger) == 0) {
-                    sOmmHudObjectsRadarTargets[2]->type = 2;
-                    sOmmHudObjectsRadarTargets[2]->obj = secretStar;
-                    return sOmmHudObjectsRadarTargets[2];
+                    *type = 2;
+                    *index = 2;
+                    *obj = secretStar;
+                    return true;
                 }
             }
         } break;
@@ -1613,53 +1835,55 @@ static ObjectsRadarTarget *omm_render_hud_objects_radar_get_target(struct MarioS
 
             // Found star
             if (nearest) {
-                sOmmHudObjectsRadarTargets[2]->type = 3;
-                sOmmHudObjectsRadarTargets[2]->obj = nearest;
-                return sOmmHudObjectsRadarTargets[2];
+                *type = 3;
+                *index = 2;
+                *obj = nearest;
+                return true;
             }
         } break;
     }
-    return NULL;
+    return false;
 }
 
-static ObjectsRadarTarget *omm_render_hud_objects_radar_get_next_available(struct MarioState *m, s32 radar) {
+static bool omm_render_hud_objects_radar_get_next_available(struct MarioState *m, s32 radar, s32 *type, s32 *index, struct Object **obj) {
     for (s32 i = 0; i != 3; ++i) {
         radar = 1 + (radar % 3);
-        ObjectsRadarTarget *target = omm_render_hud_objects_radar_get_target(m, radar);
-        if (target) {
-            return target;
+        if (omm_render_hud_objects_radar_get_target(m, radar, type, index, obj)) {
+            return true;
         }
     }
-    return NULL;
+    return false;
 }
 
 static void omm_render_hud_objects_radar(struct MarioState *m) {
-    if (HUD_DISPLAY_OBJECTS_RADAR && !gOmmGlobals->hideHudRadar && !OMM_LEVEL_IS_BOWSER_FIGHT(gCurrLevelNum) && !OMM_HUD_NONE && (!OMM_HUD_PRO || omm_is_game_paused()) && OMM_EXTRAS_OBJECTS_RADAR_ENABLED) {
+    if (HUD_DISPLAY_OBJECTS_RADAR && !gOmmGlobals->hideHudRadar && !OMM_LEVEL_IS_BOWSER_FIGHT(gCurrLevelNum) && OMM_HUD_SHOW_NON_ESSENTIAL && OMM_EXTRAS_OBJECTS_RADAR_ENABLED) {
         static const u32 OMM_HUD_OBJECTS_RADAR_COLORS[] = { 0, 0xFF0000FF, 0x00FF00FF, 0xFFFF00FF };
-        ObjectsRadarTarget *target = omm_render_hud_objects_radar_get_next_available(m, gOmmExtrasObjectsRadar - 1);
-        if (target) {
-            if (sOmmCurrentRadar != target->type) {
-                sOmmCurrentRadar = target->type;
+        s32 type; s32 index; struct Object *obj;
+        if (omm_render_hud_objects_radar_get_next_available(m, gOmmExtrasObjectsRadar - 1, &type, &index, &obj)) {
+            if (sOmmCurrentRadar != type) {
+                sOmmCurrentRadar = type;
                 sOmmRadarTimer = OMM_RENDER_OBJECT_RADAR_TIMER_CYCLE_TOTAL;
             }
             u8 targetR = (OMM_HUD_OBJECTS_RADAR_COLORS[sOmmCurrentRadar] >> 24) & 0xFF;
             u8 targetG = (OMM_HUD_OBJECTS_RADAR_COLORS[sOmmCurrentRadar] >> 16) & 0xFF;
             u8 targetB = (OMM_HUD_OBJECTS_RADAR_COLORS[sOmmCurrentRadar] >>  8) & 0xFF;
+            s32 size = omm_render_hud_objects_radar_get_size(index);
+            OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
 
             // Display target object
             omm_render_create_dl_ortho_matrix();
             omm_render_texrect(
-                OMM_RENDER_OBJECT_RADAR_X - target->size / 2,
-                OMM_RENDER_OBJECT_RADAR_Y - target->size / 2,
-                target->size, target->size, 32, 32,
+                OMM_RENDER_OBJECT_RADAR_X - size / 2,
+                OMM_RENDER_OBJECT_RADAR_Y - size / 2,
+                size, size, 32, 32,
                 targetR, targetG, targetB, 0xFF,
-                (const void *) target->textures[(gGlobalTimer >> 1) % target->textureCount],
+                omm_render_hud_objects_radar_get_texture(index, gGlobalTimer >> 1),
                 false
             );
 
             // Display radar height indicator
-            f32 hdist = obj_get_horizontal_distance(m->marioObj, target->obj);
-            f32 ydist = target->obj->oPosY - m->pos[1];
+            f32 hdist = obj_get_horizontal_distance(m->marioObj, obj);
+            f32 ydist = obj->oPosY - m->pos[1];
             if (sOmmRadarTimer > OMM_RENDER_OBJECT_RADAR_TIMER_CYCLE_TOTAL && abs_f(ydist) > max_f(1000.f, hdist * 2.f)) {
                 sOmmRadarTimer = 0;
             }
@@ -1674,8 +1898,8 @@ static void omm_render_hud_objects_radar(struct MarioState *m) {
 
             // Display radar arrow
             s16 angle = atan2s(
-                target->obj->oPosZ - m->pos[2],
-                target->obj->oPosX - m->pos[0]
+                obj->oPosZ - m->pos[2],
+                obj->oPosX - m->pos[0]
             ) - atan2s(
                 m->pos[2] - gCamera->pos[2],
                 m->pos[0] - gCamera->pos[0]
@@ -1701,6 +1925,7 @@ static void omm_render_hud_objects_radar(struct MarioState *m) {
 //
 
 static Gfx *omm_render_hud_monty_mole_hole_indicator_arrow(Gfx *pos, Vtx *vtx, f32 x, f32 y, f32 radius, f32 angle, f32 scale) {
+    OMM_RENDER_DEFINE_GLYPH_SIZE(gOmmHudSize);
 
     // Vertices
     vtx[0] = (Vtx) {{{ 0, 0, 0 }, 0, { 0x0000, 0x1000 }, { 0xFF, 0xFF, 0xFF, 0xFF }}};
@@ -1712,7 +1937,7 @@ static Gfx *omm_render_hud_monty_mole_hole_indicator_arrow(Gfx *pos, Vtx *vtx, f
         vtx[i].v.ob[0] = x +         (radius * coss(angle + 0x4000) + OMM_RENDER_OBJECT_RADAR_ARROW_SIZE * 1.2f * OMM_INVSQRT2 * coss(a));
         vtx[i].v.ob[1] = y + scale * (radius * sins(angle + 0x4000) + OMM_RENDER_OBJECT_RADAR_ARROW_SIZE * 1.2f * OMM_INVSQRT2 * sins(a));
     }
-    
+
     // Display list
     gSPClearGeometryMode(pos++, G_CULL_BOTH);
     gDPSetRenderMode(pos++, G_RM_AA_XLU_SURF, G_RM_AA_XLU_SURF2);
@@ -1730,8 +1955,8 @@ static Gfx *omm_render_hud_monty_mole_hole_indicator_arrow(Gfx *pos, Vtx *vtx, f
 }
 
 void omm_render_hud_monty_mole_hole_indicator() {
-    struct Object *currHole = gOmmMario->capture.obj->oMontyMoleCurrentHole;
-    struct Object *nextHole = gOmmMario->capture.obj->oMontyMoleTargetHole;
+    struct Object *currHole = gOmmCapture->oMontyMoleCurrentHole;
+    struct Object *nextHole = gOmmCapture->oMontyMoleTargetHole;
     Vec3f src3d = { currHole->oPosX, currHole->oPosY, currHole->oPosZ };
 
     // Camera normal
@@ -1793,7 +2018,7 @@ void omm_render_hud() {
     // Render the custom cake end screen on top of
     // the regular cake end screen, if necessary
     if (omm_is_ending_cake_screen()) {
-        omm_sparkly_ending_screen();
+        omm_render_cake_ending_screen();
         return;
     }
 

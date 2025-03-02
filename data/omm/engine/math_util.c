@@ -338,7 +338,7 @@ void vec3f_to_polar_coords(Vec3f v, f32 *dist, s16 *pitch, s16 *yaw) {
 void vec3f_get_nullspace(Vec3f destAxisN, Vec3f destAxisE1, Vec3f destAxisE2, Vec3f n) {
     vec3f_set(destAxisN, n[0], n[1], n[2]);
     if (destAxisN[0] == 0.f && destAxisN[1] == 0.f) {
-        vec3f_set(destAxisE1, 1.f, 0.f, 0.f);    
+        vec3f_set(destAxisE1, 1.f, 0.f, 0.f);
         vec3f_set(destAxisE2, 0.f, 1.f, 0.f);
     } else {
         vec3f_set(destAxisE1, -destAxisN[1], destAxisN[0], 0.f);
@@ -817,8 +817,8 @@ void mtxf_scale_vec3f(Mat4 dest, Mat4 mtx, Vec3f s) {
 
 // This assumes the last row is always [0, 0, 0, 1]
 bool mtxf_invert(Mat4 dest, Mat4 m) {
-    f32 det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) 
-            - m[1][0] * (m[0][1] * m[2][2] - m[2][1] * m[0][2]) 
+    f32 det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2])
+            - m[1][0] * (m[0][1] * m[2][2] - m[2][1] * m[0][2])
             + m[2][0] * (m[0][1] * m[1][2] - m[1][1] * m[0][2]);
     if (det != 0.f) {
         det = 1.f / det;
@@ -937,11 +937,11 @@ OMM_OPTIMIZE void mtxf_get_components(Mat4 m, Vec3f translation, Vec3s rotation,
     // X scale
     scale[0] = vec3f_length(xAxis);
     vec3f_unscale(xAxis, scale[0], gVec3fX);
-    
+
     // XY shear
     shear[0] = vec3f_dot(xAxis, yAxis);
     vec3f_ortho(yAxis, xAxis, shear[0]);
-    
+
     // Y scale
     scale[1] = vec3f_length(yAxis);
     vec3f_unscale(yAxis, scale[1], gVec3fY);

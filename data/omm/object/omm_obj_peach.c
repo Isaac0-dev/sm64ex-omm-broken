@@ -47,7 +47,6 @@ static void bhv_omm_peach_update() {
             cur_obj_hide();
             cur_obj_become_intangible();
             if (obj_get_count_with_behavior(bhvFlame) == 0) {
-                omm_secrets_unlock(OMM_SECRET_DARK_BASEMENT);
                 for_each_in_(const BehaviorScript *, bhv, {
                     bhvToadMessage,
                     bhvMips,
@@ -67,7 +66,12 @@ static void bhv_omm_peach_update() {
                     }
                 }
                 stop_background_music(SEQ_LEVEL_INSIDE_CASTLE);
-                o->oAction = 1;
+                if (gOmmGlobals->yoshiMode) {
+                    o->oAction = 8;
+                } else {
+                    o->oAction = 1;
+                    omm_secrets_unlock(OMM_SECRET_DARK_BASEMENT);
+                }
             }
         } break;
 

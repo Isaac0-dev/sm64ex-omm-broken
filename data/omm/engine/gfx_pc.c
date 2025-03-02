@@ -376,7 +376,7 @@ OMM_INLINE GfxTexture *gfx_texture_find(const char *name) {
 // Palettes
 //
 
-static bool gfx_texture_has_palette(const char *texname) {
+bool gfx_texture_has_palette(const char *texname) {
     static const char *sOmmTexturePatternsWithPalette[] = {
 #define OMM_PALETTE_(id, str) OMM_PALETTE_##id,
 #define OMM_PALETTE_LEVEL_(id, str) OMM_PALETTE_##id,
@@ -420,10 +420,10 @@ static bool gfx_texture_is_level_palette(const char *texname) {
 #define set_b(b_) data[i + 2] = b = clamp_s(b_, 0x00, 0xFF)
 static void gfx_texture_load_level_palette(GfxTexture *tex, const char *texname) {
     u32 pal = (
-        (GFX_LEVEL_PALETTE_FLOODED  * (omm_world_is_flooded() == true)) |
-        (GFX_LEVEL_PALETTE_FROZEN   * (omm_world_is_frozen()  == true)) |
-        (GFX_LEVEL_PALETTE_DARK     * (omm_world_is_dark()    == true)) |
-        (GFX_LEVEL_PALETTE_COLOR    * (sGfxProc->palColor[3]  != 0))
+        (GFX_LEVEL_PALETTE_FLOODED * (omm_world_is_flooded() == true)) |
+        (GFX_LEVEL_PALETTE_FROZEN  * (omm_world_is_frozen()  == true)) |
+        (GFX_LEVEL_PALETTE_DARK    * (omm_world_is_dark()    == true)) |
+        (GFX_LEVEL_PALETTE_COLOR   * (sGfxProc->palColor[3]  != 0))
     );
     if (pal & GFX_LEVEL_PALETTE_COLOR) {
         u8 rmod = (u8) (sGfxProc->palColor[0] * 127.9f);
@@ -1314,9 +1314,8 @@ static void gfx_sp_vertex_tc() {
     gfx_sp_vertex_load(sGfxVtx + vFirst, vCount, true);
 }
 
-OMM_OPTIMIZE static void gfx_sp_vertex_ext_update_buffer(u32 vCount, u32 vFirst) {
+OMM_OPTIMIZE static void gfx_sp_vertex_ext_update_buffer(u32 vCount) {
     static u32 sGfxVtxExtSize = 0;
-    static u32 sGfxVtxExtCountPrev = 0;
     if (OMM_UNLIKELY(vCount > sGfxVtxExtSize)) {
         GfxVertex *newBuffer = mem_new(GfxVertex, vCount);
         if (sGfxVtxExtSize) {
@@ -1326,24 +1325,26 @@ OMM_OPTIMIZE static void gfx_sp_vertex_ext_update_buffer(u32 vCount, u32 vFirst)
         sGfxVtxExt = newBuffer;
         sGfxVtxExtSize = vCount;
     }
-    if (OMM_UNLIKELY(vFirst && vFirst < sGfxVtxExtCountPrev)) {
-        mem_mov(sGfxVtxExt, sGfxVtxExt + sGfxVtxExtCountPrev - vFirst, vFirst * sizeof(GfxVertex));
-    }
-    sGfxVtxExtCountPrev = vCount;
 }
 
 static void gfx_sp_vertex_ext() {
     u32 vCount = GFX_C0(8, 16);
-    u32 vFirst = GFX_C0(0, 8);
-    gfx_sp_vertex_ext_update_buffer(vCount, vFirst);
-    gfx_sp_vertex_load(sGfxVtxExt + vFirst, vCount, OMM_GFX_API_DX);
+    u32 vLast = GFX_C0(0, 8);
+    gfx_sp_vertex_ext_update_buffer(vCount);
+    gfx_sp_vertex_load(sGfxVtxExt, vCount, OMM_GFX_API_DX);
+    if (OMM_LIKELY(vLast)) {
+        mem_cpy(sGfxVtx, sGfxVtxExt + vCount - vLast, sizeof(GfxVertex) * vLast);
+    }
 }
 
 static void gfx_sp_vertex_ext_tc() {
     u32 vCount = GFX_C0(8, 16);
-    u32 vFirst = GFX_C0(0, 8);
-    gfx_sp_vertex_ext_update_buffer(vCount, vFirst);
-    gfx_sp_vertex_load(sGfxVtxExt + vFirst, vCount, true);
+    u32 vLast = GFX_C0(0, 8);
+    gfx_sp_vertex_ext_update_buffer(vCount);
+    gfx_sp_vertex_load(sGfxVtxExt, vCount, true);
+    if (OMM_LIKELY(vLast)) {
+        mem_cpy(sGfxVtx, sGfxVtxExt + vCount - vLast, sizeof(GfxVertex) * vLast);
+    }
 }
 
 //
@@ -1920,7 +1921,7 @@ static void gfx_dp_fill_rectangle() {
     vec4f_copy(sGfxVtx[GFX_MAX_VERTS + 1].color, sGfxProc->fillColor);
     vec4f_copy(sGfxVtx[GFX_MAX_VERTS + 2].color, sGfxProc->fillColor);
     vec4f_copy(sGfxVtx[GFX_MAX_VERTS + 3].color, sGfxProc->fillColor);
-    
+
     u32 lastCombineMode = sGfxProc->combineMode;
     gfx_combine_mode_changed(gfx_color_comb(0, 0, 0, G_CCMUX_SHADE) | (gfx_color_comb(0, 0, 0, G_ACMUX_SHADE) << 12));
     gfx_dp_draw_rectangle(ulx, uly, lrx, lry);
@@ -2238,7 +2239,7 @@ struct GfxRenderingAPI *gfx_get_current_rendering_api() {
 }
 
 void gfx_init(struct GfxWindowManagerAPI *wapi, struct GfxRenderingAPI *rapi, const char *_) {
-    const char window_title[] = OMM_GAME_NAME " (" 
+    const char window_title[] = OMM_GAME_NAME " ("
 #if defined(RAPI_D3D11)
     "DirectX 11"
 #elif defined(RAPI_D3D12)
@@ -2313,3 +2314,4 @@ void gfx_shutdown() {
 #include "data/omm/peachy/omm_peach_tiara_gfx.inl"
 #include "data/omm/level/omm_level_peachy.c"
 #include "data/omm/object/omm_obj_effect_metal.inl"
+#include "data/omm/object/omm_obj_yoshi_mode_gfx.inl"

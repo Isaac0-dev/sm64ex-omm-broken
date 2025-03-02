@@ -166,7 +166,7 @@ void *omm_update_warp(void *cmd, bool inited) {
 
             // Phase 1 - Clear the previous level and set up the new level
             if (sOmmWarpState->targetArea == -1) {
-                
+
                 // Wait 14 more frames...
                 if (sOmmWarpState->exitTimer-- > 0) {
                     return NULL;
@@ -220,7 +220,7 @@ void *omm_update_warp(void *cmd, bool inited) {
                 return (void *) omm_level_get_script(gCurrLevelNum);
 
             } else {
-    
+
                 // Phase 2 - Set Mario spawn info after the MARIO_POS command
                 if (*((u8 *) cmd) == 0x2B) {
                     gMarioSpawnInfo->areaIndex = sOmmWarpState->targetArea;
@@ -399,4 +399,109 @@ void *omm_update_warp(void *cmd, bool inited) {
         sOmmWarpState->targetWarp = NULL;
     }
     return NULL;
+}
+
+//
+// Instant warp (endless stairs, linked areas)
+//
+
+static void omm_instant_warp_apply_displacement(struct Object *o, Vec3f displacement) {
+    vec3f_add(&o->oPosX, displacement);
+    vec3f_add(o->oGfxPos, displacement);
+    o->oFlags |= OBJ_FLAG_INSTANT_WARP;
+}
+
+static void omm_instant_warp_move_objects_within_radius(Vec3f pos, f32 radius, s32 *objLists, Vec3f displacement) {
+    for (s32 *objList = objLists; *objList != -1; ++objList) {
+        for_each_object_in_list(obj, *objList) {
+            if (obj != gMarioObject && obj->activeFlags && !(obj->oFlags & OBJ_FLAG_INSTANT_WARP) &&
+                !(obj->oInteractType & (INTERACT_DOOR | INTERACT_WARP_DOOR | INTERACT_WARP)) &&
+                obj_get_distance_vec3f(obj, pos) <= radius
+            ) {
+                omm_instant_warp_apply_displacement(obj, displacement);
+            }
+        }
+    }
+}
+
+static void omm_instant_warp_move_objects_around_mario(struct MarioState *m, Vec3f displacement) {
+
+    // Move Cappy (and its particles) if in range
+    struct Object *cappy = omm_cappy_get_object();
+    if (cappy && !(cappy->oFlags & OBJ_FLAG_INSTANT_WARP) && obj_get_distance_vec3f(cappy, m->pos) <= 1500) {
+        omm_instant_warp_move_objects_within_radius(&cappy->oPosX, 500, array_of(s32) { OBJ_LIST_UNIMPORTANT, -1 }, displacement);
+        omm_instant_warp_apply_displacement(cappy, displacement);
+        omm_instant_warp_move_objects_within_radius(&cappy->oPosX, 500, array_of(s32) { OBJ_LIST_UNIMPORTANT, -1 }, displacement);
+    }
+
+    // Move objects in range
+    omm_instant_warp_move_objects_within_radius(m->pos, 1000, gOmmAllObjectLists, displacement);
+}
+
+void omm_process_instant_warp(struct MarioState *m, Vec3f displacement, s16 areaIndex) {
+
+    // Move the capture
+    if (omm_mario_is_capture(m)) {
+        vec3f_add(gOmmMario->capture.animPos[0], displacement);
+        vec3f_add(gOmmMario->capture.animPos[1], displacement);
+        vec3f_add(gOmmMario->capture.animPos[2], displacement);
+        omm_instant_warp_apply_displacement(gOmmCapture, displacement);
+
+        // Move the capture cap
+        struct Object *cap = obj_get_first_with_behavior(bhvOmmPossessedObjectCap);
+        if (cap) {
+            omm_instant_warp_apply_displacement(cap, displacement);
+        }
+    }
+
+    // Move objects before Mario
+    omm_instant_warp_move_objects_around_mario(m, displacement);
+
+    // Move Mario
+    vec3f_add(m->pos, displacement);
+    vec3f_add(gOmmMario->state.previous.pos, displacement);
+    omm_instant_warp_apply_displacement(m->marioObj, displacement);
+    m->floorHeight = find_floor(m->pos[0], m->pos[1], m->pos[2], &m->floor);
+
+    // Move objects after Mario
+    omm_instant_warp_move_objects_around_mario(m, displacement);
+
+    // Load the destination area if needed
+    s16 camYaw = gCurrentArea->camera->yaw;
+    s16 camNextYaw = gCurrentArea->camera->nextYaw;
+    change_area(areaIndex);
+    m->area = gCurrentArea;
+
+    // Move the camera
+    gCurrentArea->camera->yaw = camYaw;
+    gCurrentArea->camera->nextYaw = camNextYaw;
+    omm_camera_warp(gCurrentArea->camera, displacement);
+
+    // Smooth interp
+    vec3f_copy(gOmmGlobals->instantWarp.displacement, displacement);
+    gOmmGlobals->instantWarp.warped = true;
+}
+
+void omm_check_instant_warp() {
+    struct MarioState *m = gMarioState;
+    struct Surface *floor = m->floor;
+
+#if OMM_GAME_IS_SM64
+    // Endless stairs
+    if (gCurrLevelNum == LEVEL_CASTLE && omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE) >= 70) {
+        return;
+    }
+#endif
+
+    if (floor != NULL && gCurrentArea->instantWarps != NULL) {
+        s32 index = floor->type - SURFACE_INSTANT_WARP_1B;
+        if (index >= INSTANT_WARP_INDEX_START && index < INSTANT_WARP_INDEX_STOP) {
+            struct InstantWarp *warp = &gCurrentArea->instantWarps[index];
+            if (warp->id != 0) {
+                Vec3f displacement;
+                vec3s_to_vec3f(displacement, warp->displacement);
+                omm_process_instant_warp(m, displacement, warp->area);
+            }
+        }
+    }
 }

@@ -159,6 +159,7 @@ static void bhv_omm_hold_update() {
                     } break;
 
                     // Spawn Toad's star then bounce
+                    // If the Toad hits a moat pillar, pound it
                     case HOLD_ACT_BOUNCE_TOAD: {
                         s32 starCount = omm_save_file_get_total_star_count(gCurrSaveFileNum - 1, OMM_GAME_MODE);
                         switch (o->oToadMessageDialogId) {
@@ -168,6 +169,13 @@ static void bhv_omm_hold_update() {
                         }
                         o->oToadMessageState = 1;
                         o->oToadMessageRecentlyTalked = 1;
+#if OMM_GAME_IS_SM64
+                        struct Object *obj = o->oFloor->object;
+                        if (obj && obj->behavior == bhvWaterLevelPillar && !obj->oWaterLevelPillarUnkF8 && obj->oAction == 0) {
+                            obj->oAction = 1;
+                            obj_spawn_white_puff(o, SOUND_GENERAL_WALL_EXPLOSION);
+                        }
+#endif
                         bhv_omm_hold_bounce(o, prevVelY);
                     } break;
 

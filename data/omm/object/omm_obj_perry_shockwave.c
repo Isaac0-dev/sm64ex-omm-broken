@@ -248,7 +248,7 @@ static void bhv_omm_perry_shockwave_update() {
             up[2] = 0.f;
         }
         vec3f_get_nullspace(n, e1, e2, up);
-        
+
         // Wave
         for (s32 j = 0; j != 2; ++j) {
             f32 t0 = OMM_PERRY_SHOCKWAVE_WAVE_SEGMENTS[j + 0];

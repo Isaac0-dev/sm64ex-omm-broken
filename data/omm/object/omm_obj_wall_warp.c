@@ -45,6 +45,8 @@ static void bhv_omm_wall_warp_update() {
         obj_scale_random(sparkle, 1.f, 0.5f);
         sparkle->oAnimState = (random_u16() & 1);
         sparkle->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
+        sparkle->oAction = 30;
+        sparkle->parentObj = sparkle;
     }
 
     // Check collision
@@ -100,7 +102,7 @@ static void bhv_omm_wall_warp_update() {
                     m->marioObj->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
                     m->interactObj = o;
                     m->usedObj = o;
-                    m->capTimer = 1;
+                    omm_mario_unset_cap(m);
                 }
             }
         }

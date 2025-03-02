@@ -71,7 +71,7 @@ bool omm_sparkly_check_bowser_4(struct MarioState *m) {
     } else {
         omm_obj_spawn_wall_warp(
             m->marioObj, 1, 0, 2550, -2040, 300, 350, 0x0000,
-            LEVEL_CASTLE_GROUNDS, 2, 0x0A, 30,
+            OMM_SPARKLY_BOWSER_4_LEVEL, OMM_SPARKLY_BOWSER_4_AREA, 0x0A, 30,
             WARP_TRANSITION_FADE_INTO_CIRCLE, 20, 0x000000,
             1.f, 1.f, 1.f, NULL, OMM_SPARKLY_SPARKLE_GEO[gOmmSparklyMode]
         );

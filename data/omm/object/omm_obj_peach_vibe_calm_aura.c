@@ -114,7 +114,7 @@ const GeoLayout omm_geo_peach_vibe_calm_aura[] = {
 static void bhv_omm_peach_vibe_calm_aura_update() {
     struct Object *o = gCurrentObject;
     if (omm_peach_vibe_is_calm()) {
-        Vec3f marioRootPos; geo_get_marios_root_pos(marioRootPos);
+        Vec3f marioRootPos; geo_get_marios_anim_part_pos(NULL, marioRootPos, MARIO_ANIM_PART_ROOT);
         o->oPosX = marioRootPos[0];
         o->oPosY = marioRootPos[1];
         o->oPosZ = marioRootPos[2];

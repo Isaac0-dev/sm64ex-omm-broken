@@ -171,6 +171,13 @@ static bool omm_save_file_are_all_captures_registered(s32 gameIndex) {
     return false;
 }
 
+bool omm_save_file_are_all_captures_registered_sm64() {
+    return (
+        omm_save_file_are_all_captures_registered(OMM_GAME_SMEX) ||
+        omm_save_file_are_all_captures_registered(OMM_GAME_R96X)
+    );
+}
+
 static void omm_save_file_register_all_unavailable_captures(s32 fileIndex, s32 modeIndex) {
     u64 unavailableCaptureFlags = ~omm_level_get_all_available_captures(modeIndex) & OMM_ALL_CAPTURES;
     if ((sOmmSaveFile->captures & unavailableCaptureFlags) != unavailableCaptureFlags) {
@@ -184,10 +191,7 @@ static void omm_save_file_register_all_unavailable_captures(s32 fileIndex, s32 m
 // - Mark all unavailable captures as registered if there is at least one SM64 save file with
 //   all captures registered in order to unlock Yoshi once all available captures are registered
 static void omm_save_file_post_process() {
-    bool shouldRegisterAllUnavailableCaptures = (
-        omm_save_file_are_all_captures_registered(OMM_GAME_SMEX) ||
-        omm_save_file_are_all_captures_registered(OMM_GAME_R96X)
-    );
+    bool shouldRegisterAllUnavailableCaptures = omm_save_file_are_all_captures_registered_sm64();
     for (s32 fileIndex = 0; fileIndex != NUM_SAVE_FILES; ++fileIndex) {
         for (s32 modeIndex = 0; modeIndex != sOmmSaveBuffer->modes; ++modeIndex) {
             omm_save_file_clear_impossible_star_flags(fileIndex, modeIndex);
@@ -1018,9 +1022,8 @@ void omm_set_complete_save_file(s32 fileIndex, s32 modeIndex) {
     omm_save_file_register_capture(fileIndex, modeIndex, omm_level_get_all_available_captures(modeIndex));
 
     // Unlock Peach
-    // That's the "unlock Peach" cheat code that only works with OMM save files :)
     if (!OMM_REWARD_IS_PLAYABLE_PEACH_UNLOCKED) {
-        omm_sparkly_read("sparkly_stars", "GfXjKVYgaaJtJcEoXos7yYX2qxnlWT7u6suhEpchlobJxzcvvTeTVoJVNz4", NULL);
+        omm_sparkly_set_completed(OMM_SPARKLY_MODE_NORMAL);
     }
 }
 

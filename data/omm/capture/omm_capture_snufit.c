@@ -26,7 +26,7 @@ void omm_cappy_snufit_end(struct Object *o) {
     o->oSnufitBodyScale = 1000.f;
     o->oSnufitBodyScalePeriod = 0x8000;
     o->oSnufitBodyBaseScale = 167;
-    
+
     // Compute new home pos, so the snufit pos matches its orbit
     o->oHomeX = o->oPosX - 100.f * coss(o->oSnufitCircularPeriod);
     o->oHomeY = o->oPosY -   8.f * coss(4000 * gGlobalTimer);

@@ -27,29 +27,29 @@ static void bhv_omm_star_celebration_update() {
         o->oFaceAngleYaw = m->faceAngle[1] + frame * 0x3000;
         obj_scale(o, scale);
     }
-    
+
     // Slows down
     else if (frame < 32) {
         o->oFaceAngleYaw += (0x8000 >> (frame - 24));
     }
-    
+
     // Disappears
     else if (frame < 36) {
         o->oFaceAngleYaw = m->faceAngle[1];
         obj_scale(o, 1.f - ((frame - 31) / 4.f));
     }
-    
+
     // Grows up to 1.25x and moves up
     else if (frame < 40) {
         obj_scale(o, 1.25f * ((frame - 35) / 4.f));
         o->oPosY = o->oHomeY + o->oCelebStarHeight + (m->marioObj->oGfxPos[1] - m->pos[1]);
     }
-    
+
     // Goes back to 1x
     else if (frame < 44) {
         obj_scale(o, 1.f + 0.25f * (1.f - ((frame - 40) / 4.f)));
     }
-    
+
     // End
     else {
         obj_scale(o, 1.f);

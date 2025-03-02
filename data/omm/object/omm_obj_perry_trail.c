@@ -66,6 +66,16 @@ static void bhv_omm_perry_trail_update() {
     );
     o->oPerryType = omm_perry_get_type(m);
 
+    // Instant warp displacement
+    if (gOmmGlobals->instantWarp.warped) {
+        for_each_(Point, pt, data->pts, array_length(data->pts)) {
+            vec3f_add(pt->br, gOmmGlobals->instantWarp.displacement);
+            vec3f_add(pt->bl, gOmmGlobals->instantWarp.displacement);
+            vec3f_add(pt->tr, gOmmGlobals->instantWarp.displacement);
+            vec3f_add(pt->tl, gOmmGlobals->instantWarp.displacement);
+        }
+    }
+
     // Add new point...
     mem_mov(data->pts + OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME, data->pts, sizeof(data->pts[0]) * (OMM_PERRY_TRAIL_NUM_POINTS_MAX - OMM_PERRY_TRAIL_NUM_POINTS_PER_FRAME));
     struct Object *perry = omm_perry_get_object();
@@ -189,7 +199,7 @@ const BehaviorScript bhvOmmPerryTrail[] = {
 //
 
 OMM_ROUTINE_UPDATE(omm_obj_spawn_perry_trail) {
-    if (gMarioObject && OMM_PERRY_SWORD_ACTION) {
+    if (gMarioObject && OMM_PERRY_IS_AVAILABLE) {
         struct Object *activeTrail = obj_get_first_with_behavior_and_field_s32(bhvOmmPerryTrail, _FIELD(oAction), 0);
         if (!activeTrail) {
             struct Object *perry = omm_perry_get_object();

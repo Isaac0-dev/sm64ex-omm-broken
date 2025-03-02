@@ -592,7 +592,7 @@ static const LevelScript omm_level_bowser_4_objects[] = {
 static const LevelScript omm_level_bowser_4[] = {
     END_AREA(),
     AREA(2, omm_level_bowser_4_geo),
-        WARP_NODE(0x0A, LEVEL_CASTLE_GROUNDS, 2, 0x0A, WARP_NO_CHECKPOINT),
+        WARP_NODE(0x0A, OMM_SPARKLY_BOWSER_4_LEVEL, OMM_SPARKLY_BOWSER_4_AREA, 0x0A, WARP_NO_CHECKPOINT),
         WARP_NODE(WARP_NODE_DEATH, LEVEL_CASTLE_GROUNDS, 1, 0x03, WARP_NO_CHECKPOINT),
         JUMP_LINK(script_func_global_13),
         JUMP_LINK(omm_level_bowser_4_objects),
@@ -604,8 +604,8 @@ static const LevelScript omm_level_bowser_4[] = {
 };
 
 LEVEL_CMD_BRANCH(
-    level_script_find(level_castle_grounds_entry, array_of(LevelScript) { END_AREA() }, 1),
-    level_script_find(level_castle_grounds_entry, array_of(LevelScript) { FREE_LEVEL_POOL() }, 1),
+    level_script_find(OMM_SPARKLY_BOWSER_4_LEVEL_ENTRY, array_of(LevelScript) { END_AREA() }, 1),
+    level_script_find(OMM_SPARKLY_BOWSER_4_LEVEL_ENTRY, array_of(LevelScript) { FREE_LEVEL_POOL() }, 1),
     omm_level_bowser_4
 );
 

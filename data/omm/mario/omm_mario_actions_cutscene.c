@@ -51,7 +51,17 @@ static s32 omm_act_squished(struct MarioState *m) {
 }
 
 static s32 omm_act_disappeared(struct MarioState *m) {
-    action_condition(m->prevAction == ACT_OMM_DEATH, ACT_OMM_DEATH_SQUISHED, 0, RETURN_CANCEL); // Squished
+    action_condition(m->prevAction == ACT_OMM_DEATH, ACT_OMM_DEATH_SQUISHED, 0, RETURN_CANCEL); // Squished (Odyssey)
+
+    // Squished (classic): turn Mario into a pancake
+    if (m->prevAction == ACT_SQUISHED) {
+        ANM(MARIO_ANIM_A_POSE, 1.f);
+        stop_and_set_height_to_floor(m);
+        m->squishTimer = 0xFF;
+        obj_set_scale(m->marioObj, 2.f, 0.05f, 2.f);
+        return OMM_MARIO_ACTION_RESULT_BREAK;
+    }
+
     return OMM_MARIO_ACTION_RESULT_CONTINUE;
 }
 
@@ -128,7 +138,7 @@ static s32 omm_act_unlocking_key_door(struct MarioState *m) {
         // Anim and sound
         update_mario_pos_for_anim(m);
         stop_and_set_height_to_floor(m);
-        switch (m->marioObj->oAnimInfo.animFrame) {
+        switch (m->marioObj->oAnimFrame) {
             case 79:  SFX(SOUND_GENERAL_DOOR_INSERT_KEY); break;
             case 111: SFX(SOUND_GENERAL_DOOR_TURN_KEY);   break;
         }
@@ -433,7 +443,7 @@ static void omm_act_death_handler(struct MarioState *m, s32 type, bool lookAtCam
             m->faceAngle[1] = m->area->camera->yaw;
             mGfx.angle[1] = m->area->camera->yaw;
         }
-        m->capTimer = 1;
+        omm_mario_unset_cap(m);
         omm_lost_coins_spawn(m);
         omm_cappy_return_to_mario(omm_cappy_get_object());
         sAnim2Vel = anim2_yVelInit;
@@ -682,13 +692,13 @@ static bool omm_act_star_dance_update(struct MarioState *m) {
             omm_level_get_act_name(actName, gCurrLevelNum, gLastCompletedStarNum, OMM_GAME_MODE, false, false)
         );
     }
-    
+
     // Here we go!
     else if (m->actionTimer == 40) {
         SFX(SOUND_MARIO_HERE_WE_GO);
         set_camera_shake_from_hit(SHAKE_GROUND_POUND);
     }
-    
+
     // Resume action
     else if (m->actionTimer == 80) {
         obj_deactivate_all_with_behavior(bhvOmmStarCelebration);

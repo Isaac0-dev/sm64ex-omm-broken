@@ -176,7 +176,7 @@ const GeoLayout omm_geo_perry_charge[] = {
 static void bhv_omm_perry_charge_update() {
     struct Object *o = gCurrentObject;
     struct Object *p = omm_perry_get_object();
-    if (!p || !OMM_PERRY_SWORD_ACTION) {
+    if (!p || !OMM_PERRY_IS_AVAILABLE) {
         obj_mark_for_deletion(o);
         return;
     }
@@ -220,7 +220,7 @@ const BehaviorScript bhvOmmPerryCharge[] = {
 //
 
 OMM_ROUTINE_UPDATE(omm_obj_spawn_perry_charge) {
-    if (gMarioObject && OMM_PERRY_SWORD_ACTION) {
+    if (gMarioObject && OMM_PERRY_IS_AVAILABLE) {
         struct Object *charge = obj_get_first_with_behavior(bhvOmmPerryCharge);
         if (!charge) {
             charge = obj_spawn_from_geo(gMarioObject, omm_geo_perry_charge, bhvOmmPerryCharge);

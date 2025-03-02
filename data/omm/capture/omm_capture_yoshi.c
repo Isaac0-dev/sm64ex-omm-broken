@@ -3,6 +3,12 @@
 #undef OMM_ALL_HEADERS
 #include "behavior_commands.h"
 
+#if OMM_GAME_IS_SMSR
+#define zeroLifeYoshi (gOmmGlobals->yoshiMode && gOmmGlobals->booZeroLife)
+#else
+#define zeroLifeYoshi false
+#endif
+
 #define OMM_CAPPY_YOSHI_FLUTTER_DURATION    (24)
 #define OMM_CAPPY_YOSHI_TONGUE_DURATION     (16)
 #define OMM_CAPPY_YOSHI_THROW_DURATION      (-8)
@@ -354,7 +360,7 @@ struct Object *omm_cappy_yoshi_get_object_in_mouth(struct Object *o) {
 bool omm_cappy_yoshi_init(struct Object *o) {
 
     // Cannot capture Yoshi if all other captures haven't been registered
-    if ((omm_save_file_get_capture_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE) & OMM_ALL_CAPTURES_BUT_YOSHI) != OMM_ALL_CAPTURES_BUT_YOSHI) {
+    if (!gOmmGlobals->yoshiMode && (omm_save_file_get_capture_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE) & OMM_ALL_CAPTURES_BUT_YOSHI) != OMM_ALL_CAPTURES_BUT_YOSHI) {
         return false;
     }
 
@@ -369,6 +375,8 @@ bool omm_cappy_yoshi_init(struct Object *o) {
     if (o->behavior == bhvYoshi) {
         obj_anim_play(o, 0, 1.f);
         gOmmObject->state.actionTimer = 5;
+    } else {
+        obj_unload_all_with_behavior(bhvYoshi);
     }
 #endif
 
@@ -377,6 +385,7 @@ bool omm_cappy_yoshi_init(struct Object *o) {
     gOmmObject->yoshi.tongueTimer = 0;
     gOmmObject->yoshi.tongueSine = 0;
     gOmmObject->yoshi.tongued = NULL;
+    gOmmObject->yoshi.lavaBoost = false;
     return true;
 }
 
@@ -464,7 +473,7 @@ s32 omm_cappy_yoshi_update(struct Object *o) {
     POBJ_SET_IMMUNE_TO_QUICKSAND * hasMetalCap;
     POBJ_SET_IMMUNE_TO_STRONG_WINDS * hasMetalCap;
     POBJ_SET_ABLE_TO_MOVE_ON_SLOPES;
-    POBJ_SET_ABLE_TO_MOVE_THROUGH_WALLS * (hasVanishCap || abilityMoveThroughWalls);
+    POBJ_SET_ABLE_TO_MOVE_THROUGH_WALLS * (hasVanishCap || abilityMoveThroughWalls || zeroLifeYoshi);
     POBJ_SET_ABLE_TO_OPEN_DOORS;
     POBJ_SET_ATTACKING * hasMetalCap;
 
@@ -472,69 +481,71 @@ s32 omm_cappy_yoshi_update(struct Object *o) {
     if (pobj_process_inputs(o)) {
         pobj_move(o, false, hasVanishCap || abilitySpeedBoost, false);
         s32 jumpResult = pobj_jump(o, 1);
+        if (!gOmmObject->yoshi.lavaBoost) {
 
-        // Single jump
-        if (jumpResult == POBJ_RESULT_JUMP_START) {
-            if (!hasMetalCap) {
-                obj_play_sound(o, POBJ_SOUND_JUMP_1);
-            } else if (wasUnderwater) {
-                obj_play_sound(o, POBJ_SOUND_JUMP_METAL_WATER);
-            } else {
-                obj_play_sound(o, POBJ_SOUND_JUMP_METAL);
-            }
-            if (abilitySpinJump && gOmmMario->spin.timer) {
-                gOmmObject->state.actionTimer = 8;
-                o->oVelY = max_f(o->oVelY, 1.35f * pobj_get_jump_velocity(o));
-                omm_secrets_unlock(OMM_SECRET_YOSHI_SECRET);
-            }
-        }
-
-        // Spin jump
-        else if (jumpResult == POBJ_RESULT_JUMP_HOLD && gOmmObject->state.actionTimer > 0) {
-            o->oVelY = max_f(o->oVelY, 1.35f * pobj_get_jump_velocity(o));
-        }
-
-        // Flutter jump
-        else if (!obj_is_on_ground(o) && gOmmObject->yoshi.flutterTimer < 0 && POBJ_A_BUTTON_PRESSED) {
-            gOmmObject->yoshi.flutterTimer = 0;
-            o->oVelY = min_f(o->oVelY / 2.f, 0.f);
-        }
-
-        // Actions
-        if (gOmmObject->yoshi.tongueTimer == 0) {
-            if (!gOmmObject->yoshi.tongued) {
-
-                // Tongue/Fireball
-                if (POBJ_B_BUTTON_PRESSED) {
-                    if (hasWingCap) {
-                        omm_cappy_yoshi_spit_fireball(o);
-                    } else {
-                        omm_obj_spawn_yoshi_tongue(o);
-                        omm_sound_play(OMM_SOUND_EFFECT_YOSHI_TONGUE, o->oCameraToObject);
-                        gOmmObject->yoshi.tongueTimer = OMM_CAPPY_YOSHI_TONGUE_DURATION;
-                    }
-                }
-
-                // Egg throw
-                if (omm_cappy_yoshi_get_num_eggs() > 0) {
-                    pobj_charge_attack(15, o, 200, 100);
-                    pobj_release_attack(15,
-                        omm_cappy_yoshi_throw_egg(o, _power_);
-                    );
+            // Single jump
+            if (jumpResult == POBJ_RESULT_JUMP_START) {
+                if (!hasMetalCap) {
+                    obj_play_sound(o, POBJ_SOUND_JUMP_1);
+                } else if (wasUnderwater) {
+                    obj_play_sound(o, POBJ_SOUND_JUMP_METAL_WATER);
                 } else {
-                    gOmmObject->state._powerTimer = 0;
+                    obj_play_sound(o, POBJ_SOUND_JUMP_METAL);
                 }
-
-            } else {
-
-                // Throw
-                if (POBJ_B_BUTTON_PRESSED) {
-                    omm_cappy_yoshi_try_to_throw_object(o, gOmmObject->yoshi.tongued);
+                if (abilitySpinJump && gOmmMario->spin.timer) {
+                    gOmmObject->state.actionTimer = 8;
+                    o->oVelY = max_f(o->oVelY, 1.35f * pobj_get_jump_velocity(o));
+                    omm_secrets_unlock(OMM_SECRET_YOSHI_SECRET);
                 }
+            }
 
-                // Eat
-                else if (POBJ_X_BUTTON_PRESSED) {
-                    omm_cappy_yoshi_try_to_eat_object(o, gOmmObject->yoshi.tongued);
+            // Spin jump
+            else if (jumpResult == POBJ_RESULT_JUMP_HOLD && gOmmObject->state.actionTimer > 0) {
+                o->oVelY = max_f(o->oVelY, 1.35f * pobj_get_jump_velocity(o));
+            }
+
+            // Flutter jump
+            else if (!obj_is_on_ground(o) && gOmmObject->yoshi.flutterTimer < 0 && POBJ_A_BUTTON_PRESSED) {
+                gOmmObject->yoshi.flutterTimer = 0;
+                o->oVelY = min_f(o->oVelY / 2.f, 0.f);
+            }
+
+            // Actions
+            if (gOmmObject->yoshi.tongueTimer == 0) {
+                if (!gOmmObject->yoshi.tongued) {
+
+                    // Tongue/Fireball
+                    if (POBJ_B_BUTTON_PRESSED) {
+                        if (hasWingCap) {
+                            omm_cappy_yoshi_spit_fireball(o);
+                        } else {
+                            omm_obj_spawn_yoshi_tongue(o);
+                            omm_sound_play(OMM_SOUND_EFFECT_YOSHI_TONGUE, o->oCameraToObject);
+                            gOmmObject->yoshi.tongueTimer = OMM_CAPPY_YOSHI_TONGUE_DURATION;
+                        }
+                    }
+
+                    // Egg throw
+                    if (omm_cappy_yoshi_get_num_eggs() > 0) {
+                        pobj_charge_attack(15, o, 200, 100);
+                        pobj_release_attack(15,
+                            omm_cappy_yoshi_throw_egg(o, _power_);
+                        );
+                    } else {
+                        gOmmObject->state._powerTimer = 0;
+                    }
+
+                } else {
+
+                    // Throw
+                    if (POBJ_B_BUTTON_PRESSED) {
+                        omm_cappy_yoshi_try_to_throw_object(o, gOmmObject->yoshi.tongued);
+                    }
+
+                    // Eat
+                    else if (POBJ_X_BUTTON_PRESSED) {
+                        omm_cappy_yoshi_try_to_eat_object(o, gOmmObject->yoshi.tongued);
+                    }
                 }
             }
         }
@@ -595,6 +606,7 @@ s32 omm_cappy_yoshi_update(struct Object *o) {
     }
 
     // Movement
+    f32 prevVelY = o->oVelY;
     bool wasOnGround = obj_is_on_ground(o);
     perform_object_step(o, POBJ_STEP_FLAGS);
     pobj_decelerate(o);
@@ -639,8 +651,18 @@ s32 omm_cappy_yoshi_update(struct Object *o) {
         gOmmObject->yoshi.flutterTimer = -1;
     }
 
-    // Release tongued object if a warp is triggered
-    if (gOmmObject->yoshi.tongued && gOmmWarp->state > POBJ_WARP_STATE_NOT_WARPING) {
+    // Lava boost
+    if (gOmmObject->yoshi.lavaBoost && o->oVelY <= 0.f && isOnGround) {
+        if (prevVelY < -24.f) {
+            o->oVelY = -0.5f * prevVelY;
+            obj_set_forward_vel(o, o->oFaceAngleYaw, 1.f, o->oForwardVel * 0.5f);
+        } else {
+            gOmmObject->yoshi.lavaBoost = false;
+        }
+    }
+
+    // Release tongued object if lava-boosting or a warp is triggered
+    if (gOmmObject->yoshi.tongued && (gOmmObject->yoshi.lavaBoost || gOmmWarp->state > POBJ_WARP_STATE_NOT_WARPING)) {
         omm_cappy_yoshi_release_object(o, gOmmObject->yoshi.tongued);
         gOmmObject->yoshi.tongueTimer = 0;
         gOmmObject->yoshi.tongued = NULL;
@@ -652,7 +674,13 @@ s32 omm_cappy_yoshi_update(struct Object *o) {
         gOmmObject->yoshi.flutterTimer >= 0 &&
         gOmmObject->yoshi.flutterTimer <= OMM_CAPPY_YOSHI_FLUTTER_DURATION
     );
-    if (isOnGround) {
+    if (gOmmObject->yoshi.lavaBoost) {
+        obj_anim_play(o, 1, 8.f);
+        if ((gMarioState->area->terrainType & TERRAIN_MASK) != TERRAIN_SNOW && !hasMetalCap && o->oVelY > 0.f) {
+            spawn_object(o, MODEL_BURN_SMOKE, bhvBlackSmokeMario);
+            obj_play_sound(o, POBJ_SOUND_LAVA_BURN);
+        }
+    } else if (isOnGround) {
         if (POBJ_IS_WALKING) {
             obj_anim_play(o, 1, max_f(1.f, 1.5f * POBJ_ABS_FORWARD_VEL / pobj_get_walk_speed(o)));
         } else {
@@ -660,7 +688,9 @@ s32 omm_cappy_yoshi_update(struct Object *o) {
         }
         if (wasOnGround) {
             s32 stepSound;
-            if (!hasMetalCap) {
+            if (zeroLifeYoshi) {
+                stepSound = NO_SOUND;
+            } else if (!hasMetalCap) {
                 stepSound = POBJ_SOUND_WALK_YOSHI;
             } else if (isUnderwater) {
                 stepSound = POBJ_SOUND_WALK_METAL_WATER;
@@ -670,7 +700,9 @@ s32 omm_cappy_yoshi_update(struct Object *o) {
             obj_make_step_sound_and_particle(o, &gOmmObject->state.walkDistance, pobj_get_walk_speed(o) * 10.f, POBJ_ABS_FORWARD_VEL, stepSound, OBJ_PARTICLE_NONE);
         } else {
             s32 landingSound;
-            if (!hasMetalCap) {
+            if (zeroLifeYoshi) {
+                landingSound = NO_SOUND;
+            } else if (!hasMetalCap) {
                 landingSound = POBJ_SOUND_WALK_YOSHI;
             } else if (isUnderwater) {
                 landingSound = POBJ_SOUND_LANDING_METAL_WATER;
@@ -742,7 +774,7 @@ void omm_cappy_yoshi_update_gfx(struct Object *o) {
         o->oGfxAngle[1] += 0x2000 * gOmmObject->state.actionTimer;
         obj_spawn_particle_preset(o, !POBJ_IS_STAR_DANCING * PARTICLE_SPARKLES, false);
     }
-    if (POBJ_IS_ABLE_TO_MOVE_THROUGH_WALLS) {
+    if (POBJ_IS_ABLE_TO_MOVE_THROUGH_WALLS && !zeroLifeYoshi) {
         o->oTransparency = 0x80;
     }
 

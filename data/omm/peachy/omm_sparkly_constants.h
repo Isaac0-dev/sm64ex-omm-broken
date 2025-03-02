@@ -48,20 +48,27 @@
 
 // HUD elements
 #define OMM_SPARKLY_DATA_DARK_MODE                      (0x0100000000000000llu)     // Hide the surroundings in darkness
-#define OMM_SPARKLY_DATA_SHARDS                         (0x0200000000000000llu)     // Display remaining number of Star shards
-#define OMM_SPARKLY_DATA_FLAMES                         (0x0400000000000000llu)     // Display remaining number of flames
-#define OMM_SPARKLY_DATA_BOXES                          (0x0800000000000000llu)     // Display remaining number of exclamation boxes
-#define OMM_SPARKLY_DATA_RINGS                          (0x1000000000000000llu)     // Display remaining number of Star rings
-#define OMM_SPARKLY_DATA_ENEMIES                        (0x2000000000000000llu)     // Display remaining number of enemies
+#define OMM_SPARKLY_DATA_NO_GROUND                      (0x0200000000000000llu)     // Display the "No ground" restriction
+#define OMM_SPARKLY_DATA_OBJECT_TYPE                    (0xF000000000000000llu)     // Display remaining number of objects (see below)
 
-#define OMM_SPARKLY_DATA_GET_BUTTONS(flags)             (((flags) & OMM_SPARKLY_DATA_BUTTONS)   >>  0llu)
-#define OMM_SPARKLY_DATA_GET_COINS(flags)               (((flags) & OMM_SPARKLY_DATA_COINS)     >> 16llu)
-#define OMM_SPARKLY_DATA_GET_RED_COINS(flags)           (((flags) & OMM_SPARKLY_DATA_RED_COINS) >> 24llu)
-#define OMM_SPARKLY_DATA_GET_MUSHROOMS(flags)           (((flags) & OMM_SPARKLY_DATA_MUSHROOMS) >> 32llu)
-#define OMM_SPARKLY_DATA_SET_BUTTONS(value)             ((((u64) value) <<  0llu) & OMM_SPARKLY_DATA_BUTTONS  )
-#define OMM_SPARKLY_DATA_SET_COINS(value)               ((((u64) value) << 16llu) & OMM_SPARKLY_DATA_COINS    )
-#define OMM_SPARKLY_DATA_SET_RED_COINS(value)           ((((u64) value) << 24llu) & OMM_SPARKLY_DATA_RED_COINS)
-#define OMM_SPARKLY_DATA_SET_MUSHROOMS(value)           ((((u64) value) << 32llu) & OMM_SPARKLY_DATA_MUSHROOMS)
+// Object types
+#define OMM_SPARKLY_DATA_OBJECT_TYPE_SECRETS            (1)
+#define OMM_SPARKLY_DATA_OBJECT_TYPE_SHARDS             (2)
+#define OMM_SPARKLY_DATA_OBJECT_TYPE_FLAMES             (3)
+#define OMM_SPARKLY_DATA_OBJECT_TYPE_BOXES              (4)
+#define OMM_SPARKLY_DATA_OBJECT_TYPE_RINGS              (5)
+#define OMM_SPARKLY_DATA_OBJECT_TYPE_ENEMIES            (6)
+
+#define OMM_SPARKLY_DATA_GET_BUTTONS(flags)             (((flags) & OMM_SPARKLY_DATA_BUTTONS)     >>  0llu)
+#define OMM_SPARKLY_DATA_GET_COINS(flags)               (((flags) & OMM_SPARKLY_DATA_COINS)       >> 16llu)
+#define OMM_SPARKLY_DATA_GET_RED_COINS(flags)           (((flags) & OMM_SPARKLY_DATA_RED_COINS)   >> 24llu)
+#define OMM_SPARKLY_DATA_GET_MUSHROOMS(flags)           (((flags) & OMM_SPARKLY_DATA_MUSHROOMS)   >> 32llu)
+#define OMM_SPARKLY_DATA_GET_OBJECT_TYPE(flags)         (((flags) & OMM_SPARKLY_DATA_OBJECT_TYPE) >> 60llu)
+#define OMM_SPARKLY_DATA_SET_BUTTONS(value)             ((((u64) value) <<  0llu) & OMM_SPARKLY_DATA_BUTTONS    )
+#define OMM_SPARKLY_DATA_SET_COINS(value)               ((((u64) value) << 16llu) & OMM_SPARKLY_DATA_COINS      )
+#define OMM_SPARKLY_DATA_SET_RED_COINS(value)           ((((u64) value) << 24llu) & OMM_SPARKLY_DATA_RED_COINS  )
+#define OMM_SPARKLY_DATA_SET_MUSHROOMS(value)           ((((u64) value) << 32llu) & OMM_SPARKLY_DATA_MUSHROOMS  )
+#define OMM_SPARKLY_DATA_SET_OBJECT_TYPE(value)         ((((u64) value) << 60llu) & OMM_SPARKLY_DATA_OBJECT_TYPE)
 #define OMM_SPARKLY_DATA_CAPS                           (OMM_SPARKLY_DATA_WING_CAP | OMM_SPARKLY_DATA_VANISH_CAP | OMM_SPARKLY_DATA_METAL_CAP)
 
 #define OMM_SPARKLY_BLOCK_GEO                           (array_of(const GeoLayout *) { NULL, omm_geo_sparkly_star_1_block, omm_geo_sparkly_star_2_block, omm_geo_sparkly_star_3_block })
@@ -74,6 +81,8 @@
 #define OMM_SPARKLY_TEXT_STAR                           (array_of(const char *) { NULL, OMM_TEXT_SPARKLY_STAR_1, OMM_TEXT_SPARKLY_STAR_2, OMM_TEXT_SPARKLY_STAR_3 })
 #define OMM_SPARKLY_TEXT_STARS                          (array_of(const char *) { NULL, OMM_TEXT_SPARKLY_STARS_1, OMM_TEXT_SPARKLY_STARS_2, OMM_TEXT_SPARKLY_STARS_3 })
 #define OMM_SPARKLY_HUD_GLYPH                           (array_of(const char *) { NULL, OMM_TEXTURE_STAR_FULL_17, OMM_TEXTURE_STAR_FULL_18, OMM_TEXTURE_STAR_FULL_19 })
-#define OMM_SPARKLY_HUD_COLOR                           (array_of(Vec3s) { { 0xFF, 0xFF, 0xFF }, { 0xFF, 0xE0, 0x80 }, { 0xC0, 0xE0, 0xFF }, { 0xFF, 0x40, 0x80 } })
+#define OMM_SPARKLY_HUD_COLOR_R                         (array_of(u8) { 0xFF, 0xFF, 0xA0, 0xFF })
+#define OMM_SPARKLY_HUD_COLOR_G                         (array_of(u8) { 0xFF, 0xE0, 0xE0, 0x40 })
+#define OMM_SPARKLY_HUD_COLOR_B                         (array_of(u8) { 0xFF, 0x80, 0xFF, 0x80 })
 
 #endif

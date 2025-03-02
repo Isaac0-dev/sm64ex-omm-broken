@@ -81,7 +81,7 @@ def patch_string_in_file(filepath: str, location: str, where: str, what: str, ho
 #
 # Delete
 #
-        
+
 def delete_file(filepath: str, unpatch: bool) -> bool:
     if not unpatch:
         try:
@@ -96,7 +96,7 @@ def delete_file(filepath: str, unpatch: bool) -> bool:
 #
 # Process
 #
-           
+
 def process_command(filename: str, function, *args) -> bool:
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS.keys():
         print("You must provide a valid command as first argument.")
@@ -249,6 +249,7 @@ if __name__ == "__main__":
     do_undef_code("mario_actions_submerged.c", "static f32 get_buoyancy(",                            "static BAD_RETURN(u32) update_water_pitch(")
 
     # Header patches
+    do_patch_file("audio_sdl2.c",    "#include <SDL2/SDL.h>",              "#include <SDL2/SDL.h>",              "\n#include <stdio.h>",                                   PATCH_AFTER)
     do_patch_file("behavior_data.c", "const BehaviorScript bhvStarDoor[]", "const BehaviorScript bhvStarDoor[]", "#include \"data/omm/engine/behavior_commands.inl\"\n",   PATCH_BEFORE)
     do_patch_file("configfile.c",    "const char *configfile_name(",       "const char *configfile_name(",       "#include \"data/omm/engine/configfile.inl\"\n",          PATCH_BEFORE)
     do_patch_file("dynos_audio.cpp", "bool EndJingle = 0;",                "bool EndJingle = 0;",                "\n#include \"data/omm/peachy/omm_peach_vibes_r96.inl\"", PATCH_AFTER)

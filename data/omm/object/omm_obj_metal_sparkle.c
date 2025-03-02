@@ -102,9 +102,7 @@ const GeoLayout omm_geo_metal_sparkle[] = {
 static void bhv_omm_metal_sparkle_init() {
     struct MarioState *m = gMarioState;
     struct Object *o = gCurrentObject;
-    if ((m->marioObj->oNodeFlags & GRAPH_RENDER_INVISIBLE) != 0 ||
-        (m->marioObj->oNodeFlags & GRAPH_RENDER_ACTIVE) == 0 ||
-        (m->marioBodyState->modelState & 0x1FF) == 0x100) {
+    if (omm_mario_is_invisible(m) && (!gOmmGlobals->yoshiMode || !obj_get_first_with_behavior(bhvOmmYoshiModeYoshi))) {
         obj_mark_for_deletion(o);
     }
 }

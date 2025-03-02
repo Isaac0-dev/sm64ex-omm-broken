@@ -54,7 +54,7 @@ static struct SpawnInfo *get_warp_pipe_spawn_info(struct WarpPipeInfo *wpi) {
             return spawnInfo;
         }
     }
-    
+
     struct SpawnInfo *spawnInfo = mem_new(struct SpawnInfo, 1);
     spawnInfo->startPos[0]      = wpi->pipePos[0];
     spawnInfo->startPos[1]      = wpi->pipePos[1];
@@ -663,29 +663,33 @@ static void omm_update_worlds(struct MarioState *m) {
                 } break;
 
                 // Upstairs
-                // Odyssey Moveset only:
-                // - Truly infinite stairs if less than 70 stars
+                // - Truly endless stairs if less than 70 stars (Odyssey moveset, Yoshi mode or capture)
+                // - Make the upstairs Toad talk about the Yoshi mode if the Yoshi summon reward has been unlocked
                 case AREA_CASTLE_TIPPY: {
-                    bool trulyInfiniteStairs = (OMM_MOVESET_ODYSSEY && m->numStars < 70);
+                    bool trulyInfiniteStairs = (m->numStars < 70 && (OMM_MOVESET_ODYSSEY || gOmmGlobals->yoshiMode || omm_mario_is_capture(m)));
                     omm_world_behavior_set_dormant_params(bhvWarp, 0x0F0B0000, trulyInfiniteStairs);
                     if (trulyInfiniteStairs && m->floor->room == 6 && m->pos[2] < 800) {
-
-                        // Displacement
-                        f32 dz = 410;
-                        f32 dy = (
-                            find_floor_height(m->pos[0], m->pos[1] + 80, m->pos[2] + dz) -
-                            find_floor_height(m->pos[0], m->pos[1] + 80, m->pos[2])
-                        );
-
-                        // Warp Mario and the camera
-                        m->pos[1] += dy;
-                        m->pos[2] += dz;
-                        m->marioObj->oPosY += dy;
-                        m->marioObj->oPosZ += dz;
-                        m->marioObj->oGfxPos[1] += dy;
-                        m->marioObj->oGfxPos[2] += dz;
-                        omm_camera_warp(m->area->camera, 0, dy, dz);
+                        struct InstantWarp *warp = &gCurrentArea->instantWarps[0];
+                        if (warp->id != 0) {
+                            Vec3f displacement = {
+                                warp->displacement[0],
+                                max_f(warp->displacement[1], (
+                                    find_floor_height(m->pos[0], m->pos[1] + 80, m->pos[2] + warp->displacement[2]) -
+                                    find_floor_height(m->pos[0], m->pos[1] + 80, m->pos[2])
+                                )),
+                                warp->displacement[2],
+                            };
+                            omm_process_instant_warp(m, displacement, warp->area);
+                        }
                     }
+                    // TODO: YOSHIMODE
+                    // if (m->numStars >= 120 && OMM_REWARD_IS_SUMMON_YOSHI_UNLOCKED) {
+                    //     struct Object *toad = obj_get_first_with_behavior_and_field_s32(bhvToadMessage, _FIELD(oToadMessageDialogId), DIALOG_137);
+                    //     if (toad) {
+                    //         toad->oBehParams2ndByte = OMM_DIALOG_TOAD_YOSHI;
+                    //         toad->oToadMessageDialogId = OMM_DIALOG_TOAD_YOSHI;
+                    //     }
+                    // }
                 } break;
             }
         } break;
@@ -708,7 +712,7 @@ static void omm_update_worlds(struct MarioState *m) {
 #if OMM_GAME_IS_SMSR
     omm_world_behavior_set_dormant(bhvCustomSMSRRecoveryBubbleWater, OMM_SPARKLY_MODE_IS_LUNATIC);
 #endif
-    
+
 #if !OMM_GAME_IS_R96X
     // Disable Bowser objects outside of Bowser fights
     if (!OMM_LEVEL_IS_BOWSER_FIGHT(gCurrLevelNum) && !omm_sparkly_is_bowser_4_battle()) {

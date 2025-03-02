@@ -424,7 +424,7 @@ static void bhv_milk_enable() {
 }
 
 void bhv_milk_init(void) {
-    if (gMarioState->numStars >= 120 && !OMM_SPARKLY_MODE_IS_ENABLED) {
+    if (gMarioState->numStars >= 120 && !OMM_SPARKLY_MODE_IS_ENABLED && !gOmmGlobals->yoshiMode) {
         o->oHomeX = o->oPosX;
         o->oHomeY = o->oPosY;
         o->oHomeZ = o->oPosZ;

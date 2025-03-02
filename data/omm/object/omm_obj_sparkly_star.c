@@ -42,20 +42,47 @@ static void bhv_omm_sparkly_star_update() {
         return;
     }
 
+    // Check parent object
+    if (!o->parentObj || !o->parentObj->activeFlags) {
+        o->parentObj = gMarioObject;
+    }
+
     // Actions
     switch (o->oAction) {
 
         // Invisible
         case 0: {
+
+            // Move the star spawn point
+            if (o->parentObj != gMarioObject && o->parentObj != gOmmCapture) {
+                o->oPosX = o->parentObj->oPosX;
+                o->oPosY = o->parentObj->oPosY + o->parentObj->hitboxHeight + o->parentObj->hitboxDownOffset + 150.f;
+                o->oPosZ = o->parentObj->oPosZ;
+            } else if (omm_mario_is_capture(gMarioState)) {
+                o->oPosX = gMarioState->pos[0];
+                o->oPosY = gMarioState->pos[1] + omm_capture_get_top(gOmmCapture) + 150.f;
+                o->oPosZ = gMarioState->pos[2];
+            } else {
+                o->oPosX = gMarioState->pos[0];
+                o->oPosY = gMarioState->pos[1] + 160.f * gMarioObject->oScaleY + 120.f;
+                o->oPosZ = gMarioState->pos[2];
+            }
+
+            // Play jingle
             if (o->oTimer == 5) {
                 audio_play_puzzle_jingle();
-            } else if (o->oTimer >= 60) {
+            }
+
+            // Spawn sparkles that converge towards the star
+            if (o->oTimer < 55) {
+                omm_obj_spawn_sparkly_star_sparkle_star_spawn(o, o->oSparklyStarMode, min_s(15, 60 - o->oTimer), 0.5f, 800.f);
+            }
+
+            // Spawn star
+            else if (o->oTimer >= 60) {
                 o->oHomeX = o->oSparklyStarPosX;
                 o->oHomeY = o->oSparklyStarPosY;
                 o->oHomeZ = o->oSparklyStarPosZ;
-                o->oPosX = gMarioState->pos[0];
-                o->oPosY = gMarioState->pos[1] + 80;
-                o->oPosZ = gMarioState->pos[2];
                 o->oMoveAngleYaw = atan2s(o->oHomeZ - o->oPosZ, o->oHomeX - o->oPosX);
                 o->oStarSpawnDisFromHome = sqrtf(sqr_f(o->oHomeX - o->oPosX) + sqr_f(o->oHomeZ - o->oPosZ));
                 o->oVelY = (o->oHomeY - o->oPosY) / 30.f;
@@ -64,8 +91,16 @@ static void bhv_omm_sparkly_star_update() {
                 cutscene_object(CUTSCENE_RED_COIN_STAR_SPAWN, o);
                 set_time_stop_flags(TIME_STOP_ENABLED | TIME_STOP_MARIO_AND_DOORS);
                 o->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
+                o->oFlags &= ~OBJ_FLAG_GFX_INITED;
                 o->oAction = 1;
                 o->oSubAction = 0;
+                for (s32 i = 0; i != 20; ++i) {
+                    omm_obj_spawn_sparkly_star_sparkle(o, o->oSparklyStarMode, 0, 80.f, 0.5f, 0);
+                }
+                for_each_object_with_behavior(obj, bhvOmmSparklyStarSparkle) {
+                    obj->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
+                    obj->parentObj = obj;
+                }
             }
         } break;
 
@@ -140,10 +175,10 @@ static void bhv_omm_sparkly_star_update() {
 
         // In Mario's hands
         case 4: {
-            Vec3f marioArmLeft; geo_get_marios_forearm_pos(marioArmLeft, 1);
-            Vec3f marioArmRight; geo_get_marios_forearm_pos(marioArmRight, 0);
-            Vec3f marioHandLeft; geo_get_marios_hand_pos(marioHandLeft, 1);
-            Vec3f marioHandRight; geo_get_marios_hand_pos(marioHandRight, 0);
+            Vec3f marioArmLeft; geo_get_marios_anim_part_pos(NULL, marioArmLeft, MARIO_ANIM_PART_LEFT_FOREARM);
+            Vec3f marioArmRight; geo_get_marios_anim_part_pos(NULL, marioArmRight, MARIO_ANIM_PART_RIGHT_FOREARM);
+            Vec3f marioHandLeft; geo_get_marios_anim_part_pos(NULL, marioHandLeft, MARIO_ANIM_PART_LEFT_HAND);
+            Vec3f marioHandRight; geo_get_marios_anim_part_pos(NULL, marioHandRight, MARIO_ANIM_PART_RIGHT_HAND);
             Vec3f starPos = {
                 ((2.f * marioHandLeft[0] - marioArmLeft[0]) + (2.f * marioHandRight[0] - marioArmRight[0])) / 2.f,
                 ((2.f * marioHandLeft[1] - marioArmLeft[1]) + (2.f * marioHandRight[1] - marioArmRight[1])) / 2.f,
@@ -171,14 +206,17 @@ static void bhv_omm_sparkly_star_update() {
 
         // Invisible
         case 0: {
-            o->oGraphNode = NULL;
-            o->oNodeFlags |= GRAPH_RENDER_INVISIBLE;
+            obj_scale(o, o->oTimer / 20.f);
+            o->oGraphNode = geo_layout_to_graph_node(NULL, OMM_SPARKLY_SPARKLE_GEO[o->oSparklyStarMode]);
+            o->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
+            o->oAnimState++;
         } break;
 
         // Visible, opaque
         case 1:
         case 2:
         case 4: {
+            obj_scale(o, 1.f);
             o->oGraphNode = geo_layout_to_graph_node(NULL, OMM_SPARKLY_STAR_GEO_OPAQUE[o->oSparklyStarMode]);
             o->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
             if ((o->oTimer % (1 << o->oAction)) == 0) {
@@ -188,6 +226,7 @@ static void bhv_omm_sparkly_star_update() {
 
         // Transparent
         case 3: {
+            obj_scale(o, 1.f);
             o->oGraphNode = geo_layout_to_graph_node(NULL, OMM_SPARKLY_STAR_GEO_TRANSPARENT[o->oSparklyStarMode]);
             o->oNodeFlags &= ~GRAPH_RENDER_INVISIBLE;
         } break;

@@ -37,16 +37,17 @@
 //      OBJ_FLAG_PERSISTENT_RESPAWN                         (1 << 14) // 0x00004000
 //      OBJ_FLAG_8000                                       (1 << 15) // 0x00008000
 #define OBJ_FLAG_GFX_INITED                                 (1 << 16) // 0x00010000
-#define OBJ_FLAG_DONT_RENDER_ON_INIT                        (1 << 17) // 0x00020000
-#define OBJ_FLAG_UPDATE_AREA_INDEX                          (1 << 18) // 0x00040000
-#define OBJ_FLAG_SHADOW_COPY_OBJ_POS                        (1 << 19) // 0x00080000
-#define OBJ_FLAG_NO_SHADOW                                  (1 << 20) // 0x00100000
-#define OBJ_FLAG_MONEYBAG_COIN_INTERACTED                   (1 << 21) // 0x00200000
-#define OBJ_FLAG_YOSHI_DESTROY                              (1 << 22) // 0x00400000
-#define OBJ_FLAG_SPARKLY_NOT_ENEMY                          (1 << 23) // 0x00800000
-#define OBJ_FLAG_DESTROYED                                  (1 << 24) // 0x01000000
-#define OBJ_FLAG_CAPTURE_AFTER_WARP                         (1 << 25) // 0x02000000
-#define OBJ_FLAG_INVISIBLE_MODE                             (1 << 26) // 0x04000000
+#define OBJ_FLAG_INSTANT_WARP                               (1 << 17) // 0x00020000
+#define OBJ_FLAG_DONT_RENDER_ON_INIT                        (1 << 18) // 0x00040000
+#define OBJ_FLAG_UPDATE_AREA_INDEX                          (1 << 19) // 0x00080000
+#define OBJ_FLAG_SHADOW_COPY_OBJ_POS                        (1 << 20) // 0x00100000
+#define OBJ_FLAG_NO_SHADOW                                  (1 << 21) // 0x00200000
+#define OBJ_FLAG_MONEYBAG_COIN_INTERACTED                   (1 << 22) // 0x00400000
+#define OBJ_FLAG_YOSHI_DESTROY                              (1 << 23) // 0x00800000
+#define OBJ_FLAG_SPARKLY_NOT_ENEMY                          (1 << 24) // 0x01000000
+#define OBJ_FLAG_DESTROYED                                  (1 << 25) // 0x02000000
+#define OBJ_FLAG_CAPTURE_AFTER_WARP                         (1 << 26) // 0x04000000
+#define OBJ_FLAG_INVISIBLE_MODE                             (1 << 27) // 0x04000000
 //      OBJ_FLAG_30                                         (1 << 30) // 0x40000000
 
 //      INT_STATUS_MARIO_STUNNED                            (1 <<  0) // 0x00000001
@@ -91,6 +92,7 @@
 #define oAnimID                                             header.gfx.mAnimInfo.animID
 #define oAnimFrame                                          header.gfx.mAnimInfo.animFrame
 #define oCurrAnim                                           header.gfx.mAnimInfo.curAnim
+#define oCurrAnimRef                                        header.gfx.mAnimInfo.curAnimRef
 #define oDistToFloor                                        oPosY - o->oFloorHeight
 #define oPrevPosX                                           OBJECT_FIELD_F32(0x2C) // oParentRelativePosX
 #define oPrevPosY                                           OBJECT_FIELD_F32(0x2D) // oParentRelativePosY
@@ -116,7 +118,10 @@
 // Perry
 #define oPerryType                                          OBJECT_FIELD_S32(0x1A) // oAnimState
 #define oPerryFlags                                         OBJECT_FIELD_S32(0x1B)
-#define oPerryRightHandRot(x)                               OBJECT_FIELD_S32(0x1C + x)
+#define oPerryRightHandRot(k)                               OBJECT_FIELD_S16(0x1C + ((k) / 2), ((k) % 2))
+#define oPerryHitboxPos(k)                                  OBJECT_FIELD_S16(0x1C + (((k) + 3) / 2), (((k) + 3) % 2))
+#define oPerryHitboxRadius                                  OBJECT_FIELD_S16(0x1F, 0)
+#define oPerryHitboxHeight                                  OBJECT_FIELD_S16(0x1F, 1)
 #define oPerryShockwaveBlast                                OBJECT_FIELD_S16(0x1B, 0)
 #define oPerryShockwaveDelay                                OBJECT_FIELD_S16(0x1B, 1)
 #define oPerryShockwaveAngleYaw                             OBJECT_FIELD_S32(0x1C)
@@ -140,10 +145,11 @@
 
 // Flaming Bob-omb
 #define oFlamingBobombAura                                  OBJECT_FIELD_OBJ(0x00)
-#define oFlamingBobombIndex                                 OBJECT_FIELD_S32(0x1B)
-#define oFlamingBobombCount                                 OBJECT_FIELD_S32(0x1C)
-#define oFlamingBobombMaxRadius                             OBJECT_FIELD_F32(0x1D)
-#define oFlamingBobombMaxHeight                             OBJECT_FIELD_F32(0x1E)
+//      oBobombBlinkTimer                                   OBJECT_FIELD_S32(0x1B)
+#define oFlamingBobombIndex                                 OBJECT_FIELD_S32(0x1C)
+#define oFlamingBobombCount                                 OBJECT_FIELD_S32(0x1D)
+#define oFlamingBobombMaxRadius                             OBJECT_FIELD_F32(0x1E)
+#define oFlamingBobombMaxHeight                             OBJECT_FIELD_F32(0x1F)
 
 // Goomba Stack
 #define oGoombaStackParent                                  OBJECT_FIELD_OBJ(0x00)
@@ -154,7 +160,7 @@
 #define oChainChompFreeAngle                                OBJECT_FIELD_S32(0x21)
 
 // Monty Mole
-#define oMontyMoleTargetHole                                OBJECT_FIELD_OBJ(0x1C)
+#define oMontyMoleTargetHole                                OBJECT_FIELD_OBJ(0x1D)
 
 // Mips
 #define oMipsCurrentWaypoint                                OBJECT_FIELD_S32(0x1D)
@@ -172,7 +178,9 @@
 #define oCelebStarBehavior                                  OBJECT_FIELD_CVPTR(0x1E)
 
 // Sparkly Star
+//      oStarSpawnDisFromHome                               OBJECT_FIELD_F32(0x1B)
 #define oSparklyStarMode                                    OBJECT_FIELD_S32(0x1C)
+//      oStarSpawnUnkFC                                     OBJECT_FIELD_F32(0x1D)
 #define oSparklyStarPosX                                    OBJECT_FIELD_F32(0x1E)
 #define oSparklyStarPosY                                    OBJECT_FIELD_F32(0x1F)
 #define oSparklyStarPosZ                                    OBJECT_FIELD_F32(0x20)
@@ -191,11 +199,6 @@
 #define oRisingLavaRadius                                   OBJECT_FIELD_F32(0x1E)
 #define oRisingLavaRotVel                                   OBJECT_FIELD_S32(0x1F)
 #define oRisingLavaShake                                    OBJECT_FIELD_S32(0x20)
-
-// Palette Modifier
-#define oGfxPaletteModifierR                                OBJECT_FIELD_F32(0x1B)
-#define oGfxPaletteModifierG                                OBJECT_FIELD_F32(0x1C)
-#define oGfxPaletteModifierB                                OBJECT_FIELD_F32(0x1D)
 
 // Wall Warp
 #define oWallWarpKind                                       OBJECT_FIELD_S32(0x1B)

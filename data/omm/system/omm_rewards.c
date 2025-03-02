@@ -38,6 +38,27 @@ u32 omm_rewards_get_unlocked_count(bool local) {
     return count;
 }
 
+#if OMM_GAME_IS_SMSR
+// Star Road: don't count star replicas for the instant caps reward
+static bool omm_rewards_instant_caps_check_star_flags(s32 fileIndex, s32 modeIndex, s32 courseIndex) {
+    s32 levelNum = gCourseNumToLevelNumTable[courseIndex + 1];
+    u8 starLevelFlags = omm_stars_get_level_flags(levelNum, modeIndex);
+    u8 starSaveFlags = omm_save_file_get_star_flags(fileIndex, modeIndex, courseIndex);
+    for (s32 starIndex = 0; starIndex != OMM_NUM_STARS_MAX_PER_COURSE; ++starIndex) {
+        if (starLevelFlags & (1 << starIndex)) {
+            const BehaviorScript *bhv = NULL;
+            if (omm_stars_get_star_data(levelNum, 1, starIndex, &bhv, NULL) && bhv == bhvCustomSMSRStarReplica) {
+                continue;
+            }
+            if (!(starSaveFlags & (1 << starIndex))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+#endif
+
 bool omm_rewards_is_unlocked(u32 reward, bool local) {
     switch (reward) {
         case OMM_REWARD_INSTANT_CAPS: {
@@ -45,10 +66,19 @@ bool omm_rewards_is_unlocked(u32 reward, bool local) {
                 return (
                     gCurrCourseNum != COURSE_NONE &&
                     !OMM_LEVEL_IS_BOWSER_FIGHT(gCurrLevelNum) &&
+#if OMM_GAME_IS_SMSR
+                    omm_rewards_instant_caps_check_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1)
+#else
                     omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, gCurrCourseNum - 1) == omm_stars_get_level_flags(gCurrLevelNum, OMM_GAME_MODE)
+#endif
                 );
             }
             for (s32 courseNum = COURSE_BOB; courseNum <= COURSE_CAKE_END; ++courseNum) {
+#if OMM_GAME_IS_SMSR
+                if (omm_rewards_instant_caps_check_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, courseNum - 1)) {
+                    return true;
+                }
+#else
                 u8 starLevelFlags = omm_stars_get_level_flags(gCourseNumToLevelNumTable[courseNum], OMM_GAME_MODE);
                 if (starLevelFlags != 0) {
                     u8 starSaveFlags = omm_save_file_get_star_flags(gCurrSaveFileNum - 1, OMM_GAME_MODE, courseNum - 1);
@@ -56,6 +86,7 @@ bool omm_rewards_is_unlocked(u32 reward, bool local) {
                         return true;
                     }
                 }
+#endif
             }
         } break;
 

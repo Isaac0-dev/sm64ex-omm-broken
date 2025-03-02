@@ -147,16 +147,25 @@ const GeoLayout omm_geo_sparkly_star_3_sparkle[] = {
 
 static void bhv_omm_sparkly_star_sparkle_update() {
     struct Object *o = gCurrentObject;
-    o->oPosX += o->oVelX;
-    o->oPosY += o->oVelY;
-    o->oPosZ += o->oVelZ;
+    if (o->parentObj != o) {
+        o->oPosX = o->parentObj->oPosX + o->oHomeX + o->oVelX * o->oTimer;
+        o->oPosY = o->parentObj->oPosY + o->oHomeY + o->oVelY * o->oTimer;
+        o->oPosZ = o->parentObj->oPosZ + o->oHomeZ + o->oVelZ * o->oTimer;
+    } else {
+        o->oPosX += o->oVelX;
+        o->oPosY += o->oVelY;
+        o->oPosZ += o->oVelZ;
+    }
     o->oAnimState++;
+    if (o->oTimer > o->oAction) {
+        obj_mark_for_deletion(o);
+    }
 }
 
 const BehaviorScript bhvOmmSparklyStarSparkle[] = {
     OBJ_TYPE_UNIMPORTANT,
     BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
-    BHV_BEGIN_REPEAT(32),
+    BHV_BEGIN_REPEAT(30),
         BHV_CALL_NATIVE(bhv_omm_sparkly_star_sparkle_update),
     BHV_END_REPEAT(),
     BHV_DEACTIVATE(),
@@ -165,7 +174,7 @@ const BehaviorScript bhvOmmSparklyStarSparkle[] = {
 const BehaviorScript bhvOmmSparklyStarSparkleMario[] = {
     OBJ_TYPE_UNIMPORTANT,
     BHV_OR_INT(oFlags, OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE),
-    BHV_BEGIN_REPEAT(32),
+    BHV_BEGIN_REPEAT(30),
         BHV_CALL_NATIVE(bhv_omm_sparkly_star_sparkle_update),
     BHV_END_REPEAT(),
     BHV_DEACTIVATE(),
@@ -194,10 +203,35 @@ struct Object *omm_obj_spawn_sparkly_star_sparkle(struct Object *o, s32 sparklyM
     sparkle->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
     sparkle->oAnimState = (random_u16() & 1);
     sparkle->oSparklyStarMode = sparklyMode;
+    sparkle->oAction = 30;
+    sparkle->parentObj = sparkle;
     return sparkle;
 }
 
-struct Object* omm_obj_spawn_sparkly_star_sparkle_mario(struct Object* o, s32 sparklyMode, f32 yOffset, f32 vel, f32 scale, f32 offset) {
+struct Object *omm_obj_spawn_sparkly_star_sparkle_star_spawn(struct Object *o, s32 sparklyMode, s32 duration, f32 scale, f32 offset) {
+    struct Object *sparkle = obj_spawn_from_geo(o, OMM_SPARKLY_SPARKLE_GEO[sparklyMode], bhvOmmSparklyStarSparkle);
+    duration = min_s(duration, 30);
+    f32 vx = (offset / (f32) duration) * (random_float() - 0.5f);
+    f32 vy = (offset / (f32) duration) * (random_float() - 0.5f);
+    f32 vz = (offset / (f32) duration) * (random_float() - 0.5f);
+    sparkle->oHomeX = duration * -vx;
+    sparkle->oHomeY = duration * -vy;
+    sparkle->oHomeZ = duration * -vz;
+    sparkle->oPosX += sparkle->oHomeX;
+    sparkle->oPosY += sparkle->oHomeY;
+    sparkle->oPosZ += sparkle->oHomeZ;
+    sparkle->oVelX = vx;
+    sparkle->oVelY = vy;
+    sparkle->oVelZ = vz;
+    obj_scale_random(sparkle, scale, scale);
+    sparkle->activeFlags &= ~ACTIVE_FLAG_UNIMPORTANT;
+    sparkle->oAnimState = (random_u16() & 1);
+    sparkle->oSparklyStarMode = sparklyMode;
+    sparkle->oAction = duration;
+    return sparkle;
+}
+
+struct Object *omm_obj_spawn_sparkly_star_sparkle_mario(struct Object* o, s32 sparklyMode, f32 yOffset, f32 vel, f32 scale, f32 offset) {
     struct Object *sparkle = omm_obj_spawn_sparkly_star_sparkle(o, sparklyMode, yOffset, vel, scale, offset);
     sparkle->behavior = bhvOmmSparklyStarSparkleMario;
     return sparkle;

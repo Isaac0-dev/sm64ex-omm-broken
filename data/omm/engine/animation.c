@@ -6,6 +6,15 @@
 // Geo animation
 //
 
+static bool geo_obj_check_animation(struct_AnimInfo *animInfo, struct Animation *anim) {
+    return anim != NULL && (
+        animInfo->curAnim == NULL || (
+        animInfo->curAnimRef != NULL ?
+        animInfo->curAnimRef != anim :
+        animInfo->curAnim != anim
+    ));
+}
+
 void geo_obj_sync_anim_frame(struct_AnimInfo *animInfo) {
     animInfo->animFrame = animInfo->animFrameAccelAssist / ANIM_ACCEL_ONE;
 }
@@ -18,8 +27,9 @@ void geo_obj_sync_anim_frame_accel_assist(struct_AnimInfo *animInfo, bool clearB
 void geo_obj_init_animation(struct GraphNodeObject *node, struct Animation **animPtrAddr) {
     struct Animation *anim = *animPtrAddr;
     struct_AnimInfo *animInfo = &node->mAnimInfo;
-    if (animInfo->curAnim != anim) {
+    if (geo_obj_check_animation(animInfo, anim)) {
         animInfo->curAnim = anim;
+        animInfo->curAnimRef = anim;
         animInfo->animFrame = anim->mStartFrame + ((anim->flags & ANIM_FLAG_REVERSE) ? 1 : -1);
     }
     animInfo->animAccel = ANIM_ACCEL_ONE;
@@ -30,8 +40,9 @@ void geo_obj_init_animation(struct GraphNodeObject *node, struct Animation **ani
 void geo_obj_init_animation_accel(struct GraphNodeObject *node, struct Animation **animPtrAddr, s32 animAccel) {
     struct Animation *anim = *animPtrAddr;
     struct_AnimInfo *animInfo = &node->mAnimInfo;
-    if (animInfo->curAnim != anim && anim) {
+    if (geo_obj_check_animation(animInfo, anim)) {
         animInfo->curAnim = anim;
+        animInfo->curAnimRef = anim;
         animInfo->animFrameAccelAssist = anim->mStartFrame * ANIM_ACCEL_ONE + ((anim->flags & ANIM_FLAG_REVERSE) ? animAccel : -animAccel);
     }
     animInfo->animAccel = animAccel;
@@ -110,6 +121,7 @@ void obj_anim_play_with_sound(struct Object *o, s32 animID, f32 animAccel, s32 s
     if (restart) {
         o->oAnimID = -1;
         o->oCurrAnim = NULL;
+        o->oCurrAnimRef = NULL;
     }
     if (o == gMarioObject) {
         set_mario_anim_with_accel(gMarioState, animID, animAccel * ANIM_ACCEL_ONE);
@@ -135,7 +147,7 @@ void obj_anim_set_speed(struct Object *o, f32 animAccel) {
 
 void obj_anim_set_frame(struct Object *o, s16 frame) {
     if (!o->oCurrAnim) return;
-    o->oAnimInfo.animFrame = frame;
+    o->oAnimFrame = frame;
     geo_obj_sync_anim_frame_accel_assist(&o->oAnimInfo, true);
 }
 

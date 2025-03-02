@@ -149,6 +149,7 @@ s32 omm_text_compare(const u8 *str1, const u8 *str2) {
 typedef struct { const char *str; s32 offset; const u8 *str64; s32 length; } TextToSkip;
 static TextToSkip sTextToSkip[] = {
     { "Mario 64",      0, NULL, 0 },
+    { "Mario Bros.",   0, NULL, 0 },
     { "Super Mario",   6, NULL, 0 },
     { "Mario is red",  0, NULL, 0 },
     { "Odyssey Mario", 8, NULL, 0 },
@@ -215,17 +216,24 @@ static void omm_text_replace_mario_by_wario(u8 *str64) {
     omm_text_replace(str64, OMM_TEXT_MARIO_LOWER, OMM_TEXT_WARIO_LOWER);
 }
 
+static void omm_text_replace_mario_by_yoshi(u8 *str64) {
+    omm_text_replace(str64, OMM_TEXT_MARIO, OMM_TEXT_YOSHI);
+    omm_text_replace(str64, OMM_TEXT_MARIO_UPPER, OMM_TEXT_YOSHI_UPPER);
+    omm_text_replace(str64, OMM_TEXT_MARIO_LOWER, OMM_TEXT_YOSHI_LOWER);
+}
+
 static void (*omm_text_replace_func[])(u8 *) = {
     omm_text_replace_mario_by_mario,
     omm_text_replace_mario_by_peach,
     omm_text_replace_mario_by_luigi,
     omm_text_replace_mario_by_wario,
+    omm_text_replace_mario_by_yoshi,
 };
 
 u8 *omm_text_get_string_for_selected_player(u8 *str64) {
     static OmmArray sPlayersStrings = omm_array_zero;
     s32 lenWithFFterm = omm_text_length(str64) + 1;
-    s32 playerIndex = omm_player_get_selected_index_model_and_sounds();
+    s32 playerIndex = gOmmGlobals->yoshiMode ? OMM_PLAYER_YOSHI : omm_player_get_selected_index_model_and_sounds();
 
     // Try to find the string in the list
     omm_array_for_each(sPlayersStrings, p) {
@@ -239,8 +247,8 @@ u8 *omm_text_get_string_for_selected_player(u8 *str64) {
     }
 
     // It doesn't exist yet, lets add an entry
-    u8 **pstr = mem_new(u8 *, OMM_NUM_PLAYABLE_CHARACTERS);
-    for (s32 i = 0; i != OMM_NUM_PLAYABLE_CHARACTERS; ++i) {
+    u8 **pstr = mem_new(u8 *, array_length(omm_text_replace_func));
+    for (s32 i = 0; i != array_length(omm_text_replace_func); ++i) {
         pstr[i] = mem_dup(str64, lenWithFFterm);
         omm_text_replace_func[i](pstr[i]);
     }
