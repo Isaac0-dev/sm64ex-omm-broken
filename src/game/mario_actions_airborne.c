@@ -180,6 +180,7 @@ s32 check_horizontal_wind(struct MarioState *m) {
 }
 
 void update_air_with_turn(struct MarioState *m) {
+omm_patch__update_air_with_turn__update_air_with_turn
     f32 dragThreshold;
     s16 intendedDYaw;
     f32 intendedMag;
@@ -210,6 +211,7 @@ void update_air_with_turn(struct MarioState *m) {
 }
 
 void update_air_without_turn(struct MarioState *m) {
+omm_patch__update_air_without_turn__update_air_without_turn
     f32 sidewaysSpeed = 0.0f;
     f32 dragThreshold;
     s16 intendedDYaw;
@@ -382,6 +384,7 @@ u32 common_air_action_step(struct MarioState *m, u32 landAction, s32 animation, 
             break;
 
         case AIR_STEP_HIT_WALL:
+omm_patch__common_air_action_step__check_wall_slide
             set_mario_animation(m, animation);
 
             if (m->forwardVel > 16.0f) {
@@ -1501,7 +1504,7 @@ s32 act_lava_boost(struct MarioState *m) {
 
     switch (perform_air_step(m, 0)) {
         case AIR_STEP_LANDED:
-            if (m->floor->type == SURFACE_BURNING) {
+            if (m->floor->type == SURFACE_BURNING  omm_patch__act_lava_boost__cheat_walk_on_lava) {
                 m->actionState = 0;
                 if (!(m->flags & MARIO_METAL_CAP)) {
                     m->hurtCounter += (m->flags & MARIO_CAP_ON_HEAD) ? 12 : 18;

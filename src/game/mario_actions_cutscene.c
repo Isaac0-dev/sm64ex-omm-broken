@@ -353,6 +353,7 @@ s32 mario_ready_to_speak(void) {
 // 2 = speaking
 s32 set_mario_npc_dialog(s32 actionArg) {
     s32 dialogState = 0;
+omm_patch__set_mario_npc_dialog__check_npc_dialog
 
     // in dialog
     if (gMarioState->action == ACT_READING_NPC_DIALOG) {
@@ -2622,6 +2623,7 @@ static s32 act_end_waving_cutscene(struct MarioState *m) {
 static s32 check_for_instant_quicksand(struct MarioState *m) {
     if (m->floor->type == SURFACE_INSTANT_QUICKSAND && m->action & ACT_FLAG_INVULNERABLE
         && m->action != ACT_QUICKSAND_DEATH) {
+omm_patch__check_for_instant_quicksand__fix_downwarp
         update_mario_sound_and_camera(m);
         return drop_and_set_mario_action(m, ACT_QUICKSAND_DEATH, 0);
     }

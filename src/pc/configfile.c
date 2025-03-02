@@ -219,6 +219,7 @@ static unsigned int tokenize_string(char *str, int maxTokens, char **tokens) {
 }
 
 // Gets the config file path and caches it
+#include "data/omm/engine/configfile.inl"
 const char *configfile_name(void) {
     return (gCLIOpts.ConfigFile[0]) ? gCLIOpts.ConfigFile : CONFIGFILE_DEFAULT;
 }

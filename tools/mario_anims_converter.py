@@ -128,7 +128,7 @@ try:
                 str(indices_len),
                 "(const s16 *)(offsetof(struct MarioAnimsObj, " + values + ") - " + offset_to_struct + ")",
                 "(const u16 *)(offsetof(struct MarioAnimsObj, " + indices + ") - " + offset_to_struct + ")",
-                offset_to_end + " - " + offset_to_struct
+"((sizeof(gMarioAnims." + indices + ") / sizeof(u16)) << 20) | ((sizeof(gMarioAnims." + values + ") / sizeof(s16)) << 0)"
             ]) + "},")
         else:
             is_indices, arr = obj
