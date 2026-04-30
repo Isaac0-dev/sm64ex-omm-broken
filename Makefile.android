@@ -1,0 +1,12 @@
+#专为sm64ex-omm-breaken安卓编译配置
+target_ANDROID：=1
+Android_APP_NAME：=sm64ex-omm
+Android_PACKAGE_NAME：=com.omm.sm64ex
+
+# 基础配置
+CC：=
+CXX：=clang++
+LD：=
+
+# 自动适配仓库原生编译规则
+包含Makefile
