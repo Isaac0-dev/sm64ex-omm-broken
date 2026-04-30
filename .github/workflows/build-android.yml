@@ -1,0 +1,28 @@
+name: Build Android APK
+on:
+  push:
+    branches: [ nightly ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential git python3 libsdl2-dev zip unzip
+
+      - name: Extract assets from baserom
+        run: python3 extract_assets.py --clean
+
+      - name: Build for Android
+        run: make TARGET_ANDROID=1 -j$(nproc)
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sm64ex-omm-android
+          path: build/us_android/*.apk
