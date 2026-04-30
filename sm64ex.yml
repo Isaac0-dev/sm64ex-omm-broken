@@ -1,0 +1,27 @@
+name: Build Android APK
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装依赖
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential git python3 libsdl2-dev zip unzip
+          sudo apt install -y android-sdk android-ndk
+
+      - name: 提取ROM资源
+        run: python3 extract_assets.py --clean
+
+      - name: 【关键】用仓库原生命令编译
+        run: make -j$(nproc) android
+
+      - name: 【万能上传】不管APK在哪，全给你找出来
+        uses: actions/upload-artifact@v4
+        with:
+          name: SM64EX-OMM-成品APK
+          path: ./**/*.apk
