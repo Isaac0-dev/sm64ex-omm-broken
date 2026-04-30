@@ -1,4 +1,4 @@
-name: Build Android APK
+姓名: 姓名
 on:
   push:
     branches: [ nightly ]
@@ -10,19 +10,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - 姓名: 安装相依性
         run: |
           sudo apt update
           sudo apt install -y build-essential git python3 libsdl2-dev zip unzip
 
-      - name: Extract assets from baserom
-        run: python3 extract_assets.py --clean
+      - 姓名: 从BaseROM提取资产
+        run: python3extract_assets.py--clean
 
-      - name: Build for Android
-        run: make TARGET_ANDROID=1 -j$(nproc)
+      - 姓名: 为安卓构建
+        run: 使TARGET_ANDROID=1-j$(nproc)
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: sm64ex-omm-android
-          path: build/us_android/*.apk
+      - 姓名: 上传安装包
+        uses: 操作/上载工件@v4
+和……一起:
+姓名: sm64ex-omm-android
+路径: /storage/emulated/0/MT2/
