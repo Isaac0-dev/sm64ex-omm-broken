@@ -1,0 +1,31 @@
+name: Build Android APK
+on:
+  workflow_dispatch:  # 只允许你手动点按钮启动，不会自动跑
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取源码
+        uses: actions/checkout@v4
+
+      - name: 安装安卓编译依赖
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential git python3 zip unzip wget curl
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip commandlinetools-linux-9477386_latest.zip -d cmdline-tools
+          sudo mv cmdline-tools /opt/
+          echo "export PATH=$PATH:/opt/cmdline-tools/bin" >> ~/.bashrc
+
+      - name: 提取游戏资源
+        run: python3 extract_assets.py --clean
+
+      - name: 编译安卓APK
+        run: make TARGET_ANDROID=1 -j4
+
+      - name: 上传成品APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sm64ex-omm-安卓安装包
+          path: build/us_android/*.apk
