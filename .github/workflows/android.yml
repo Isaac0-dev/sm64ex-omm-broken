@@ -1,0 +1,39 @@
+姓名: 构建安装包
+
+在……之上:
+推:
+workflow_dispatch:
+
+工作:
+建立:
+连续的：Ubuntu-最新
+
+连续的：Ubuntu-最新:
+      - 姓名: 结帐
+uses: 操作/结帐@v4
+
+-姓名：安装JDK
+uses: 操作/设置-Java@v4
+和……一起:
+分布: temurin
+java版: 17
+
+-姓名: 安装Android SDK
+uses: 一个ndroid-actions/setup-android@v3
+
+-姓名: 接受许可证
+跑: 是|SDK管理器-许可证
+
+-姓名: 安装NDK
+跑: sdkmanager"ndk;25.2.9519653"
+
+-姓名: 构建安装包
+跑: |
+chmod+x gradlew
+./gradlew装配调试
+
+-姓名: 上传安装包
+uses: 操作/上载工件@v4
+和……一起:
+姓名: 应用程序调试
+路径: /storage/emulated/0/下载/*.APK
